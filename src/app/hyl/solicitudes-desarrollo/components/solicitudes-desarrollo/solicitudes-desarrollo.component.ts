@@ -15,12 +15,17 @@ export interface SolicitudDesarrollo {
   requerimientosNoFuncionales?: { id: string; descripcion: string }[];
   requisitosSeguridad?: string[];
   fechaCreacion: Date;
-  estado: 'pendiente' | 'en progreso' | 'completada' | 'rechazada';
+  estado: string;
   solicitante: string;
   area: string;
   proceso?: string;
   vicepresidencia?: string;
   tipoSolicitud?: string;
+  // Información adicional para la bandeja
+  coordinador?: string;
+  funcionalAsignado?: string;
+  observaciones?: string;
+  enEjecucion?: boolean; // true = candado cerrado
 }
 
 @Component({
@@ -41,12 +46,35 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // Datos
   solicitudes: SolicitudDesarrollo[] = [];
   solicitudActual: SolicitudDesarrollo = this.inicializarNueva();
-  
+
   // Estado de la vista
   vistaActual: 'principal' | 'bandeja' | 'wizard' = 'principal';
-  
+
   // Estado del wizard
   modoEdicion = false;
+
+  // Navegación de tabs manuales del wizard
+  pasoActivo = 0;
+  impactoTexto = '';
+
+  // Referencia a String para usar en el template
+  String = String;
+
+  // Modal de información
+  mostrarModalInf = false;
+  solicitudSeleccionada: SolicitudDesarrollo | null = null;
+  observacionesModal = '';
+
+  // Modal de confirmación de eliminación de requerimiento
+  mostrarModalEliminar = false;
+  requerimientoAEliminar: { tipo: 'funcional' | 'noFuncional'; index: number; id: string } | null = null;
+
+  // Modal de éxito (guardar)
+  mostrarModalExito = false;
+  numeroSolicitudExito = '';
+
+  // Columnas de la tabla de bandeja
+  columnasBandeja = ['fecha', 'codigo', 'nombre', 'ver', 'estado', 'candado'];
 
   // Listas de opciones
   cargosDisponibles = [
@@ -103,14 +131,14 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       area: ['', Validators.required],
       vicepresidencia: ['', Validators.required],
       tipoSolicitud: ['', Validators.required],
-      objetivo: ['', [Validators.required, Validators.minLength(10)]],
+      objetivo: ['', [Validators.required, Validators.minLength(3)]],
       cargos: [[], Validators.required],
       detalle: ['', [Validators.required, Validators.maxLength(2000)]],
       fechaIngreso: [new Date()]
     });
 
     this.impactoForm = this.fb.group({
-      impacto: ['', [Validators.required, Validators.minLength(20)]]
+      impacto: ['', [Validators.required, Validators.minLength(5)]]
     });
 
     this.reqFuncionalesForm = this.fb.group({
@@ -135,7 +163,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       cargosImpactados: [],
       requerimientosFuncionales: [],
       requerimientosNoFuncionales: [],
-      requisitosSeguridad: []
+      requisitosSeguridad: [],
+      enEjecucion: false
     };
   }
 
@@ -157,9 +186,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         ],
         requisitosSeguridad: ['Autentificar adecuadamente', 'Comprobar las entradas'],
         fechaCreacion: new Date('2026-01-01'),
-        estado: 'en progreso',
+        estado: 'En documentación',
         solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-        area: 'Transformación Digital'
+        area: 'Transformación Digital',
+        coordinador: 'Geiber Obando',
+        funcionalAsignado: 'Laura Bedoya',
+        enEjecucion: false
       },
       {
         id: 2,
@@ -169,14 +201,17 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         cargosImpactados: ['Profesional BIG'],
         impacto: 'Optimizará el proceso de afiliaciones...',
         requerimientosFuncionales: [
-          { id: 'RF_03', descripcion: 'Nuevo dashboard de afiliaciones' }
+          { id: 'RF_01', descripcion: 'Nuevo dashboard de afiliaciones' }
         ],
         requerimientosNoFuncionales: [],
         requisitosSeguridad: [],
         fechaCreacion: new Date('2026-01-10'),
-        estado: 'pendiente',
+        estado: 'en desarrollo',
         solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-        area: 'Transformación Digital'
+        area: 'Transformación Digital',
+        coordinador: 'Geiber Obando',
+        funcionalAsignado: 'Laura Bedoya',
+        enEjecucion: true
       },
       {
         id: 3,
@@ -189,9 +224,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         requerimientosNoFuncionales: [],
         requisitosSeguridad: [],
         fechaCreacion: new Date('2026-01-15'),
-        estado: 'completada',
+        estado: 'En pruebas funcionales',
         solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-        area: 'Transformación Digital'
+        area: 'Transformación Digital',
+        coordinador: 'Geiber Obando',
+        funcionalAsignado: 'Laura Bedoya',
+        enEjecucion: true
       },
       {
         id: 4,
@@ -204,9 +242,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         requerimientosNoFuncionales: [],
         requisitosSeguridad: [],
         fechaCreacion: new Date('2026-01-20'),
-        estado: 'rechazada',
+        estado: 'En pruebas de aceptación',
         solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-        area: 'Transformación Digital'
+        area: 'Transformación Digital',
+        coordinador: 'Geiber Obando',
+        funcionalAsignado: 'Laura Bedoya',
+        enEjecucion: true
       }
     ];
   }
@@ -214,7 +255,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   // NAVEGACIÓN
   // ============================================================
-  
+
   mostrarPrincipal(): void {
     this.vistaActual = 'principal';
   }
@@ -223,6 +264,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.solicitudActual = this.inicializarNueva();
     this.vistaActual = 'wizard';
     this.modoEdicion = false;
+    this.pasoActivo = 0;
+    this.impactoTexto = '';
     this.resetearFormularios();
     if (this.stepper) {
       this.stepper.reset();
@@ -237,10 +280,20 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.vistaActual = 'principal';
   }
 
+  irPaso(paso: number): void {
+    this.pasoActivo = paso;
+  }
+
+  irPasoSiguienteImpacto(): void {
+    if (!this.impactoTexto || this.impactoTexto.trim() === '') {
+      alert('Debe describir el impacto antes de continuar.');
+      return;
+    }
+    this.pasoActivo = 2;
+  }
+
   private resetearFormularios(): void {
-    this.infoGeneralForm.reset({
-      fechaIngreso: new Date()
-    });
+    this.infoGeneralForm.reset({ fechaIngreso: new Date() });
     this.impactoForm.reset();
     this.reqFuncionalesForm.reset();
     this.reqNoFuncionalesForm.reset();
@@ -248,9 +301,35 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
+  // BANDEJA - MODAL DE INFORMACIÓN
+  // ============================================================
+
+  abrirModalInf(solicitud: SolicitudDesarrollo): void {
+    this.solicitudSeleccionada = solicitud;
+    this.observacionesModal = solicitud.observaciones || '';
+    this.mostrarModalInf = true;
+  }
+
+  cerrarModalInf(): void {
+    this.mostrarModalInf = false;
+    this.solicitudSeleccionada = null;
+  }
+
+  guardarObservaciones(): void {
+    if (this.solicitudSeleccionada) {
+      this.solicitudSeleccionada.observaciones = this.observacionesModal;
+      this.cerrarModalInf();
+    }
+  }
+
+  esCandadoAbierto(solicitud: SolicitudDesarrollo): boolean {
+    return !solicitud.enEjecucion;
+  }
+
+  // ============================================================
   // GUARDAR SOLICITUD
   // ============================================================
-  
+
   guardarSolicitud(): void {
     const datosCompletos: SolicitudDesarrollo = {
       ...this.solicitudActual,
@@ -263,6 +342,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     const consecutivo = this.solicitudes.length + 1;
     datosCompletos.numeroSolicitud = `SD_${String(consecutivo).padStart(3, '0')}`;
+    datosCompletos.estado = 'En documentación';
+    datosCompletos.enEjecucion = false;
+    datosCompletos.coordinador = 'Geiber Obando';
+    datosCompletos.funcionalAsignado = 'Laura Bedoya';
 
     if (this.modoEdicion && datosCompletos.id) {
       const index = this.solicitudes.findIndex(s => s.id === datosCompletos.id);
@@ -274,8 +357,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       this.solicitudes.push({ ...datosCompletos });
     }
 
-    // Mostrar mensaje de éxito y volver a la bandeja
-    alert(`✅ Solicitud ${datosCompletos.numeroSolicitud} guardada exitosamente`);
+    this.numeroSolicitudExito = datosCompletos.numeroSolicitud;
+    this.mostrarModalExito = true;
+  }
+
+  cerrarModalExito(): void {
+    this.mostrarModalExito = false;
     this.mostrarBandeja();
   }
 
@@ -284,10 +371,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
 
   agregarRequerimiento(tipo: 'funcional' | 'noFuncional', descripcion: string): void {
-    if (!descripcion || descripcion.trim() === '') {
-      alert('⚠️ Por favor ingrese una descripción para el requerimiento');
-      return;
-    }
+    if (!descripcion || descripcion.trim() === '') return;
 
     let lista: { id: string; descripcion: string }[];
     let prefijo: string;
@@ -300,54 +384,64 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       prefijo = 'RNF';
     }
 
-    const numeros = lista
-      .map(r => parseInt(r.id.replace(`${prefijo}_`, '')))
-      .filter(n => !isNaN(n));
-    const siguienteNumero = numeros.length > 0 ? Math.max(...numeros) + 1 : 1;
+    const siguienteNumero = lista.length + 1;
     const nuevoId = `${prefijo}_${String(siguienteNumero).padStart(2, '0')}`;
 
-    const nuevoRequerimiento = {
-      id: nuevoId,
-      descripcion: descripcion.trim()
-    };
+    const nuevoRequerimiento = { id: nuevoId, descripcion: descripcion.trim() };
 
     if (tipo === 'funcional') {
       if (!this.solicitudActual.requerimientosFuncionales) {
         this.solicitudActual.requerimientosFuncionales = [];
       }
-      this.solicitudActual.requerimientosFuncionales.push(nuevoRequerimiento);
+      this.solicitudActual.requerimientosFuncionales = [...this.solicitudActual.requerimientosFuncionales, nuevoRequerimiento];
     } else {
       if (!this.solicitudActual.requerimientosNoFuncionales) {
         this.solicitudActual.requerimientosNoFuncionales = [];
       }
-      this.solicitudActual.requerimientosNoFuncionales.push(nuevoRequerimiento);
+      this.solicitudActual.requerimientosNoFuncionales = [...this.solicitudActual.requerimientosNoFuncionales, nuevoRequerimiento];
     }
   }
 
-  eliminarRequerimiento(tipo: 'funcional' | 'noFuncional', index: number): void {
+  confirmarEliminarRequerimiento(tipo: 'funcional' | 'noFuncional', index: number): void {
     let lista: { id: string; descripcion: string }[];
-    let prefijo: string;
 
     if (tipo === 'funcional') {
       lista = this.solicitudActual.requerimientosFuncionales || [];
-      prefijo = 'RF';
     } else {
       lista = this.solicitudActual.requerimientosNoFuncionales || [];
-      prefijo = 'RNF';
     }
 
     if (index < 0 || index >= lista.length) return;
 
-    const requerimientoEliminar = lista[index];
-    if (!confirm(`¿Está seguro que desea eliminar el ${requerimientoEliminar.id}?`)) {
-      return;
+    this.requerimientoAEliminar = { tipo, index, id: lista[index].id };
+    this.mostrarModalEliminar = true;
+  }
+
+  cancelarEliminar(): void {
+    this.mostrarModalEliminar = false;
+    this.requerimientoAEliminar = null;
+  }
+
+  confirmarEliminar(): void {
+    if (!this.requerimientoAEliminar) return;
+
+    const { tipo, index } = this.requerimientoAEliminar;
+    let lista: { id: string; descripcion: string }[];
+    let prefijo: string;
+
+    if (tipo === 'funcional') {
+      lista = [...(this.solicitudActual.requerimientosFuncionales || [])];
+      prefijo = 'RF';
+    } else {
+      lista = [...(this.solicitudActual.requerimientosNoFuncionales || [])];
+      prefijo = 'RNF';
     }
 
     lista.splice(index, 1);
 
+    // Re-numerar automáticamente
     lista.forEach((req, i) => {
-      const nuevoNumero = i + 1;
-      req.id = `${prefijo}_${String(nuevoNumero).padStart(2, '0')}`;
+      req.id = `${prefijo}_${String(i + 1).padStart(2, '0')}`;
     });
 
     if (tipo === 'funcional') {
@@ -355,34 +449,23 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     } else {
       this.solicitudActual.requerimientosNoFuncionales = lista;
     }
+
+    this.cancelarEliminar();
   }
 
-  editarRequerimiento(tipo: 'funcional' | 'noFuncional', index: number): void {
-    let lista: { id: string; descripcion: string }[];
-
-    if (tipo === 'funcional') {
-      lista = this.solicitudActual.requerimientosFuncionales || [];
-    } else {
-      lista = this.solicitudActual.requerimientosNoFuncionales || [];
-    }
-
-    if (index < 0 || index >= lista.length) return;
-
-    const req = lista[index];
-    const nuevaDescripcion = prompt(
-      `Editando ${req.id}\nIngrese la nueva descripción:`,
-      req.descripcion
-    );
-
-    if (nuevaDescripcion !== null && nuevaDescripcion.trim() !== '') {
-      req.descripcion = nuevaDescripcion.trim();
+  editarRequerimiento(tipo: 'funcional' | 'noFuncional', req: { id: string; descripcion: string }): void {
+    // Autocompletar el formulario con los datos del requerimiento seleccionado para su edición
+    // (Comportamiento: cargar datos en el formulario inferior para actualizar)
+    const nueva = prompt(`Editando ${req.id}\nIngrese la nueva descripción:`, req.descripcion);
+    if (nueva !== null && nueva.trim() !== '') {
+      req.descripcion = nueva.trim();
     }
   }
 
   // ============================================================
   // GETTERS
   // ============================================================
-  
+
   get cargosArray() {
     return this.cargosDisponibles;
   }
