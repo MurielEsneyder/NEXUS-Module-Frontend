@@ -12,13 +12,11 @@
         <p class="subtitulo-principal">Transformación Digital</p>
       </div>
     </div>
-
     <div class="botones-principales">
       <button mat-raised-button color="primary" class="btn-principal" (click)="mostrarNuevaSolicitud()">
         <mat-icon>add_circle_outline</mat-icon>
         <span>Nueva Solicitud</span>
       </button>
-
       <button mat-raised-button color="accent" class="btn-principal" (click)="mostrarBandeja()">
         <mat-icon>inbox</mat-icon>
         <span>Bandeja de solicitudes</span>
@@ -31,10 +29,7 @@
   <!-- ============================================================ -->
   <div *ngIf="vistaActual === 'bandeja'" class="bandeja-section">
     <div class="bandeja-header">
-      <button class="btn-bandeja-entradas" (click)="mostrarNuevaSolicitud()">
-        Bandeja de entradas
-      </button>
-
+      <button class="btn-bandeja-entradas" (click)="mostrarNuevaSolicitud()">Bandeja de entradas</button>
       <div class="filtros-fecha">
         <div class="filtro-fecha-item">
           <input type="date" class="input-fecha" value="2026-01-01">
@@ -47,7 +42,6 @@
       </div>
     </div>
 
-    <!-- Tabla de solicitudes -->
     <div class="tabla-bandeja-wrapper">
       <table class="tabla-bandeja">
         <thead>
@@ -64,16 +58,12 @@
             <td>{{ solicitud.fechaCreacion | date:'dd/MM/yyyy' }}</td>
             <td>{{ solicitud.numeroSolicitud }}</td>
             <td>{{ solicitud.objetivo }}</td>
-            <td class="celda-ver">
-              <span class="radio-ver">⊙</span>
-            </td>
+            <td class="celda-ver"><span class="radio-ver">⊙</span></td>
             <td class="celda-estado">
               <span class="texto-estado">{{ solicitud.estado }}</span>
-              <!-- Botón Ver (verde) solo si está "En documentación" -->
               <button *ngIf="solicitud.estado === 'En documentación'"
                       class="btn-estado btn-ver-verde"
                       (click)="abrirModalInf(solicitud)">Ver</button>
-              <!-- Botón Inf (azul) para los demás estados -->
               <button *ngIf="solicitud.estado !== 'En documentación'"
                       class="btn-estado btn-inf-azul"
                       (click)="abrirModalInf(solicitud)">Inf</button>
@@ -81,8 +71,6 @@
           </tr>
         </tbody>
       </table>
-
-      <!-- Columna de candados (fuera de la tabla, a la derecha) -->
       <div class="columna-candados">
         <div *ngFor="let solicitud of solicitudes" class="candado-item">
           <span class="icono-candado"
@@ -94,7 +82,7 @@
       </div>
     </div>
 
-    <!-- Modal de Información (al hacer clic en Ver / Inf) -->
+    <!-- Modal de Información -->
     <div class="overlay-modal" *ngIf="mostrarModalInf" (click)="cerrarModalInf()"></div>
     <div class="modal-inf" *ngIf="mostrarModalInf && solicitudSeleccionada">
       <div class="modal-inf-contenido">
@@ -102,17 +90,9 @@
         <p><strong>Fecha de ingreso:</strong> {{ solicitudSeleccionada.fechaCreacion | date:'dd/MM/yyyy' }}</p>
         <p><strong>Coordinación de desarrollo:</strong> {{ solicitudSeleccionada.coordinador }}</p>
         <p><strong>Funcional Asignado:</strong> {{ solicitudSeleccionada.funcionalAsignado }}</p>
-        <p class="link-pdf">
-          <strong>Ver documento ajustado</strong>
-          <span class="icono-pdf">📄</span>
-        </p>
+        <p class="link-pdf"><strong>Ver documento ajustado</strong> <span class="icono-pdf">📄</span></p>
         <div class="campo-observaciones">
-          <textarea
-            [(ngModel)]="observacionesModal"
-            placeholder="Observaciones"
-            rows="4"
-            class="textarea-obs">
-          </textarea>
+          <textarea [(ngModel)]="observacionesModal" placeholder="Observaciones" rows="4" class="textarea-obs"></textarea>
         </div>
         <div class="modal-footer">
           <button class="btn-guardar-modal" (click)="guardarObservaciones()">Guardar</button>
@@ -134,11 +114,9 @@
 
     <mat-card>
       <mat-card-content>
-        <!-- Encabezado del formato -->
+        <!-- Encabezado del formato institucional -->
         <div class="formato-header">
-          <div class="logo-text">
-            <h2>ASMET SALUD</h2>
-          </div>
+          <div class="logo-text"><h2>ASMET SALUD</h2></div>
           <div class="formato-info">
             <p>MACROPROCESO SISTEMA DE GESTIÓN INTEGRADA</p>
             <p>PROCESO DESARROLLO TECNOLÓGICO</p>
@@ -147,7 +125,7 @@
           </div>
         </div>
 
-        <!-- Tabs superiores de navegación manual -->
+        <!-- Tabs superiores -->
         <div class="tabs-wizard">
           <button class="tab-wizard" [class.tab-activo]="pasoActivo === 0" (click)="irPaso(0)">Información General</button>
           <button class="tab-wizard" [class.tab-activo]="pasoActivo === 1" (click)="irPaso(1)">Impacto</button>
@@ -156,82 +134,76 @@
           <button class="tab-wizard" [class.tab-activo]="pasoActivo === 4" (click)="irPaso(4)">Requisitos de seguridad de la información</button>
         </div>
 
-        <!-- ---- PASO 0: Información General ---- -->
+        <!-- ================================================ -->
+        <!-- PASO 0: Información General -->
+        <!-- ================================================ -->
         <div *ngIf="pasoActivo === 0" class="paso-content">
           <div class="fila-consecutivo">
             <span class="consecutivo-label">Consecutivo incremental ID_</span>
           </div>
           <div class="fila-fecha">
-            <input type="date" class="input-fecha-wizard" [(ngModel)]="solicitudActual.fechaCreacion" />
+            <input type="date" class="input-fecha-wizard" [(ngModel)]="fechaIngreso">
             <span class="icono-cal-wizard">📅</span>
           </div>
 
           <div class="form-grupo">
-            <label>Solicitud del proceso:</label>
-            <input type="text" class="input-text-wizard" [(ngModel)]="infoGeneralForm.value.proceso"
-                   [ngModelOptions]="{standalone: true}"
-                   (ngModelChange)="infoGeneralForm.patchValue({proceso: $event})">
+            <label class="campo-label">Solicitud del proceso:</label>
+            <input type="text" class="input-text-wizard"
+                   [(ngModel)]="formGeneral.solicitudProceso"
+                   placeholder="Ingrese la solicitud del proceso">
           </div>
 
           <div class="selectores-row">
             <div class="selector-grupo">
-              <label>PROCESO SOLICITANTE</label>
-              <select class="select-wizard" (change)="infoGeneralForm.patchValue({proceso: $any($event.target).value})">
+              <label class="campo-label campo-requerido">PROCESO SOLICITANTE</label>
+              <select class="select-wizard" [(ngModel)]="formGeneral.proceso">
                 <option value="">-- Seleccione --</option>
                 <option *ngFor="let p of procesosSolicitante" [value]="p">{{ p }}</option>
               </select>
-              <div class="lista-opciones">
-                <div *ngFor="let p of procesosSolicitante" class="opcion-lista">{{ p }}</div>
-              </div>
+              <span class="error-campo" *ngIf="erroresGeneral.proceso">Requerido</span>
             </div>
 
             <div class="selector-grupo">
-              <label>ÁREA</label>
-              <select class="select-wizard" (change)="infoGeneralForm.patchValue({area: $any($event.target).value})">
+              <label class="campo-label campo-requerido">ÁREA</label>
+              <select class="select-wizard" [(ngModel)]="formGeneral.area">
                 <option value="">-- Seleccione --</option>
                 <option *ngFor="let a of areas" [value]="a">{{ a }}</option>
               </select>
-              <div class="lista-opciones">
-                <div *ngFor="let a of areas" class="opcion-lista">{{ a }}</div>
-              </div>
+              <span class="error-campo" *ngIf="erroresGeneral.area">Requerido</span>
             </div>
 
             <div class="selector-grupo">
-              <label>VICEPRESIDENCIA</label>
-              <select class="select-wizard" (change)="infoGeneralForm.patchValue({vicepresidencia: $any($event.target).value})">
+              <label class="campo-label campo-requerido">VICEPRESIDENCIA</label>
+              <select class="select-wizard" [(ngModel)]="formGeneral.vicepresidencia">
                 <option value="">-- Seleccione --</option>
                 <option *ngFor="let v of vicepresidencias" [value]="v">{{ v }}</option>
               </select>
-              <div class="lista-opciones">
-                <div *ngFor="let v of vicepresidencias" class="opcion-lista">{{ v }}</div>
-              </div>
+              <span class="error-campo" *ngIf="erroresGeneral.vicepresidencia">Requerido</span>
             </div>
           </div>
 
           <div class="selector-grupo tipo-solicitud-grupo">
-            <label>Tipo de solicitud</label>
-            <select class="select-wizard" (change)="infoGeneralForm.patchValue({tipoSolicitud: $any($event.target).value})">
+            <label class="campo-label campo-requerido">Tipo de solicitud</label>
+            <select class="select-wizard" [(ngModel)]="formGeneral.tipoSolicitud">
               <option value="">-- Seleccione --</option>
               <option *ngFor="let t of tiposSolicitud" [value]="t">{{ t }}</option>
             </select>
-            <div class="lista-opciones">
-              <div *ngFor="let t of tiposSolicitud" class="opcion-lista">{{ t }}</div>
-            </div>
+            <span class="error-campo" *ngIf="erroresGeneral.tipoSolicitud">Requerido</span>
           </div>
 
           <div class="form-grupo">
-            <label>Observación</label>
-            <textarea class="textarea-wizard" rows="3" [(ngModel)]="infoGeneralForm.value.detalle"
-                      [ngModelOptions]="{standalone: true}"
-                      (ngModelChange)="infoGeneralForm.patchValue({detalle: $event})"></textarea>
+            <label class="campo-label">Observación</label>
+            <textarea class="textarea-wizard" rows="3" [(ngModel)]="formGeneral.observacion"></textarea>
           </div>
 
           <div class="acciones-paso">
-            <button class="btn-siguiente" (click)="irPaso(1)">siguiente</button>
+            <button class="btn-siguiente" (click)="avanzarDesdeGeneral()">siguiente</button>
           </div>
         </div>
 
-        <!-- ---- PASO 1: Impacto ---- -->
+        <!-- ================================================ -->
+        <!-- PASO 1: Impacto -->
+        <!-- ================================================ -->
         <div *ngIf="pasoActivo === 1" class="paso-content">
           <div class="form-grupo">
             <textarea class="textarea-wizard textarea-grande"
@@ -239,44 +211,46 @@
                       placeholder="Describir el impacto"
                       [(ngModel)]="impactoTexto">
             </textarea>
+            <span class="error-campo" *ngIf="errorImpacto">Debe describir el impacto antes de continuar.</span>
           </div>
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(0)">Atras</button>
-            <button class="btn-siguiente" (click)="irPasoSiguienteImpacto()">siguiente</button>
+            <button class="btn-siguiente" (click)="avanzarDesdeImpacto()">siguiente</button>
           </div>
         </div>
 
-        <!-- ---- PASO 2: Requerimientos Funcionales ---- -->
+        <!-- ================================================ -->
+        <!-- PASO 2: Requerimientos Funcionales -->
+        <!-- ================================================ -->
         <div *ngIf="pasoActivo === 2" class="paso-content">
           <div class="layout-requerimientos">
-            <!-- Formulario izquierda -->
             <div class="form-req">
               <div class="form-grupo">
-                <label>Numero de solicitud</label>
-                <input type="text" class="input-text-wizard" [value]="'RF_' + (String((solicitudActual.requerimientosFuncionales?.length || 0) + 1).padStart(2,'0'))" readonly>
+                <label class="campo-label">Numero de solicitud</label>
+                <input type="text" class="input-text-wizard input-readonly"
+                       [value]="'RF_' + padNumber((solicitudActual.requerimientosFuncionales?.length || 0) + 1)" readonly>
               </div>
               <div class="form-grupo">
-                <label>Objetivo de la solicitud</label>
+                <label class="campo-label">Objetivo de la solicitud</label>
                 <input type="text" class="input-text-wizard" #rfObjetivo>
               </div>
               <div class="form-grupo">
-                <label>Cargos Impactados</label>
+                <label class="campo-label">Cargos Impactados</label>
                 <select class="select-wizard" #rfCargo>
                   <option value="">CARGOS</option>
                   <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
                 </select>
-                <div class="lista-opciones">
-                  <div *ngFor="let c of cargosArray" class="opcion-lista">{{ c }}</div>
-                </div>
               </div>
               <div class="form-grupo">
-                <label>Detalle de la solicitud</label>
-                <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres para que la persona pueda ingresar toda la información, se puede ingresar imágenes." #rfDetalle maxlength="2000"></textarea>
+                <label class="campo-label">Detalle de la solicitud</label>
+                <textarea class="textarea-wizard" rows="4"
+                          placeholder="Espacio de 2000 caracteres para que la persona pueda ingresar toda la información, se puede ingresar imágenes."
+                          #rfDetalle maxlength="2000"></textarea>
               </div>
-              <button class="btn-guardar-req" (click)="agregarRequerimiento('funcional', rfObjetivo.value); rfObjetivo.value = ''">Guardar</button>
+              <button class="btn-guardar-req"
+                      (click)="agregarRequerimiento('funcional', rfObjetivo.value); rfObjetivo.value = ''">Guardar</button>
             </div>
 
-            <!-- Tabla derecha -->
             <div class="tabla-req-wrapper" *ngIf="(solicitudActual.requerimientosFuncionales?.length || 0) > 0">
               <table class="tabla-req">
                 <thead>
@@ -293,8 +267,7 @@
                     <td>{{ req.id }}</td>
                     <td><span class="radio-ver">⊙</span></td>
                     <td>
-                      <button class="btn-eliminar-req"
-                              (click)="confirmarEliminarRequerimiento('funcional', i)">🗑</button>
+                      <button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('funcional', i)">🗑</button>
                     </td>
                   </tr>
                 </tbody>
@@ -306,40 +279,42 @@
             <span>Agregar otro requerimiento</span>
             <button class="btn-agregar-req" (click)="agregarRequerimiento('funcional', 'Nuevo requerimiento')">+</button>
           </div>
-
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(1)">Atras</button>
             <button class="btn-siguiente" (click)="irPaso(3)">siguiente</button>
           </div>
         </div>
 
-        <!-- ---- PASO 3: Requerimientos No Funcionales ---- -->
+        <!-- ================================================ -->
+        <!-- PASO 3: Requerimientos No Funcionales -->
+        <!-- ================================================ -->
         <div *ngIf="pasoActivo === 3" class="paso-content">
           <div class="layout-requerimientos">
             <div class="form-req">
               <div class="form-grupo">
-                <label>Numero de solicitud</label>
-                <input type="text" class="input-text-wizard" [value]="'RNF_' + (String((solicitudActual.requerimientosNoFuncionales?.length || 0) + 1).padStart(2,'0'))" readonly>
+                <label class="campo-label">Numero de solicitud</label>
+                <input type="text" class="input-text-wizard input-readonly"
+                       [value]="'RNF_' + padNumber((solicitudActual.requerimientosNoFuncionales?.length || 0) + 1)" readonly>
               </div>
               <div class="form-grupo">
-                <label>Objetivo de la solicitud</label>
+                <label class="campo-label">Objetivo de la solicitud</label>
                 <input type="text" class="input-text-wizard" #rnfObjetivo>
               </div>
               <div class="form-grupo">
-                <label>Cargos Impactados</label>
+                <label class="campo-label">Cargos Impactados</label>
                 <select class="select-wizard" #rnfCargo>
                   <option value="">CARGOS</option>
                   <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
                 </select>
-                <div class="lista-opciones">
-                  <div *ngFor="let c of cargosArray" class="opcion-lista">{{ c }}</div>
-                </div>
               </div>
               <div class="form-grupo">
-                <label>Detalle de la solicitud</label>
-                <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres para que la persona pueda ingresar toda la información, se puede ingresar imágenes." #rnfDetalle maxlength="2000"></textarea>
+                <label class="campo-label">Detalle de la solicitud</label>
+                <textarea class="textarea-wizard" rows="4"
+                          placeholder="Espacio de 2000 caracteres para que la persona pueda ingresar toda la información, se puede ingresar imágenes."
+                          #rnfDetalle maxlength="2000"></textarea>
               </div>
-              <button class="btn-guardar-req" (click)="agregarRequerimiento('noFuncional', rnfObjetivo.value); rnfObjetivo.value = ''">Guardar</button>
+              <button class="btn-guardar-req"
+                      (click)="agregarRequerimiento('noFuncional', rnfObjetivo.value); rnfObjetivo.value = ''">Guardar</button>
             </div>
 
             <div class="tabla-req-wrapper" *ngIf="(solicitudActual.requerimientosNoFuncionales?.length || 0) > 0">
@@ -358,8 +333,7 @@
                     <td>{{ req.id }}</td>
                     <td><span class="radio-ver">⊙</span></td>
                     <td>
-                      <button class="btn-eliminar-req"
-                              (click)="confirmarEliminarRequerimiento('noFuncional', i)">🗑</button>
+                      <button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('noFuncional', i)">🗑</button>
                     </td>
                   </tr>
                 </tbody>
@@ -371,14 +345,15 @@
             <span>Agregar otro requerimiento</span>
             <button class="btn-agregar-req" (click)="agregarRequerimiento('noFuncional', 'Nuevo requerimiento')">+</button>
           </div>
-
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(2)">Atras</button>
             <button class="btn-siguiente" (click)="irPaso(4)">siguiente</button>
           </div>
         </div>
 
-        <!-- ---- PASO 4: Seguridad ---- -->
+        <!-- ================================================ -->
+        <!-- PASO 4: Seguridad -->
+        <!-- ================================================ -->
         <div *ngIf="pasoActivo === 4" class="paso-content">
           <div class="seguridad-lista">
             <ul>
@@ -392,7 +367,6 @@
               <li>Evitar el uso de datos reales de carácter personal en las pruebas anteriores a la implantación o modificación de un sistema, salvo que se garantice el nivel de seguridad correspondiente al tipo de información tratada.</li>
             </ul>
           </div>
-
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(3)">Atras</button>
             <button class="btn-guardar-final" (click)="guardarSolicitud()">Guardar</button>
@@ -405,9 +379,7 @@
 
 </div>
 
-<!-- ============================================================ -->
-<!-- MODAL ELIMINAR REQUERIMIENTO -->
-<!-- ============================================================ -->
+<!-- Modal Eliminar Requerimiento -->
 <div class="overlay-modal" *ngIf="mostrarModalEliminar" (click)="cancelarEliminar()"></div>
 <div class="modal-alerta" *ngIf="mostrarModalEliminar && requerimientoAEliminar">
   <div class="modal-alerta-contenido">
@@ -420,9 +392,7 @@
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- MODAL ÉXITO (guardar solicitud) -->
-<!-- ============================================================ -->
+<!-- Modal Éxito -->
 <div class="overlay-modal" *ngIf="mostrarModalExito"></div>
 <div class="modal-exito" *ngIf="mostrarModalExito">
   <div class="modal-exito-contenido">

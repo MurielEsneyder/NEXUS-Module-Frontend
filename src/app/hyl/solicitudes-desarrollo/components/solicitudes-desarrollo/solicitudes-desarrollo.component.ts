@@ -1,7 +1,7 @@
 // RUTA: src/app/solicitudes-desarrollo/components/solicitudes-desarrollo/solicitudes-desarrollo.component.ts
 
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup } from '@angular/forms';
 import { MatStepper } from '@angular/material/stepper';
 
 export interface SolicitudDesarrollo {
@@ -21,11 +21,10 @@ export interface SolicitudDesarrollo {
   proceso?: string;
   vicepresidencia?: string;
   tipoSolicitud?: string;
-  // Información adicional para la bandeja
   coordinador?: string;
   funcionalAsignado?: string;
   observaciones?: string;
-  enEjecucion?: boolean; // true = candado cerrado
+  enEjecucion?: boolean;
 }
 
 @Component({
@@ -36,7 +35,7 @@ export interface SolicitudDesarrollo {
 export class SolicitudesDesarrolloComponent implements OnInit {
   @ViewChild('stepper') stepper!: MatStepper;
 
-  // Formularios
+  // Formularios reactive (mantenidos por compatibilidad con imports del módulo)
   infoGeneralForm!: FormGroup;
   impactoForm!: FormGroup;
   reqFuncionalesForm!: FormGroup;
@@ -47,44 +46,49 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   solicitudes: SolicitudDesarrollo[] = [];
   solicitudActual: SolicitudDesarrollo = this.inicializarNueva();
 
-  // Estado de la vista
+  // Vista activa
   vistaActual: 'principal' | 'bandeja' | 'wizard' = 'principal';
-
-  // Estado del wizard
   modoEdicion = false;
 
-  // Navegación de tabs manuales del wizard
+  // Navegación wizard
   pasoActivo = 0;
+  fechaIngreso: any = new Date().toISOString().substring(0, 10);
   impactoTexto = '';
+  errorImpacto = false;
 
-  // Referencia a String para usar en el template
-  String = String;
+  // Modelo del formulario de Información General (ngModel directo)
+  formGeneral = {
+    solicitudProceso: '',
+    proceso: '',
+    area: '',
+    vicepresidencia: '',
+    tipoSolicitud: '',
+    observacion: ''
+  };
 
-  // Modal de información
+  // Errores de validación del paso 0
+  erroresGeneral = {
+    proceso: false,
+    area: false,
+    vicepresidencia: false,
+    tipoSolicitud: false
+  };
+
+  // Modales
   mostrarModalInf = false;
   solicitudSeleccionada: SolicitudDesarrollo | null = null;
   observacionesModal = '';
 
-  // Modal de confirmación de eliminación de requerimiento
   mostrarModalEliminar = false;
   requerimientoAEliminar: { tipo: 'funcional' | 'noFuncional'; index: number; id: string } | null = null;
 
-  // Modal de éxito (guardar)
   mostrarModalExito = false;
   numeroSolicitudExito = '';
 
-  // Columnas de la tabla de bandeja
+  // Columnas tabla bandeja
   columnasBandeja = ['fecha', 'codigo', 'nombre', 'ver', 'estado', 'candado'];
 
   // Listas de opciones
-  cargosDisponibles = [
-    'Profesional jurídico',
-    'Profesional funcional',
-    'Profesional BIG',
-    'Profesional de desarrollo',
-    'Líder técnico'
-  ];
-
   procesosSolicitante = [
     'Gestión de Auditoría Integral',
     'Gestión de la Información',
@@ -107,158 +111,95 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   tiposSolicitud = ['Proyecto', 'Mejora'];
 
-  requisitosSeguridadList = [
-    'Autentificar adecuadamente',
-    'No utilizar campos ocultos para almacenar información sensible',
-    'Comprobar las entradas',
-    'Valores límite de salida',
-    'Formato de salida',
-    'Asegurar métodos de seguridad',
-    'Evitar el uso de datos reales de carácter personal'
+  cargosDisponibles = [
+    'Profesional jurídico',
+    'Profesional funcional',
+    'Profesional BIG',
+    'Profesional de desarrollo',
+    'Líder técnico'
   ];
 
-  constructor(private fb: FormBuilder) {
-    this.crearFormularios();
-  }
+  constructor(private fb: FormBuilder) {}
 
   ngOnInit(): void {
     this.cargarEjemplos();
+    // Inicializar formularios reactive (requeridos por módulo)
+    this.infoGeneralForm = this.fb.group({});
+    this.impactoForm = this.fb.group({});
+    this.reqFuncionalesForm = this.fb.group({});
+    this.reqNoFuncionalesForm = this.fb.group({});
+    this.seguridadForm = this.fb.group({});
   }
 
-  private crearFormularios(): void {
-    this.infoGeneralForm = this.fb.group({
-      proceso: ['', Validators.required],
-      area: ['', Validators.required],
-      vicepresidencia: ['', Validators.required],
-      tipoSolicitud: ['', Validators.required],
-      objetivo: ['', [Validators.required, Validators.minLength(3)]],
-      cargos: [[], Validators.required],
-      detalle: ['', [Validators.required, Validators.maxLength(2000)]],
-      fechaIngreso: [new Date()]
-    });
-
-    this.impactoForm = this.fb.group({
-      impacto: ['', [Validators.required, Validators.minLength(5)]]
-    });
-
-    this.reqFuncionalesForm = this.fb.group({
-      requerimientos: this.fb.array([])
-    });
-
-    this.reqNoFuncionalesForm = this.fb.group({
-      requerimientos: this.fb.array([])
-    });
-
-    this.seguridadForm = this.fb.group({
-      requisitosSeguridad: [[]]
-    });
-  }
-
-  private inicializarNueva(): SolicitudDesarrollo {
-    return {
-      fechaCreacion: new Date(),
-      estado: 'pendiente',
-      solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-      area: 'Transformación Digital',
-      cargosImpactados: [],
-      requerimientosFuncionales: [],
-      requerimientosNoFuncionales: [],
-      requisitosSeguridad: [],
-      enEjecucion: false
-    };
-  }
+  // ============================================================
+  // MOCK DATA
+  // ============================================================
 
   private cargarEjemplos(): void {
     this.solicitudes = [
       {
-        id: 1,
-        numeroSolicitud: 'SD_001',
-        objetivo: 'PROYECTO JURIDICA',
+        id: 1, numeroSolicitud: 'SD_001', objetivo: 'PROYECTO JURIDICA',
         detalle: 'Implementar módulo de gestión jurídica...',
-        cargosImpactados: ['Profesional jurídico', 'Profesional funcional'],
+        cargosImpactados: ['Profesional jurídico'],
         impacto: 'Mejorará la eficiencia en gestión jurídica...',
         requerimientosFuncionales: [
           { id: 'RF_01', descripcion: 'Generar reporte en formato PDF' },
           { id: 'RF_02', descripcion: 'Filtrar reportes por fecha' }
         ],
-        requerimientosNoFuncionales: [
-          { id: 'RNF_01', descripcion: 'Tiempo de respuesta menor a 3 segundos' }
-        ],
-        requisitosSeguridad: ['Autentificar adecuadamente', 'Comprobar las entradas'],
+        requerimientosNoFuncionales: [{ id: 'RNF_01', descripcion: 'Tiempo de respuesta menor a 3 segundos' }],
+        requisitosSeguridad: [],
         fechaCreacion: new Date('2026-01-01'),
-        estado: 'En documentación',
-        solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-        area: 'Transformación Digital',
-        coordinador: 'Geiber Obando',
-        funcionalAsignado: 'Laura Bedoya',
-        enEjecucion: false
+        estado: 'En documentación', solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
+        area: 'Transformación Digital', coordinador: 'Geiber Obando',
+        funcionalAsignado: 'Laura Bedoya', enEjecucion: false
       },
       {
-        id: 2,
-        numeroSolicitud: 'SD_002',
-        objetivo: 'REGISTRO DE AFILIACIONES',
+        id: 2, numeroSolicitud: 'SD_002', objetivo: 'REGISTRO DE AFILIACIONES',
         detalle: 'Mejorar el registro de afiliaciones...',
-        cargosImpactados: ['Profesional BIG'],
-        impacto: 'Optimizará el proceso de afiliaciones...',
-        requerimientosFuncionales: [
-          { id: 'RF_01', descripcion: 'Nuevo dashboard de afiliaciones' }
-        ],
-        requerimientosNoFuncionales: [],
-        requisitosSeguridad: [],
-        fechaCreacion: new Date('2026-01-10'),
-        estado: 'en desarrollo',
-        solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-        area: 'Transformación Digital',
-        coordinador: 'Geiber Obando',
-        funcionalAsignado: 'Laura Bedoya',
-        enEjecucion: true
+        cargosImpactados: ['Profesional BIG'], impacto: 'Optimizará el proceso...',
+        requerimientosFuncionales: [{ id: 'RF_01', descripcion: 'Dashboard de afiliaciones' }],
+        requerimientosNoFuncionales: [], requisitosSeguridad: [],
+        fechaCreacion: new Date('2026-01-10'), estado: 'en desarrollo',
+        solicitante: 'LAURA ALEJANDRA BEDOYA MERA', area: 'Transformación Digital',
+        coordinador: 'Geiber Obando', funcionalAsignado: 'Laura Bedoya', enEjecucion: true
       },
       {
-        id: 3,
-        numeroSolicitud: 'SD_003',
-        objetivo: 'CUENTAS MEDICAS',
+        id: 3, numeroSolicitud: 'SD_003', objetivo: 'CUENTAS MEDICAS',
         detalle: 'Optimizar el módulo de cuentas médicas...',
-        cargosImpactados: ['Profesional funcional'],
-        impacto: 'Agilizará el proceso de cuentas médicas...',
-        requerimientosFuncionales: [],
-        requerimientosNoFuncionales: [],
-        requisitosSeguridad: [],
-        fechaCreacion: new Date('2026-01-15'),
-        estado: 'En pruebas funcionales',
-        solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-        area: 'Transformación Digital',
-        coordinador: 'Geiber Obando',
-        funcionalAsignado: 'Laura Bedoya',
-        enEjecucion: true
+        cargosImpactados: ['Profesional funcional'], impacto: 'Agilizará el proceso...',
+        requerimientosFuncionales: [], requerimientosNoFuncionales: [], requisitosSeguridad: [],
+        fechaCreacion: new Date('2026-01-15'), estado: 'En pruebas funcionales',
+        solicitante: 'LAURA ALEJANDRA BEDOYA MERA', area: 'Transformación Digital',
+        coordinador: 'Geiber Obando', funcionalAsignado: 'Laura Bedoya', enEjecucion: true
       },
       {
-        id: 4,
-        numeroSolicitud: 'SD_004',
-        objetivo: 'CUENTAS MEDICAS',
+        id: 4, numeroSolicitud: 'SD_004', objetivo: 'CUENTAS MEDICAS',
         detalle: 'Nuevo módulo de cuentas médicas...',
-        cargosImpactados: ['Profesional funcional'],
-        impacto: 'Mejorará el proceso de cuentas médicas...',
-        requerimientosFuncionales: [],
-        requerimientosNoFuncionales: [],
-        requisitosSeguridad: [],
-        fechaCreacion: new Date('2026-01-20'),
-        estado: 'En pruebas de aceptación',
-        solicitante: 'LAURA ALEJANDRA BEDOYA MERA',
-        area: 'Transformación Digital',
-        coordinador: 'Geiber Obando',
-        funcionalAsignado: 'Laura Bedoya',
-        enEjecucion: true
+        cargosImpactados: ['Profesional funcional'], impacto: 'Mejorará el proceso...',
+        requerimientosFuncionales: [], requerimientosNoFuncionales: [], requisitosSeguridad: [],
+        fechaCreacion: new Date('2026-01-20'), estado: 'En pruebas de aceptación',
+        solicitante: 'LAURA ALEJANDRA BEDOYA MERA', area: 'Transformación Digital',
+        coordinador: 'Geiber Obando', funcionalAsignado: 'Laura Bedoya', enEjecucion: true
       }
     ];
+  }
+
+  private inicializarNueva(): SolicitudDesarrollo {
+    return {
+      fechaCreacion: new Date(), estado: 'pendiente',
+      solicitante: '', area: '',
+      cargosImpactados: [],
+      requerimientosFuncionales: [],
+      requerimientosNoFuncionales: [],
+      requisitosSeguridad: [], enEjecucion: false
+    };
   }
 
   // ============================================================
   // NAVEGACIÓN
   // ============================================================
 
-  mostrarPrincipal(): void {
-    this.vistaActual = 'principal';
-  }
+  mostrarPrincipal(): void { this.vistaActual = 'principal'; }
 
   mostrarNuevaSolicitud(): void {
     this.solicitudActual = this.inicializarNueva();
@@ -266,42 +207,51 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.modoEdicion = false;
     this.pasoActivo = 0;
     this.impactoTexto = '';
-    this.resetearFormularios();
-    if (this.stepper) {
-      this.stepper.reset();
-    }
+    this.errorImpacto = false;
+    this.fechaIngreso = new Date().toISOString().substring(0, 10);
+    this.formGeneral = { solicitudProceso: '', proceso: '', area: '', vicepresidencia: '', tipoSolicitud: '', observacion: '' };
+    this.erroresGeneral = { proceso: false, area: false, vicepresidencia: false, tipoSolicitud: false };
   }
 
-  mostrarBandeja(): void {
-    this.vistaActual = 'bandeja';
+  mostrarBandeja(): void { this.vistaActual = 'bandeja'; }
+
+  volverPrincipal(): void { this.vistaActual = 'principal'; }
+
+  irPaso(paso: number): void { this.pasoActivo = paso; }
+
+  // ============================================================
+  // VALIDACIONES DE PASOS
+  // ============================================================
+
+  avanzarDesdeGeneral(): void {
+    this.erroresGeneral = {
+      proceso: !this.formGeneral.proceso,
+      area: !this.formGeneral.area,
+      vicepresidencia: !this.formGeneral.vicepresidencia,
+      tipoSolicitud: !this.formGeneral.tipoSolicitud
+    };
+
+    const hayError = Object.values(this.erroresGeneral).some(v => v);
+    if (hayError) return;
+
+    // Guardar datos en solicitudActual
+    this.solicitudActual.proceso = this.formGeneral.proceso;
+    this.solicitudActual.area = this.formGeneral.area;
+    this.solicitudActual.vicepresidencia = this.formGeneral.vicepresidencia;
+    this.solicitudActual.tipoSolicitud = this.formGeneral.tipoSolicitud;
+    this.solicitudActual.fechaCreacion = new Date(this.fechaIngreso);
+    this.pasoActivo = 1;
   }
 
-  volverPrincipal(): void {
-    this.vistaActual = 'principal';
-  }
-
-  irPaso(paso: number): void {
-    this.pasoActivo = paso;
-  }
-
-  irPasoSiguienteImpacto(): void {
-    if (!this.impactoTexto || this.impactoTexto.trim() === '') {
-      alert('Debe describir el impacto antes de continuar.');
-      return;
-    }
+  avanzarDesdeImpacto(): void {
+    this.errorImpacto = !this.impactoTexto || this.impactoTexto.trim() === '';
+    if (this.errorImpacto) return;
+    this.solicitudActual.impacto = this.impactoTexto;
     this.pasoActivo = 2;
   }
 
-  private resetearFormularios(): void {
-    this.infoGeneralForm.reset({ fechaIngreso: new Date() });
-    this.impactoForm.reset();
-    this.reqFuncionalesForm.reset();
-    this.reqNoFuncionalesForm.reset();
-    this.seguridadForm.reset();
-  }
-
   // ============================================================
-  // BANDEJA - MODAL DE INFORMACIÓN
+  // BANDEJA - MODAL INF
   // ============================================================
 
   abrirModalInf(solicitud: SolicitudDesarrollo): void {
@@ -327,37 +277,27 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // GUARDAR SOLICITUD
+  // GUARDAR SOLICITUD FINAL
   // ============================================================
 
   guardarSolicitud(): void {
-    const datosCompletos: SolicitudDesarrollo = {
+    const consecutivo = this.solicitudes.length + 1;
+    const numeroSolicitud = `SD_${String(consecutivo).padStart(3, '0')}`;
+
+    const nueva: SolicitudDesarrollo = {
       ...this.solicitudActual,
-      ...this.infoGeneralForm.value,
-      ...this.impactoForm.value,
-      ...this.reqFuncionalesForm.value,
-      ...this.reqNoFuncionalesForm.value,
-      ...this.seguridadForm.value
+      id: consecutivo,
+      numeroSolicitud,
+      objetivo: this.formGeneral.solicitudProceso || this.formGeneral.proceso,
+      impacto: this.impactoTexto,
+      estado: 'En documentación',
+      enEjecucion: false,
+      coordinador: 'Geiber Obando',
+      funcionalAsignado: 'Laura Bedoya'
     };
 
-    const consecutivo = this.solicitudes.length + 1;
-    datosCompletos.numeroSolicitud = `SD_${String(consecutivo).padStart(3, '0')}`;
-    datosCompletos.estado = 'En documentación';
-    datosCompletos.enEjecucion = false;
-    datosCompletos.coordinador = 'Geiber Obando';
-    datosCompletos.funcionalAsignado = 'Laura Bedoya';
-
-    if (this.modoEdicion && datosCompletos.id) {
-      const index = this.solicitudes.findIndex(s => s.id === datosCompletos.id);
-      if (index !== -1) {
-        this.solicitudes[index] = { ...datosCompletos };
-      }
-    } else {
-      datosCompletos.id = this.solicitudes.length + 1;
-      this.solicitudes.push({ ...datosCompletos });
-    }
-
-    this.numeroSolicitudExito = datosCompletos.numeroSolicitud;
+    this.solicitudes.push(nueva);
+    this.numeroSolicitudExito = numeroSolicitud;
     this.mostrarModalExito = true;
   }
 
@@ -367,52 +307,32 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // MÉTODOS PARA MANEJAR REQUERIMIENTOS
+  // REQUERIMIENTOS
   // ============================================================
 
   agregarRequerimiento(tipo: 'funcional' | 'noFuncional', descripcion: string): void {
     if (!descripcion || descripcion.trim() === '') return;
 
-    let lista: { id: string; descripcion: string }[];
-    let prefijo: string;
+    const prefijo = tipo === 'funcional' ? 'RF' : 'RNF';
+    const lista = tipo === 'funcional'
+      ? (this.solicitudActual.requerimientosFuncionales || [])
+      : (this.solicitudActual.requerimientosNoFuncionales || []);
+
+    const nuevoId = `${prefijo}_${String(lista.length + 1).padStart(2, '0')}`;
+    const nuevo = { id: nuevoId, descripcion: descripcion.trim() };
 
     if (tipo === 'funcional') {
-      lista = this.solicitudActual.requerimientosFuncionales || [];
-      prefijo = 'RF';
+      this.solicitudActual.requerimientosFuncionales = [...lista, nuevo];
     } else {
-      lista = this.solicitudActual.requerimientosNoFuncionales || [];
-      prefijo = 'RNF';
-    }
-
-    const siguienteNumero = lista.length + 1;
-    const nuevoId = `${prefijo}_${String(siguienteNumero).padStart(2, '0')}`;
-
-    const nuevoRequerimiento = { id: nuevoId, descripcion: descripcion.trim() };
-
-    if (tipo === 'funcional') {
-      if (!this.solicitudActual.requerimientosFuncionales) {
-        this.solicitudActual.requerimientosFuncionales = [];
-      }
-      this.solicitudActual.requerimientosFuncionales = [...this.solicitudActual.requerimientosFuncionales, nuevoRequerimiento];
-    } else {
-      if (!this.solicitudActual.requerimientosNoFuncionales) {
-        this.solicitudActual.requerimientosNoFuncionales = [];
-      }
-      this.solicitudActual.requerimientosNoFuncionales = [...this.solicitudActual.requerimientosNoFuncionales, nuevoRequerimiento];
+      this.solicitudActual.requerimientosNoFuncionales = [...lista, nuevo];
     }
   }
 
   confirmarEliminarRequerimiento(tipo: 'funcional' | 'noFuncional', index: number): void {
-    let lista: { id: string; descripcion: string }[];
-
-    if (tipo === 'funcional') {
-      lista = this.solicitudActual.requerimientosFuncionales || [];
-    } else {
-      lista = this.solicitudActual.requerimientosNoFuncionales || [];
-    }
-
+    const lista = tipo === 'funcional'
+      ? (this.solicitudActual.requerimientosFuncionales || [])
+      : (this.solicitudActual.requerimientosNoFuncionales || []);
     if (index < 0 || index >= lista.length) return;
-
     this.requerimientoAEliminar = { tipo, index, id: lista[index].id };
     this.mostrarModalEliminar = true;
   }
@@ -424,53 +344,32 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   confirmarEliminar(): void {
     if (!this.requerimientoAEliminar) return;
-
     const { tipo, index } = this.requerimientoAEliminar;
-    let lista: { id: string; descripcion: string }[];
-    let prefijo: string;
+    const prefijo = tipo === 'funcional' ? 'RF' : 'RNF';
 
-    if (tipo === 'funcional') {
-      lista = [...(this.solicitudActual.requerimientosFuncionales || [])];
-      prefijo = 'RF';
-    } else {
-      lista = [...(this.solicitudActual.requerimientosNoFuncionales || [])];
-      prefijo = 'RNF';
-    }
+    let lista = tipo === 'funcional'
+      ? [...(this.solicitudActual.requerimientosFuncionales || [])]
+      : [...(this.solicitudActual.requerimientosNoFuncionales || [])];
 
     lista.splice(index, 1);
-
-    // Re-numerar automáticamente
-    lista.forEach((req, i) => {
-      req.id = `${prefijo}_${String(i + 1).padStart(2, '0')}`;
-    });
+    // Re-numerar
+    lista = lista.map((req, i) => ({ ...req, id: `${prefijo}_${String(i + 1).padStart(2, '0')}` }));
 
     if (tipo === 'funcional') {
       this.solicitudActual.requerimientosFuncionales = lista;
     } else {
       this.solicitudActual.requerimientosNoFuncionales = lista;
     }
-
     this.cancelarEliminar();
-  }
-
-  editarRequerimiento(tipo: 'funcional' | 'noFuncional', req: { id: string; descripcion: string }): void {
-    // Autocompletar el formulario con los datos del requerimiento seleccionado para su edición
-    // (Comportamiento: cargar datos en el formulario inferior para actualizar)
-    const nueva = prompt(`Editando ${req.id}\nIngrese la nueva descripción:`, req.descripcion);
-    if (nueva !== null && nueva.trim() !== '') {
-      req.descripcion = nueva.trim();
-    }
   }
 
   // ============================================================
   // GETTERS
   // ============================================================
 
-  get cargosArray() {
-    return this.cargosDisponibles;
-  }
+  get cargosArray() { return this.cargosDisponibles; }
 
-  get requisitosSeguridadArray() {
-    return this.requisitosSeguridadList;
+  padNumber(num: number): string {
+    return String(num).padStart(2, '0');
   }
 }
