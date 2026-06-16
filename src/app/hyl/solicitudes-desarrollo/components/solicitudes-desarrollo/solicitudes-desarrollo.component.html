@@ -1,102 +1,428 @@
 <!-- RUTA: src/app/solicitudes-desarrollo/components/solicitudes-desarrollo/solicitudes-desarrollo.component.html -->
 
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Solicitudes de Desarrollo</h2>
-    <button class="btn btn-primary" (click)="nuevaSolicitud()">
-      + Nueva Solicitud
-    </button>
-  </div>
-
-  <div class="table-responsive">
-    <table class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Título</th>
-          <th>Solicitante</th>
-          <th>Área</th>
-          <th>Prioridad</th>
-          <th>Estado</th>
-          <th>Fecha Creación</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let s of solicitudes">
-          <td>{{ s.id }}</td>
-          <td>{{ s.titulo }}</td>
-          <td>{{ s.solicitante }}</td>
-          <td>{{ s.area }}</td>
-          <td><span [class]="'badge ' + getPrioridadClase(s.prioridad)">{{ s.prioridad }}</span></td>
-          <td><span [class]="'badge ' + getEstadoClase(s.estado)">{{ s.estado }}</span></td>
-          <td>{{ s.fechaCreacion | date:'dd/MM/yyyy' }}</td>
-          <td>
-            <button class="btn btn-sm btn-info me-1" (click)="editar(s)">Editar</button>
-            <button class="btn btn-sm btn-danger" (click)="eliminar(s.id!)">Eliminar</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Modal -->
-  <div class="modal" [class.show]="mostrarFormulario" tabindex="-1" [style.display]="mostrarFormulario ? 'block' : 'none'">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">{{ modoEdicion ? 'Editar' : 'Nueva' }} Solicitud de Desarrollo</h5>
-          <button type="button" class="btn-close" (click)="cerrarFormulario()"></button>
-        </div>
-        <div class="modal-body">
-          <form #form="ngForm">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Título *</label>
-                <input type="text" class="form-control" [(ngModel)]="solicitudSeleccionada.titulo" name="titulo" required>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Solicitante *</label>
-                <input type="text" class="form-control" [(ngModel)]="solicitudSeleccionada.solicitante" name="solicitante" required>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Área</label>
-                <input type="text" class="form-control" [(ngModel)]="solicitudSeleccionada.area" name="area">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Prioridad</label>
-                <select class="form-select" [(ngModel)]="solicitudSeleccionada.prioridad" name="prioridad">
-                  <option value="baja">Baja</option>
-                  <option value="media">Media</option>
-                  <option value="alta">Alta</option>
-                </select>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Estado</label>
-                <select class="form-select" [(ngModel)]="solicitudSeleccionada.estado" name="estado">
-                  <option value="pendiente">Pendiente</option>
-                  <option value="en progreso">En progreso</option>
-                  <option value="completada">Completada</option>
-                  <option value="rechazada">Rechazada</option>
-                </select>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Fecha límite</label>
-                <input type="date" class="form-control" [(ngModel)]="solicitudSeleccionada.fechaLimite" name="fechaLimite">
-              </div>
-              <div class="col-12 mb-3">
-                <label class="form-label">Descripción</label>
-                <textarea class="form-control" rows="3" [(ngModel)]="solicitudSeleccionada.descripcion" name="descripcion"></textarea>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="cerrarFormulario()">Cancelar</button>
-          <button type="button" class="btn btn-primary" (click)="guardar()" [disabled]="form.invalid">Guardar</button>
-        </div>
+<div class="container">
+  
+  <!-- ============================================================ -->
+  <!-- VISTA PRINCIPAL (SOLO LOS DOS BOTONES) -->
+  <!-- ============================================================ -->
+  <div *ngIf="vistaActual === 'principal'" class="vista-principal">
+    <div class="header-principal">
+      <div class="logo-section">
+        <h1 class="titulo-principal">Solicitudes de Desarrollo</h1>
+        <p class="subtitulo-principal">Transformación Digital</p>
       </div>
     </div>
+
+    <div class="botones-principales">
+      <button mat-raised-button color="primary" class="btn-principal" (click)="mostrarNuevaSolicitud()">
+        <mat-icon>add_circle_outline</mat-icon>
+        <span>Nueva Solicitud</span>
+      </button>
+      
+      <button mat-raised-button color="accent" class="btn-principal" (click)="mostrarBandeja()">
+        <mat-icon>inbox</mat-icon>
+        <span>Bandeja de solicitudes</span>
+      </button>
+    </div>
   </div>
-  <div *ngIf="mostrarFormulario" class="modal-backdrop fade show"></div>
+
+  <!-- ============================================================ -->
+  <!-- BANDEJA DE SOLICITUDES -->
+  <!-- ============================================================ -->
+  <div *ngIf="vistaActual === 'bandeja'" class="bandeja-section">
+    <div class="bandeja-header">
+      <button mat-icon-button (click)="volverPrincipal()" class="btn-volver">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h2>Bandeja de solicitudes</h2>
+      <button mat-raised-button color="primary" (click)="mostrarNuevaSolicitud()" class="btn-nueva-bandeja">
+        <mat-icon>add</mat-icon> Nueva Solicitud
+      </button>
+    </div>
+
+    <mat-card>
+      <mat-card-content>
+        <div class="filtros-bandeja">
+          <mat-form-field appearance="outline" class="filtro-fecha">
+            <mat-label>Fecha de ingreso</mat-label>
+            <input matInput [matDatepicker]="picker" placeholder="Seleccionar fecha">
+            <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-datepicker #picker></mat-datepicker>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filtro-fecha">
+            <mat-label>Fecha de ingreso</mat-label>
+            <input matInput [matDatepicker]="picker2" placeholder="Seleccionar fecha">
+            <mat-datepicker-toggle matSuffix [for]="picker2"></mat-datepicker-toggle>
+            <mat-datepicker #picker2></mat-datepicker>
+          </mat-form-field>
+        </div>
+
+        <div class="table-container">
+          <table mat-table [dataSource]="solicitudes" class="mat-elevation-z2">
+            <!-- Fecha de ingreso -->
+            <ng-container matColumnDef="fecha">
+              <th mat-header-cell *matHeaderCellDef> Fecha de ingreso </th>
+              <td mat-cell *matCellDef="let solicitud"> {{ solicitud.fechaCreacion | date:'dd/MM/yyyy' }} </td>
+            </ng-container>
+
+            <!-- Código de solicitud -->
+            <ng-container matColumnDef="codigo">
+              <th mat-header-cell *matHeaderCellDef> Código de solicitud </th>
+              <td mat-cell *matCellDef="let solicitud"> {{ solicitud.numeroSolicitud }} </td>
+            </ng-container>
+
+            <!-- Nombre del proyecto -->
+            <ng-container matColumnDef="nombre">
+              <th mat-header-cell *matHeaderCellDef> Nombre del proyecto </th>
+              <td mat-cell *matCellDef="let solicitud"> {{ solicitud.objetivo }} </td>
+            </ng-container>
+
+            <!-- Ver documento -->
+            <ng-container matColumnDef="ver">
+              <th mat-header-cell *matHeaderCellDef> Ver documento original </th>
+              <td mat-cell *matCellDef="let solicitud">
+                <button mat-icon-button color="primary" title="Ver documento PDF">
+                  <mat-icon>picture_as_pdf</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <!-- Estado -->
+            <ng-container matColumnDef="estado">
+              <th mat-header-cell *matHeaderCellDef> Estado asignado por coordinación </th>
+              <td mat-cell *matCellDef="let solicitud">
+                <span class="estado-badge" [ngClass]="{
+                  'estado-pendiente': solicitud.estado === 'pendiente',
+                  'estado-progreso': solicitud.estado === 'en progreso',
+                  'estado-completada': solicitud.estado === 'completada',
+                  'estado-rechazada': solicitud.estado === 'rechazada'
+                }">
+                  {{ solicitud.estado }}
+                </span>
+                <button mat-icon-button color="accent" title="Cerrar candado" class="btn-candado">
+                  <mat-icon>lock_open</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="['fecha', 'codigo', 'nombre', 'ver', 'estado']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['fecha', 'codigo', 'nombre', 'ver', 'estado'];"></tr>
+          </table>
+        </div>
+
+        <div class="bandeja-footer">
+          <p>* En la variable ver, se muestra el documento en PDF que se genera</p>
+          <p>* Los candados cerrados significan que los proyectos ya se encuentran en ejecución</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- WIZARD DE 5 PASOS -->
+  <!-- ============================================================ -->
+  <div *ngIf="vistaActual === 'wizard'" class="wizard-section">
+    <div class="wizard-header">
+      <button mat-icon-button (click)="volverPrincipal()" class="btn-volver">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h2>Nueva Solicitud de Desarrollo</h2>
+    </div>
+
+    <mat-card>
+      <mat-card-content>
+        <!-- Encabezado del formato -->
+        <div class="formato-header">
+          <div class="logo-text">
+            <h2>ASMET SALUD</h2>
+          </div>
+          <div class="formato-info">
+            <p>MACROPROCESO SISTEMA DE GESTIÓN INTEGRADA</p>
+            <p>PROCESO DESARROLLO TECNOLÓGICO</p>
+            <p>FORMATO REQUERIMIENTO DE DESARROLLO</p>
+            <p>SGI-DT-F-03 Ver 07</p>
+          </div>
+        </div>
+
+        <!-- Stepper -->
+        <mat-horizontal-stepper #stepper [linear]="true">
+          <!-- Paso 1: Información General -->
+          <mat-step [stepControl]="infoGeneralForm">
+            <ng-template matStepLabel>Información General</ng-template>
+            <form [formGroup]="infoGeneralForm">
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Proceso solicitante</mat-label>
+                  <mat-select formControlName="proceso">
+                    <mat-option *ngFor="let proceso of procesosSolicitante" [value]="proceso">
+                      {{ proceso }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Área</mat-label>
+                  <mat-select formControlName="area">
+                    <mat-option *ngFor="let area of areas" [value]="area">
+                      {{ area }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Vicepresidencia</mat-label>
+                  <mat-select formControlName="vicepresidencia">
+                    <mat-option *ngFor="let vp of vicepresidencias" [value]="vp">
+                      {{ vp }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Tipo de solicitud</mat-label>
+                  <mat-select formControlName="tipoSolicitud">
+                    <mat-option *ngFor="let tipo of tiposSolicitud" [value]="tipo">
+                      {{ tipo }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Fecha de ingreso</mat-label>
+                  <input matInput [matDatepicker]="fechaIngreso" formControlName="fechaIngreso">
+                  <mat-datepicker-toggle matSuffix [for]="fechaIngreso"></mat-datepicker-toggle>
+                  <mat-datepicker #fechaIngreso></mat-datepicker>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Objetivo de la solicitud</mat-label>
+                  <input matInput formControlName="objetivo" placeholder="Ingrese el objetivo">
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Cargos impactados</mat-label>
+                  <mat-select formControlName="cargos" multiple>
+                    <mat-option *ngFor="let cargo of cargosArray" [value]="cargo">
+                      {{ cargo }}
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Detalle de la solicitud</mat-label>
+                  <textarea matInput formControlName="detalle" rows="4"
+                            placeholder="Espacio de 2000 caracteres para ingresar toda la información, se puede ingresar imágenes">
+                  </textarea>
+                  <mat-hint align="end">{{ infoGeneralForm.get('detalle')?.value?.length || 0 }}/2000</mat-hint>
+                </mat-form-field>
+              </div>
+
+              <div class="form-actions">
+                <button mat-button matStepperNext [disabled]="infoGeneralForm.invalid">
+                  Siguiente <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- Paso 2: Impacto -->
+          <mat-step [stepControl]="impactoForm">
+            <ng-template matStepLabel>Impacto</ng-template>
+            <form [formGroup]="impactoForm">
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Describir el impacto</mat-label>
+                  <textarea matInput formControlName="impacto" rows="6"
+                            placeholder="Describa detalladamente el impacto de esta solicitud"></textarea>
+                </mat-form-field>
+              </div>
+
+              <div class="form-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon> Atrás
+                </button>
+                <button mat-button matStepperNext [disabled]="impactoForm.invalid">
+                  Siguiente <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- Paso 3: Requerimientos Funcionales -->
+          <mat-step [stepControl]="reqFuncionalesForm">
+            <ng-template matStepLabel>Requerimientos Funcionales</ng-template>
+            <form [formGroup]="reqFuncionalesForm">
+              <div class="form-row">
+                <p class="info-text">
+                  El icono de la caneca permitirá eliminar alguno de los requerimientos funcionales.
+                  Al eliminar un requerimiento, el sistema reorganizará automáticamente la numeración.
+                </p>
+              </div>
+
+              <div class="table-container">
+                <table mat-table [dataSource]="solicitudActual.requerimientosFuncionales || []" class="mat-elevation-z2">
+                  <ng-container matColumnDef="requerimiento">
+                    <th mat-header-cell *matHeaderCellDef> Requerimiento </th>
+                    <td mat-cell *matCellDef="let req"> {{ req.id }} - {{ req.descripcion }} </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="ver">
+                    <th mat-header-cell *matHeaderCellDef> Ver </th>
+                    <td mat-cell *matCellDef="let req; let i = index">
+                      <button mat-icon-button color="primary" (click)="editarRequerimiento('funcional', i)">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="eliminar">
+                    <th mat-header-cell *matHeaderCellDef> Eliminar </th>
+                    <td mat-cell *matCellDef="let req; let i = index">
+                      <button mat-icon-button color="warn" (click)="eliminarRequerimiento('funcional', i)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="['requerimiento', 'ver', 'eliminar']"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ['requerimiento', 'ver', 'eliminar'];"></tr>
+                </table>
+              </div>
+
+              <div class="form-row" style="margin-top: 20px;">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Nuevo requerimiento funcional</mat-label>
+                  <input matInput #nuevoRF placeholder="Ingrese la descripción del requerimiento">
+                </mat-form-field>
+                <button mat-raised-button color="primary" (click)="agregarRequerimiento('funcional', nuevoRF.value); nuevoRF.value = ''">
+                  <mat-icon>add</mat-icon> Agregar otro requerimiento
+                </button>
+              </div>
+
+              <div class="form-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon> Atrás
+                </button>
+                <button mat-button matStepperNext>
+                  Siguiente <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- Paso 4: Requerimientos No Funcionales -->
+          <mat-step [stepControl]="reqNoFuncionalesForm">
+            <ng-template matStepLabel>Requerimientos No Funcionales</ng-template>
+            <form [formGroup]="reqNoFuncionalesForm">
+              <div class="form-row">
+                <p class="info-text">
+                  El icono de la caneca permitirá eliminar alguno de los requerimientos no funcionales.
+                  Al eliminar un requerimiento, el sistema reorganizará automáticamente la numeración.
+                </p>
+              </div>
+
+              <div class="table-container">
+                <table mat-table [dataSource]="solicitudActual.requerimientosNoFuncionales || []" class="mat-elevation-z2">
+                  <ng-container matColumnDef="requerimiento">
+                    <th mat-header-cell *matHeaderCellDef> Requerimiento </th>
+                    <td mat-cell *matCellDef="let req"> {{ req.id }} - {{ req.descripcion }} </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="ver">
+                    <th mat-header-cell *matHeaderCellDef> Ver </th>
+                    <td mat-cell *matCellDef="let req; let i = index">
+                      <button mat-icon-button color="primary" (click)="editarRequerimiento('noFuncional', i)">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="eliminar">
+                    <th mat-header-cell *matHeaderCellDef> Eliminar </th>
+                    <td mat-cell *matCellDef="let req; let i = index">
+                      <button mat-icon-button color="warn" (click)="eliminarRequerimiento('noFuncional', i)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="['requerimiento', 'ver', 'eliminar']"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ['requerimiento', 'ver', 'eliminar'];"></tr>
+                </table>
+              </div>
+
+              <div class="form-row" style="margin-top: 20px;">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Nuevo requerimiento no funcional</mat-label>
+                  <input matInput #nuevoRNF placeholder="Ingrese la descripción del requerimiento">
+                </mat-form-field>
+                <button mat-raised-button color="primary" (click)="agregarRequerimiento('noFuncional', nuevoRNF.value); nuevoRNF.value = ''">
+                  <mat-icon>add</mat-icon> Agregar otro requerimiento
+                </button>
+              </div>
+
+              <div class="form-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon> Atrás
+                </button>
+                <button mat-button matStepperNext>
+                  Siguiente <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+            </form>
+          </mat-step>
+
+          <!-- Paso 5: Seguridad -->
+          <mat-step [stepControl]="seguridadForm">
+            <ng-template matStepLabel>Requisitos de seguridad</ng-template>
+            <form [formGroup]="seguridadForm">
+              <div class="form-row">
+                <mat-chip-listbox formControlName="requisitosSeguridad" multiple>
+                  <mat-chip-option *ngFor="let req of requisitosSeguridadArray" [value]="req">
+                    {{ req }}
+                  </mat-chip-option>
+                </mat-chip-listbox>
+              </div>
+
+              <div class="form-row">
+                <mat-card class="seguridad-info">
+                  <mat-card-content>
+                    <h4>Requisitos de seguridad de la información</h4>
+                    <ul>
+                      <li><strong>Autentificar adecuadamente:</strong> La información confidencial y los sistemas informáticos sólo deben ser accesibles por las personas con los roles y permisos definidos.</li>
+                      <li><strong>No utilizar campos ocultos:</strong> Para almacenar información sensible, porque esto permitiría que se exponga datos e información del funcionamiento interno de los aplicativos.</li>
+                      <li><strong>Comprobar las entradas:</strong> Es necesario verificar y controlar los datos introducidos en los aplicativos.</li>
+                      <li><strong>Valores límite de salida:</strong> Controlar la salida de los métodos para que esté dentro de los parámetros definidos.</li>
+                      <li><strong>Formato de salida:</strong> Los formatos de salida no deben ser combinados por funciones.</li>
+                      <li><strong>Asegurar métodos de seguridad:</strong> Los métodos que llevan a cabo controles de seguridad deben ser declarados como privados o finales.</li>
+                      <li><strong>Evitar el uso de datos reales:</strong> De carácter personal en las pruebas anteriores a la implantación.</li>
+                    </ul>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+
+              <div class="form-actions">
+                <button mat-button matStepperPrevious>
+                  <mat-icon>arrow_back</mat-icon> Atrás
+                </button>
+                <button mat-raised-button color="primary" (click)="guardarSolicitud()">
+                  <mat-icon>save</mat-icon> Guardar
+                </button>
+              </div>
+            </form>
+          </mat-step>
+        </mat-horizontal-stepper>
+      </mat-card-content>
+    </mat-card>
+  </div>
 </div>
