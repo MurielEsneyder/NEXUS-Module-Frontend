@@ -53,7 +53,16 @@
   <div *ngIf="vistaActual === 'bandeja'" class="bandeja-section">
     <div class="bandeja-header">
       <button class="btn-bandeja-entradas" (click)="mostrarNuevaSolicitud()">Bandeja de entradas</button>
-      
+      <div class="filtros-fecha">
+        <div class="filtro-fecha-item">
+          <input type="date" class="input-fecha" value="2026-01-01">
+          <span class="icono-cal">📅</span>
+        </div>
+        <div class="filtro-fecha-item">
+          <input type="date" class="input-fecha" value="2026-01-30">
+          <span class="icono-cal">📅</span>
+        </div>
+      </div>
     </div>
 
     <div class="tabla-bandeja-wrapper">
@@ -72,7 +81,7 @@
             <td>{{ solicitud.fechaCreacion | date:'dd/MM/yyyy' }}</td>
             <td>{{ solicitud.numeroSolicitud }}</td>
             <td>{{ solicitud.objetivo }}</td>
-            <td class="celda-ver"><span class="radio-ver">⊙</span></td>
+            <td class="celda-ver" (click)="descargarSolicitudPDF(solicitud)" style="cursor: pointer;"><span class="radio-ver" title="Descargar PDF">📄 PDF</span></td>
             <td class="celda-estado">
               <span class="texto-estado">{{ solicitud.estado }}</span>
               <button *ngIf="solicitud.estado === 'En documentación'"
@@ -141,23 +150,48 @@
 
         <!-- Tabs superiores -->
         <div class="tabs-wizard">
-          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 0" (click)="irPaso(0)">Información General</button>
-          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 1" (click)="irPaso(1)">Impacto</button>
-          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 2" (click)="irPaso(2)">Requerimiento Funcionales</button>
-          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 3" (click)="irPaso(3)">Requerimiento No Funcionales</button>
-          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 4" (click)="irPaso(4)">Requisitos de seguridad de la información</button>
+          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 0" (click)="irPaso(0)">Información del Colaborador</button>
+          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 1" (click)="irPaso(1)">Información de la Solicitud</button>
+          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 2" (click)="irPaso(2)">Impacto</button>
+          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 3" (click)="irPaso(3)">Requerimientos Funcionales</button>
+          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 4" (click)="irPaso(4)">Requerimientos No Funcionales</button>
+          <button class="tab-wizard" [class.tab-activo]="pasoActivo === 5" (click)="irPaso(5)">Requisitos de seguridad</button>
         </div>
 
         <!-- ================================================ -->
-        <!-- PASO 0: Información General -->
+        <!-- PASO 0: Información del Colaborador -->
         <!-- ================================================ -->
         <div *ngIf="pasoActivo === 0" class="paso-content">
+          <div class="form-grupo">
+            <label class="campo-label">Nombre completo:</label>
+            <input type="text" class="input-text-wizard input-readonly" [value]="datosColaborador.nombreCompleto" readonly>
+          </div>
+          <div class="form-grupo">
+            <label class="campo-label">Correo electrónico:</label>
+            <input type="text" class="input-text-wizard input-readonly" [value]="datosColaborador.correo" readonly>
+          </div>
+          <div class="form-grupo">
+            <label class="campo-label">Cargo:</label>
+            <input type="text" class="input-text-wizard input-readonly" [value]="datosColaborador.cargo" readonly>
+          </div>
+          <div class="form-grupo">
+            <label class="campo-label">Sede / Ubicación:</label>
+            <input type="text" class="input-text-wizard input-readonly" [value]="datosColaborador.sede" readonly>
+          </div>
+          <div class="acciones-paso">
+            <button class="btn-siguiente" (click)="avanzarDesdeColaborador()">Siguiente</button>
+          </div>
+        </div>
+
+        <!-- ================================================ -->
+        <!-- PASO 1: Información General (de la solicitud) -->
+        <!-- ================================================ -->
+        <div *ngIf="pasoActivo === 1" class="paso-content">
           <div class="fila-consecutivo">
-            <span class="consecutivo-label">Consecutivo incremental ID_</span>
+            <span class="consecutivo-label">Consecutivo incremental ID_ <strong>{{ solicitudActual.numeroSolicitud }}</strong></span>
           </div>
           <div class="fila-fecha">
-            <input type="date" class="input-fecha-wizard" [(ngModel)]="fechaIngreso">
-            <span class="icono-cal-wizard">📅</span>
+            <input type="date" class="input-fecha-wizard input-readonly" [value]="fechaIngreso" readonly style="pointer-events: none; opacity: 0.85;">
           </div>
 
           <div class="form-grupo">
@@ -211,14 +245,15 @@
           </div>
 
           <div class="acciones-paso">
+            <button class="btn-atras" (click)="irPaso(0)">Atras</button>
             <button class="btn-siguiente" (click)="avanzarDesdeGeneral()">siguiente</button>
           </div>
         </div>
 
         <!-- ================================================ -->
-        <!-- PASO 1: Impacto -->
+        <!-- PASO 2: Impacto -->
         <!-- ================================================ -->
-        <div *ngIf="pasoActivo === 1" class="paso-content">
+        <div *ngIf="pasoActivo === 2" class="paso-content">
           <div class="form-grupo">
             <textarea class="textarea-wizard textarea-grande"
                       rows="8"
@@ -228,15 +263,15 @@
             <span class="error-campo" *ngIf="errorImpacto">Debe describir el impacto antes de continuar.</span>
           </div>
           <div class="acciones-paso">
-            <button class="btn-atras" (click)="irPaso(0)">Atras</button>
+            <button class="btn-atras" (click)="irPaso(1)">Atras</button>
             <button class="btn-siguiente" (click)="avanzarDesdeImpacto()">siguiente</button>
           </div>
         </div>
 
         <!-- ================================================ -->
-        <!-- PASO 2: Requerimientos Funcionales -->
+        <!-- PASO 3: Requerimientos Funcionales -->
         <!-- ================================================ -->
-        <div *ngIf="pasoActivo === 2" class="paso-content">
+        <div *ngIf="pasoActivo === 3" class="paso-content">
           <div class="layout-requerimientos">
             <div class="form-req">
               <div class="form-grupo">
@@ -260,8 +295,15 @@
                 <textarea class="textarea-wizard" rows="4"
                           placeholder="Espacio de 2000 caracteres para que la persona pueda ingresar toda la información, se puede ingresar imágenes."
                           #rfDetalle maxlength="2000"></textarea>
-              </div>
-            </div>
+               </div>
+               <div class="form-grupo">
+                 <label class="campo-label">Adjuntar Imagen o Documento</label>
+                 <input type="file" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRF>
+                 <span *ngIf="archivoAdjuntoTemporal" style="font-size:12px; color:green; display:block; margin-top:5px;">Archivo seleccionado: {{ archivoAdjuntoTemporal.nombre }}</span>
+               </div>
+               <button class="btn-guardar-req"
+                       (click)="agregarRequerimiento('funcional', rfObjetivo.value, rfCargo.value, rfDetalle.value); rfObjetivo.value = ''; rfCargo.value = ''; rfDetalle.value = ''; fileInputRF.value = ''">Guardar</button>
+             </div>
 
             <div class="tabla-req-wrapper" *ngIf="(solicitudActual.requerimientosFuncionales?.length || 0) > 0">
               <table class="tabla-req">
@@ -269,6 +311,7 @@
                   <tr>
                     <th>Fecha de ingreso</th>
                     <th>Numero de la solicitud</th>
+                    <th>Adjunto</th>
                     <th>ver</th>
                     <th>eliminar</th>
                   </tr>
@@ -277,6 +320,9 @@
                   <tr *ngFor="let req of solicitudActual.requerimientosFuncionales; let i = index">
                     <td>{{ solicitudActual.fechaCreacion | date:'dd/MM/yyyy' }}</td>
                     <td>{{ req.id }}</td>
+                    <td>
+                      <span *ngIf="req.archivos && req.archivos.length > 0" title="Archivo adjunto: {{ req.archivos[0].nombre }}">📎 {{ req.archivos[0].nombre }}</span>
+                    </td>
                     <td><span class="radio-ver">⊙</span></td>
                     <td>
                       <button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('funcional', i)">🗑</button>
@@ -288,24 +334,25 @@
           </div>
 
           <div class="agregar-req-footer">
-            <button class="btn-requerimiento" (click)="agregarRequerimiento('funcional', 'Nuevo requerimiento')">Agregar requerimiento</button>
+            <span>Agregar otro requerimiento</span>
+            <button class="btn-agregar-req" (click)="agregarRequerimiento('funcional', 'Nuevo requerimiento')">+</button>
           </div>
           <div class="acciones-paso">
-            <button class="btn-atras" (click)="irPaso(1)">Atras</button>
-            <button class="btn-siguiente" (click)="irPaso(3)">siguiente</button>
+            <button class="btn-atras" (click)="irPaso(2)">Atras</button>
+            <button class="btn-siguiente" (click)="irPaso(4)">siguiente</button>
           </div>
         </div>
 
         <!-- ================================================ -->
-        <!-- PASO 3: Requerimientos No Funcionales -->
+        <!-- PASO 4: Requerimientos No Funcionales -->
         <!-- ================================================ -->
-        <div *ngIf="pasoActivo === 3" class="paso-content">
+        <div *ngIf="pasoActivo === 4" class="paso-content">
           <div class="layout-requerimientos">
             <div class="form-req">
               <div class="form-grupo">
                 <label class="campo-label">Numero de solicitud</label>
                 <input type="text" class="input-text-wizard input-readonly"
-                  [value]="'RNF_' + padNumber((solicitudActual.requerimientosNoFuncionales?.length || 0) + 1)" readonly>
+                       [value]="'RNF_' + padNumber((solicitudActual.requerimientosNoFuncionales?.length || 0) + 1)" readonly>
               </div>
               <div class="form-grupo">
                 <label class="campo-label">Objetivo de la solicitud</label>
@@ -323,9 +370,15 @@
                 <textarea class="textarea-wizard" rows="4"
                           placeholder="Espacio de 2000 caracteres para que la persona pueda ingresar toda la información, se puede ingresar imágenes."
                           #rnfDetalle maxlength="2000"></textarea>
-              </div>
-              
-            </div>
+               </div>
+               <div class="form-grupo">
+                 <label class="campo-label">Adjuntar Imagen o Documento</label>
+                 <input type="file" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRNF>
+                 <span *ngIf="archivoAdjuntoTemporal" style="font-size:12px; color:green; display:block; margin-top:5px;">Archivo seleccionado: {{ archivoAdjuntoTemporal.nombre }}</span>
+               </div>
+               <button class="btn-guardar-req"
+                       (click)="agregarRequerimiento('noFuncional', rnfObjetivo.value, rnfCargo.value, rnfDetalle.value); rnfObjetivo.value = ''; rnfCargo.value = ''; rnfDetalle.value = ''; fileInputRNF.value = ''">Guardar</button>
+             </div>
 
             <div class="tabla-req-wrapper" *ngIf="(solicitudActual.requerimientosNoFuncionales?.length || 0) > 0">
               <table class="tabla-req">
@@ -333,6 +386,7 @@
                   <tr>
                     <th>Fecha de ingreso</th>
                     <th>Numero de la solicitud</th>
+                    <th>Adjunto</th>
                     <th>ver</th>
                     <th>eliminar</th>
                   </tr>
@@ -341,6 +395,9 @@
                   <tr *ngFor="let req of solicitudActual.requerimientosNoFuncionales; let i = index">
                     <td>{{ solicitudActual.fechaCreacion | date:'dd/MM/yyyy' }}</td>
                     <td>{{ req.id }}</td>
+                    <td>
+                      <span *ngIf="req.archivos && req.archivos.length > 0" title="Archivo adjunto: {{ req.archivos[0].nombre }}">📎 {{ req.archivos[0].nombre }}</span>
+                    </td>
                     <td><span class="radio-ver">⊙</span></td>
                     <td>
                       <button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('noFuncional', i)">🗑</button>
@@ -352,18 +409,19 @@
           </div>
 
           <div class="agregar-req-footer">
-            <button class="btn-requerimiento" (click)="agregarRequerimiento('noFuncional', 'Nuevo requerimiento')">Agregar requerimiento</button>
+            <span>Agregar otro requerimiento</span>
+            <button class="btn-agregar-req" (click)="agregarRequerimiento('noFuncional', 'Nuevo requerimiento')">+</button>
           </div>
           <div class="acciones-paso">
-            <button class="btn-atras" (click)="irPaso(2)">Atras</button>
-            <button class="btn-siguiente" (click)="irPaso(4)">siguiente</button>
+            <button class="btn-atras" (click)="irPaso(3)">Atras</button>
+            <button class="btn-siguiente" (click)="irPaso(5)">siguiente</button>
           </div>
         </div>
 
         <!-- ================================================ -->
-        <!-- PASO 4: Seguridad -->
+        <!-- PASO 5: Seguridad -->
         <!-- ================================================ -->
-        <div *ngIf="pasoActivo === 4" class="paso-content">
+        <div *ngIf="pasoActivo === 5" class="paso-content">
           <div class="seguridad-lista">
             <ul>
               <li><strong>Autentificar adecuadamente:</strong> La información confidencial y los sistemas informáticos sólo deben ser accesibles por las personas con los roles y permisos definidos.</li>
@@ -377,7 +435,7 @@
             </ul>
           </div>
           <div class="acciones-paso">
-            <button class="btn-atras" (click)="irPaso(3)">Atras</button>
+            <button class="btn-atras" (click)="irPaso(4)">Atras</button>
             <button class="btn-guardar-final" (click)="guardarSolicitud()">Guardar</button>
           </div>
         </div>

@@ -32,4 +32,8 @@ export class SolicitudesDesarrolloService {
   eliminar(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+
+  obtenerDatosColaborador(email: string): Observable<any> {
+    return this.http.get<any>(`api/par_persona/colaborador?email=${email}`);
+  }
 }
