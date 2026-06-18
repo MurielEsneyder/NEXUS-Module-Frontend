@@ -188,8 +188,8 @@
           <div class="form-grupo">
             <label class="campo-label">Solicitud del proceso:</label>
             <input type="text" class="input-text-wizard"
-                   [(ngModel)]="formGeneral.solicitudProceso"
-                   placeholder="Ingrese la solicitud del proceso">
+                [(ngModel)]="formGeneral.solicitudProceso"
+                  placeholder="Ingrese la solicitud del proceso">
           </div>
 
           <div class="selectores-row">
@@ -268,7 +268,7 @@
               <div class="form-grupo">
                 <label class="campo-label">Numero de solicitud</label>
                 <input type="text" class="input-text-wizard input-readonly"
-                       [value]="'RF_' + padNumber((solicitudActual.requerimientosFuncionales?.length || 0) + 1)" readonly>
+                      [value]="'RF_' + padNumber((solicitudActual.requerimientosFuncionales?.length || 0) + 1)" readonly>
               </div>
               <div class="form-grupo">
                 <label class="campo-label">Objetivo de la solicitud</label>
@@ -286,15 +286,14 @@
                 <textarea class="textarea-wizard" rows="4"
                           placeholder="Espacio de 2000 caracteres para que la persona pueda ingresar toda la información, se puede ingresar imágenes."
                           #rfDetalle maxlength="2000"></textarea>
-               </div>
-               <div class="form-grupo">
-                 <label class="campo-label">Adjuntar Imagen o Documento</label>
-                 <input type="file" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRF>
+              </div>
+              <div class="form-grupo">
+                <label class="campo-label">Adjuntar Imagen o Documento</label>
+                <input type="file" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRF>
                  <span *ngIf="archivoAdjuntoTemporal" style="font-size:12px; color:green; display:block; margin-top:5px;">Archivo seleccionado: {{ archivoAdjuntoTemporal.nombre }}</span>
-               </div>
-               <button class="btn-guardar-req"
-                       (click)="agregarRequerimiento('funcional', rfObjetivo.value, rfCargo.value, rfDetalle.value); rfObjetivo.value = ''; rfCargo.value = ''; rfDetalle.value = ''; fileInputRF.value = ''">Guardar</button>
-             </div>
+              </div>
+              
+            </div>
 
             <div class="tabla-req-wrapper" *ngIf="(solicitudActual.requerimientosFuncionales?.length || 0) > 0">
               <table class="tabla-req">
@@ -325,8 +324,7 @@
           </div>
 
           <div class="agregar-req-footer">
-            <span>Agregar otro requerimiento</span>
-            <button class="btn-agregar-req" (click)="agregarRequerimiento('funcional', 'Nuevo requerimiento')">+</button>
+            <button class="btn-guardar-req" (click)="agregarRequerimiento('funcional', 'Nuevo requerimiento')">Agregar requerimiento</button>
           </div>
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(2)">Atras</button>
@@ -343,7 +341,7 @@
               <div class="form-grupo">
                 <label class="campo-label">Numero de solicitud</label>
                 <input type="text" class="input-text-wizard input-readonly"
-                       [value]="'RNF_' + padNumber((solicitudActual.requerimientosNoFuncionales?.length || 0) + 1)" readonly>
+                      [value]="'RNF_' + padNumber((solicitudActual.requerimientosNoFuncionales?.length || 0) + 1)" readonly>
               </div>
               <div class="form-grupo">
                 <label class="campo-label">Objetivo de la solicitud</label>
@@ -361,15 +359,14 @@
                 <textarea class="textarea-wizard" rows="4"
                           placeholder="Espacio de 2000 caracteres para que la persona pueda ingresar toda la información, se puede ingresar imágenes."
                           #rnfDetalle maxlength="2000"></textarea>
-               </div>
-               <div class="form-grupo">
-                 <label class="campo-label">Adjuntar Imagen o Documento</label>
-                 <input type="file" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRNF>
+              </div>
+              <div class="form-grupo">
+              <label class="campo-label">Adjuntar Imagen o Documento</label>
+                <input type="file" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRNF>
                  <span *ngIf="archivoAdjuntoTemporal" style="font-size:12px; color:green; display:block; margin-top:5px;">Archivo seleccionado: {{ archivoAdjuntoTemporal.nombre }}</span>
-               </div>
-               <button class="btn-guardar-req"
-                       (click)="agregarRequerimiento('noFuncional', rnfObjetivo.value, rnfCargo.value, rnfDetalle.value); rnfObjetivo.value = ''; rnfCargo.value = ''; rnfDetalle.value = ''; fileInputRNF.value = ''">Guardar</button>
-             </div>
+              </div>
+              
+            </div>
 
             <div class="tabla-req-wrapper" *ngIf="(solicitudActual.requerimientosNoFuncionales?.length || 0) > 0">
               <table class="tabla-req">
@@ -400,8 +397,8 @@
           </div>
 
           <div class="agregar-req-footer">
-            <span>Agregar otro requerimiento</span>
-            <button class="btn-agregar-req" (click)="agregarRequerimiento('noFuncional', 'Nuevo requerimiento')">+</button>
+
+            <button class="btn-guardar-req" (click)="agregarRequerimiento('noFuncional', 'Nuevo requerimiento')">Agregar requerimiento</button>
           </div>
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(3)">Atras</button>
