@@ -43,68 +43,143 @@
 
   </div>
 
-  <!-- ============================================================ -->
-  <!-- BANDEJA DE SOLICITUDES -->
+    <!-- ============================================================ -->
+  <!-- BANDEJA DE SOLICITUDES (ACTUALIZADA) -->
   <!-- ============================================================ -->
   <div *ngIf="vistaActual === 'bandeja'" class="bandeja-section">
     <div class="bandeja-header">
-      <button class="btn-bandeja-entradas" (click)="mostrarNuevaSolicitud()">Bandeja de entradas</button>
+      <div class="bandeja-titulo">
+        <h2>📋 Bandeja de Solicitudes</h2>
+        <span class="total-solicitudes">{{ solicitudes.length }} solicitudes</span>
+      </div>
+      <button class="btn-nueva" (click)="mostrarNuevaSolicitud()">
+        <mat-icon>add</mat-icon> Nueva Solicitud
+      </button>
+    </div>
+
+    <!-- Filtros rápidos -->
+    <div class="filtros-bandeja">
+      <input type="text" placeholder="🔍 Buscar por proyecto..." class="input-busqueda" #searchInput (input)="filtrarSolicitudes(searchInput.value)">
+      <select class="select-filtro" #estadoFilter (change)="filtrarPorEstado(estadoFilter.value)">
+        <option value="">Todos los estados</option>
+        <option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</option>
+      </select>
     </div>
 
     <div class="tabla-bandeja-wrapper">
       <table class="tabla-bandeja">
         <thead>
           <tr>
-            <th>Fecha de ingreso</th>
-            <th>Código de solicitud</th>
-            <th>Nombre del proyecto</th>
-            <th>Ver documento original</th>
-            <th>Estado asignado por coordinación</th>
+            <th>Fecha</th>
+            <th>Código</th>
+            <th>Proyecto</th>
+            <th>Tipo</th>
+            <th>Solicitante</th>
+            <th>Área</th>
+            <th>Req.</th>
+            <th>Estado</th>
+            <th>Adjuntos</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let solicitud of solicitudes" class="fila-solicitud">
+          <tr *ngFor="let solicitud of solicitudesFiltradas" class="fila-solicitud">
             <td>{{ solicitud.fechaCreacion | date:'dd/MM/yyyy' }}</td>
-            <td>{{ solicitud.numeroSolicitud }}</td>
-            <td>{{ solicitud.objetivo }}</td>
-            <td class="celda-ver" (click)="descargarSolicitudPDF(solicitud)" style="cursor: pointer;"><span class="radio-ver" title="Descargar PDF">📄 PDF</span></td>
-            <td class="celda-estado">
-              <span class="texto-estado">{{ solicitud.estado }}</span>
-              <button *ngIf="solicitud.estado === 'En documentación'"
-                      class="btn-estado btn-ver-verde"
-                      (click)="abrirModalInf(solicitud)">Ver</button>
-              <button *ngIf="solicitud.estado !== 'En documentación'"
-                      class="btn-estado btn-inf-azul"
-                      (click)="abrirModalInf(solicitud)">Inf</button>
+            <td><strong>{{ solicitud.numeroSolicitud }}</strong></td>
+            <td title="{{ solicitud.objetivo }}">{{ solicitud.objetivo | slice:0:30 }}{{ solicitud.objetivo.length > 30 ? '...' : '' }}</td>
+            <td>
+              <span class="badge-tipo" [class.badge-proyecto]="solicitud.tipo === 'Proyecto'" [class.badge-mejora]="solicitud.tipo === 'Mejora'">
+                {{ solicitud.tipo || 'N/A' }}
+              </span>
+            </td>
+            <td>{{ solicitud.solicitante | slice:0:20 }}{{ solicitud.solicitante.length > 20 ? '...' : '' }}</td>
+            <td>{{ solicitud.area }}</td>
+            <td class="text-center">{{ solicitud.totalRequerimientos || 0 }}</td>
+            <td>
+              <span class="estado-badge" [ngClass]="{
+                'estado-pendiente': solicitud.estado === 'Pendiente' || solicitud.estado === 'Borrador',
+                'estado-enviada': solicitud.estado === 'Enviada',
+                'estado-documentacion': solicitud.estado === 'En documentación',
+                'estado-funcional': solicitud.estado === 'En pruebas funcionales',
+                'estado-desarrollo': solicitud.estado === 'En desarrollo',
+                'estado-aceptacion': solicitud.estado === 'En pruebas de aceptación',
+                'estado-cerrada': solicitud.estado === 'Cerrada',
+                'estado-rechazada': solicitud.estado === 'Rechazada'
+              }">
+                {{ solicitud.estado }}
+              </span>
+            </td>
+            <td class="text-center">
+              <span *ngIf="solicitud.tieneImagenes" title="Tiene imágenes adjuntas" class="icono-imagen">🖼️</span>
+              <span *ngIf="!solicitud.tieneImagenes" title="Sin imágenes adjuntas" class="icono-sin-imagen">📄</span>
+            </td>
+            <td class="acciones-cell">
+              <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
+              <button class="btn-accion btn-editar" (click)="editarSolicitud(solicitud)" title="Editar">✏️</button>
+              <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
+            </td>
+          </tr>
+          <tr *ngIf="solicitudesFiltradas.length === 0">
+            <td colspan="10" class="text-center sin-datos">
+              <p>📭 No hay solicitudes registradas</p>
+              <button class="btn-crear-primera" (click)="mostrarNuevaSolicitud()">Crear primera solicitud</button>
             </td>
           </tr>
         </tbody>
       </table>
-      <div class="columna-candados">
-        <div *ngFor="let solicitud of solicitudes" class="candado-item">
-          <span class="icono-candado"
-                [class.candado-abierto]="esCandadoAbierto(solicitud)"
-                [class.candado-cerrado]="!esCandadoAbierto(solicitud)">
-            {{ esCandadoAbierto(solicitud) ? '🔓' : '🔒' }}
-          </span>
-        </div>
-      </div>
     </div>
 
-    <!-- Modal de Información -->
-    <div class="overlay-modal" *ngIf="mostrarModalInf" (click)="cerrarModalInf()"></div>
-    <div class="modal-inf" *ngIf="mostrarModalInf && solicitudSeleccionada">
-      <div class="modal-inf-contenido">
-        <button class="btn-cerrar-modal" (click)="cerrarModalInf()">X</button>
-        <p><strong>Fecha de ingreso:</strong> {{ solicitudSeleccionada.fechaCreacion | date:'dd/MM/yyyy' }}</p>
-        <p><strong>Coordinación de desarrollo:</strong> {{ solicitudSeleccionada.coordinador }}</p>
-        <p><strong>Funcional Asignado:</strong> {{ solicitudSeleccionada.funcionalAsignado }}</p>
-        <p class="link-pdf"><strong>Ver documento ajustado</strong> <span class="icono-pdf">📄</span></p>
-        <div class="campo-observaciones">
-          <textarea [(ngModel)]="observacionesModal" placeholder="Observaciones" rows="4" class="textarea-obs"></textarea>
+    <!-- Modal de Detalle -->
+    <div class="overlay-modal" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()"></div>
+    <div class="modal-detalle" *ngIf="mostrarModalDetalle && solicitudSeleccionada">
+      <div class="modal-detalle-contenido">
+        <button class="btn-cerrar-modal" (click)="cerrarModalDetalle()">✕</button>
+        <h3>📋 Detalle de Solicitud</h3>
+        <div class="detalle-grid">
+          <div class="detalle-item">
+            <label>Código:</label>
+            <span>{{ solicitudSeleccionada.numeroSolicitud }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Proyecto:</label>
+            <span>{{ solicitudSeleccionada.objetivo }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Solicitante:</label>
+            <span>{{ solicitudSeleccionada.solicitante }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Área:</label>
+            <span>{{ solicitudSeleccionada.area }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Tipo:</label>
+            <span>{{ solicitudSeleccionada.tipo || 'N/A' }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Estado:</label>
+            <span>{{ solicitudSeleccionada.estado }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Fecha:</label>
+            <span>{{ solicitudSeleccionada.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Requerimientos:</label>
+            <span>{{ solicitudSeleccionada.totalRequerimientos || 0 }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Adjuntos:</label>
+            <span>{{ solicitudSeleccionada.tieneImagenes ? '🖼️ Sí tiene imágenes' : '📄 Sin imágenes' }}</span>
+          </div>
+        </div>
+        <div class="detalle-observaciones" *ngIf="solicitudSeleccionada.observaciones">
+          <label>Observaciones:</label>
+          <p>{{ solicitudSeleccionada.observaciones }}</p>
         </div>
         <div class="modal-footer">
-          <button class="btn-guardar-modal" (click)="guardarObservaciones()">Guardar</button>
+          <button class="btn-cerrar" (click)="cerrarModalDetalle()">Cerrar</button>
+          <button class="btn-cambiar-estado" (click)="cambiarEstadoSolicitud(solicitudSeleccionada)">Cambiar Estado</button>
         </div>
       </div>
     </div>

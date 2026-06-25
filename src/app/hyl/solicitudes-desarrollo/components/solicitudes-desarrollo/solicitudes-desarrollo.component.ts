@@ -8,6 +8,7 @@ export interface RequerimientoItem {
   id: string;
   descripcion: string;
   archivos?: any[];
+  tieneImagen?: boolean;
 }
 
 export interface SolicitudDesarrollo {
@@ -19,6 +20,7 @@ export interface SolicitudDesarrollo {
   area: string;
   prioridad?: 'alta' | 'media' | 'baja';
   estado: string;
+  tipo?: string;
   fechaCreacion: Date;
   fechaLimite?: Date;
   coordinador?: string;
@@ -27,6 +29,9 @@ export interface SolicitudDesarrollo {
   requerimientosFuncionales?: RequerimientoItem[];
   requerimientosNoFuncionales?: RequerimientoItem[];
   archivos?: any[];
+  tieneImagenes?: boolean;
+  totalRequerimientos?: number;
+  observaciones?: string;
 }
 
 @Component({
@@ -35,6 +40,7 @@ export interface SolicitudDesarrollo {
   styleUrls: ['./solicitudes-desarrollo.component.css']
 })
 export class SolicitudesDesarrolloComponent implements OnInit {
+
   // ============================================================
   // VARIABLES DE ESTADO
   // ============================================================
@@ -43,6 +49,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   mostrarModalInf = false;
   mostrarModalEliminar = false;
   mostrarModalExito = false;
+  mostrarModalDetalle = false;
   numeroSolicitudExito = '';
   observacionesModal = '';
   impactoTexto = '';
@@ -53,6 +60,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // DATOS
   // ============================================================
   solicitudes: SolicitudDesarrollo[] = [];
+  solicitudesFiltradas: SolicitudDesarrollo[] = [];
   solicitudActual!: SolicitudDesarrollo;
   solicitudSeleccionada: SolicitudDesarrollo | null = null;
   requerimientoAEliminar: { id: string; index: number; tipo: 'funcional' | 'noFuncional' } | null = null;
@@ -122,6 +130,18 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     'Líder técnico'
   ];
 
+  estadosDisponibles: string[] = [
+    'Pendiente',
+    'Borrador',
+    'Enviada',
+    'En documentación',
+    'En pruebas funcionales',
+    'En desarrollo',
+    'En pruebas de aceptación',
+    'Cerrada',
+    'Rechazada'
+  ];
+
   // ============================================================
   // CONSTRUCTOR
   // ============================================================
@@ -161,31 +181,114 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       next: (data: any) => {
         if (data && data.content) {
           this.solicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
+          this.solicitudesFiltradas = [...this.solicitudes];
         } else {
           this.solicitudes = [];
+          this.solicitudesFiltradas = [];
         }
         console.log('✅ Solicitudes cargadas:', this.solicitudes.length);
       },
       error: (err: any) => {
         console.error('❌ Error al cargar solicitudes:', err);
         this.solicitudes = [];
+        this.solicitudesFiltradas = [];
       }
     });
   }
 
   private mapearSolicitud(item: any): SolicitudDesarrollo {
+    let tieneImagenes = false;
+    let totalReq = 0;
+    let observaciones = '';
+
+    if (item.requerimientos && item.requerimientos.length > 0) {
+      totalReq = item.requerimientos.length;
+      tieneImagenes = item.requerimientos.some((req: any) =>
+        req.imagenes && req.imagenes.length > 0
+      );
+    }
+
+    if (item.observaciones) {
+      observaciones = item.observaciones;
+    }
+
     return {
       id: item.id,
       numeroSolicitud: item.codigo,
-      objetivo: item.solicitudProceso,
-      solicitante: item.empleadoNombre,
-      area: item.areaId?.toString() || '',
+      objetivo: item.solicitudProceso || 'Sin nombre',
+      solicitante: item.empleadoNombre || 'Desconocido',
+      area: item.areaId?.toString() || 'N/A',
       estado: item.estado?.nombre || 'Pendiente',
+      tipo: item.tipoSolicitud?.nombre || 'N/A',
       fechaCreacion: new Date(item.fechaCreacion),
       prioridad: 'media',
       coordinador: 'Coordinador Asignado',
-      funcionalAsignado: 'Funcional Asignado'
+      funcionalAsignado: 'Funcional Asignado',
+      totalRequerimientos: totalReq,
+      tieneImagenes: tieneImagenes,
+      observaciones: observaciones
     };
+  }
+
+  // ============================================================
+  // FILTROS DE BANDEJA
+  // ============================================================
+  filtrarSolicitudes(texto: string): void {
+    if (!texto || texto.trim() === '') {
+      this.solicitudesFiltradas = [...this.solicitudes];
+      return;
+    }
+    const term = texto.toLowerCase().trim();
+    this.solicitudesFiltradas = this.solicitudes.filter(s =>
+      s.objetivo.toLowerCase().includes(term) ||
+      s.numeroSolicitud?.toLowerCase().includes(term) ||
+      s.solicitante.toLowerCase().includes(term)
+    );
+  }
+
+  filtrarPorEstado(estado: string): void {
+    if (!estado || estado === '') {
+      this.solicitudesFiltradas = [...this.solicitudes];
+      return;
+    }
+    this.solicitudesFiltradas = this.solicitudes.filter(s => s.estado === estado);
+  }
+
+  // ============================================================
+  // ACCIONES DE BANDEJA
+  // ============================================================
+  verDetalle(solicitud: SolicitudDesarrollo): void {
+    this.solicitudSeleccionada = solicitud;
+    this.mostrarModalDetalle = true;
+  }
+
+  cerrarModalDetalle(): void {
+    this.mostrarModalDetalle = false;
+    this.solicitudSeleccionada = null;
+  }
+
+  editarSolicitud(solicitud: SolicitudDesarrollo): void {
+    console.log('✏️ Editar solicitud:', solicitud.numeroSolicitud);
+    // Aquí puedes implementar la edición
+  }
+
+  eliminarSolicitud(solicitud: SolicitudDesarrollo): void {
+    if (confirm(`¿Está seguro que desea eliminar la solicitud ${solicitud.numeroSolicitud}?`)) {
+      if (solicitud.id) {
+        this.solicitudesService.eliminar(solicitud.id).subscribe({
+          next: () => {
+            console.log('✅ Solicitud eliminada');
+            this.cargarSolicitudes();
+          },
+          error: (err) => console.error('❌ Error al eliminar:', err)
+        });
+      }
+    }
+  }
+
+  cambiarEstadoSolicitud(solicitud: SolicitudDesarrollo): void {
+    console.log('🔄 Cambiar estado de:', solicitud.numeroSolicitud);
+    // Aquí puedes implementar el cambio de estado
   }
 
   // ============================================================
@@ -422,7 +525,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     const macroprocesoId = this.mapearMacroprocesoId(this.formGeneral.vicepresidencia);
     const tipoSolicitudId = this.formGeneral.tipoSolicitud === 'Proyecto' ? 1 : 2;
 
-    // Validar que los IDs sean válidos
     if (procesoId <= 0 || areaId <= 0 || macroprocesoId <= 0) {
       console.error('❌ IDs inválidos:', { procesoId, areaId, macroprocesoId });
       alert('Por favor selecciona valores válidos para proceso, área y vicepresidencia.');
@@ -440,7 +542,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       areaId: areaId,
       macroprocesoId: macroprocesoId,
       tipoSolicitudId: tipoSolicitudId,
-      estadoId: 2, // Enviada
+      estadoId: 2,
       observaciones: this.formGeneral.observacion || '',
       impacto: this.impactoTexto,
       requerimientos: [
@@ -490,7 +592,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // MÉTODOS DE BANDEJA
+  // MÉTODOS DE BANDEJA (MODALES)
   // ============================================================
   abrirModalInf(solicitud: SolicitudDesarrollo): void {
     this.solicitudSeleccionada = solicitud;
