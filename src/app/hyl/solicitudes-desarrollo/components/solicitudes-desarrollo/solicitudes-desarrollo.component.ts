@@ -131,14 +131,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     'Líder técnico'
   ];
 
+  // ============================================================
+  // ESTADOS DISPONIBLES PARA EL FILTRO (SOLO LOS 4 REQUERIDOS)
+  // ============================================================
   estadosDisponibles: string[] = [
-    'Pendiente',
-    'Borrador',
     'Enviada',
-    'En documentación',
-    'En pruebas funcionales',
     'En desarrollo',
-    'En pruebas de aceptación',
     'Cerrada',
     'Rechazada'
   ];
@@ -338,16 +336,13 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // NAVEGACIÓN ENTRE PASOS DEL WIZARD (CON VALIDACIONES)
   // ============================================================
   irPaso(paso: number): void {
-    // Validar antes de ir a un paso anterior o igual (no se valida)
     if (paso <= this.pasoActivo) {
       this.pasoActivo = paso;
       return;
     }
 
-    // Validar según el paso actual
     switch (this.pasoActivo) {
       case 0:
-        // Paso 0: Datos del colaborador - siempre válido
         break;
       case 1:
         if (!this.validarPasoGeneral()) {
@@ -362,14 +357,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         }
         break;
       case 3:
-        // Paso 3: Requerimientos funcionales - solo validar si está vacío
         if (!this.validarRequerimientosFuncionales()) {
           alert('⚠️ Debe agregar al menos un requerimiento funcional antes de continuar.');
           return;
         }
         break;
       case 4:
-        // Paso 4: Requerimientos no funcionales - solo validar si está vacío
         if (!this.validarRequerimientosNoFuncionales()) {
           alert('⚠️ Debe agregar al menos un requerimiento no funcional antes de continuar.');
           return;
@@ -496,7 +489,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   agregarRequerimiento(tipo: 'funcional' | 'noFuncional', descripcion: string): void {
-    // Validar que la descripción no esté vacía
     if (!descripcion || descripcion.trim() === '') {
       alert('⚠️ Por favor ingrese una descripción para el requerimiento.');
       return;
@@ -529,9 +521,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     }
 
     this.archivoAdjuntoTemporal = null;
-
-    // Limpiar el input después de agregar (se hace desde el HTML)
-    // El HTML ya tiene rfObjetivo.value='' etc.
   }
 
   confirmarEliminarRequerimiento(tipo: 'funcional' | 'noFuncional', index: number): void {
@@ -583,7 +572,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // GUARDAR SOLICITUD
   // ============================================================
   guardarSolicitud(): void {
-    // Validar todos los pasos antes de guardar
     if (!this.validarPasoGeneral()) {
       this.mostrarErroresGeneral();
       return;
