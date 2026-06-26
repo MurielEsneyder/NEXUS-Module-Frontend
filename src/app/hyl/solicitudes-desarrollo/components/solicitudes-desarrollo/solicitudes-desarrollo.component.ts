@@ -93,7 +93,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     proceso: false,
     area: false,
     vicepresidencia: false,
-    tipoSolicitud: false
+    tipoSolicitud: false,
+    solicitudProceso: false
   };
 
   // ============================================================
@@ -269,7 +270,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   editarSolicitud(solicitud: SolicitudDesarrollo): void {
     console.log('✏️ Editar solicitud:', solicitud.numeroSolicitud);
-    // Aquí puedes implementar la edición
   }
 
   eliminarSolicitud(solicitud: SolicitudDesarrollo): void {
@@ -288,7 +288,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   cambiarEstadoSolicitud(solicitud: SolicitudDesarrollo): void {
     console.log('🔄 Cambiar estado de:', solicitud.numeroSolicitud);
-    // Aquí puedes implementar el cambio de estado
   }
 
   // ============================================================
@@ -316,7 +315,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       proceso: false,
       area: false,
       vicepresidencia: false,
-      tipoSolicitud: false
+      tipoSolicitud: false,
+      solicitudProceso: false
     };
     this.archivoAdjuntoTemporal = null;
   }
@@ -329,28 +329,54 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   volverPrincipal(): void {
     this.vistaActual = 'principal';
   }
-  // Agrega este método
+
   irAtras(): void {
-    // Esto redirige a la página anterior en el historial del navegador
     window.history.back();
-    // Alternativa: si quieres ir a una ruta específica
-    // this.router.navigate(['/']); // Redirige a la raíz
   }
 
   // ============================================================
-  // NAVEGACIÓN ENTRE PASOS DEL WIZARD
+  // NAVEGACIÓN ENTRE PASOS DEL WIZARD (CON VALIDACIONES)
   // ============================================================
   irPaso(paso: number): void {
-    if (paso > this.pasoActivo) {
-      switch (this.pasoActivo) {
-        case 1:
-          if (!this.validarPasoGeneral()) return;
-          break;
-        case 2:
-          if (!this.validarImpacto()) return;
-          break;
-      }
+    // Validar antes de ir a un paso anterior o igual (no se valida)
+    if (paso <= this.pasoActivo) {
+      this.pasoActivo = paso;
+      return;
     }
+
+    // Validar según el paso actual
+    switch (this.pasoActivo) {
+      case 0:
+        // Paso 0: Datos del colaborador - siempre válido
+        break;
+      case 1:
+        if (!this.validarPasoGeneral()) {
+          this.mostrarErroresGeneral();
+          return;
+        }
+        break;
+      case 2:
+        if (!this.validarImpacto()) {
+          this.errorImpacto = true;
+          return;
+        }
+        break;
+      case 3:
+        // Paso 3: Requerimientos funcionales - solo validar si está vacío
+        if (!this.validarRequerimientosFuncionales()) {
+          alert('⚠️ Debe agregar al menos un requerimiento funcional antes de continuar.');
+          return;
+        }
+        break;
+      case 4:
+        // Paso 4: Requerimientos no funcionales - solo validar si está vacío
+        if (!this.validarRequerimientosNoFuncionales()) {
+          alert('⚠️ Debe agregar al menos un requerimiento no funcional antes de continuar.');
+          return;
+        }
+        break;
+    }
+
     this.pasoActivo = paso;
   }
 
@@ -361,12 +387,16 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   avanzarDesdeGeneral(): void {
     if (this.validarPasoGeneral()) {
       this.pasoActivo = 2;
+    } else {
+      this.mostrarErroresGeneral();
     }
   }
 
   avanzarDesdeImpacto(): void {
     if (this.validarImpacto()) {
       this.pasoActivo = 3;
+    } else {
+      this.errorImpacto = true;
     }
   }
 
@@ -375,12 +405,23 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   private validarPasoGeneral(): boolean {
     this.erroresGeneral = {
-      proceso: !this.formGeneral.proceso,
-      area: !this.formGeneral.area,
-      vicepresidencia: !this.formGeneral.vicepresidencia,
-      tipoSolicitud: !this.formGeneral.tipoSolicitud
+      proceso: !this.formGeneral.proceso || this.formGeneral.proceso === '',
+      area: !this.formGeneral.area || this.formGeneral.area === '',
+      vicepresidencia: !this.formGeneral.vicepresidencia || this.formGeneral.vicepresidencia === '',
+      tipoSolicitud: !this.formGeneral.tipoSolicitud || this.formGeneral.tipoSolicitud === '',
+      solicitudProceso: !this.formGeneral.solicitudProceso || this.formGeneral.solicitudProceso.trim() === ''
     };
     return !Object.values(this.erroresGeneral).some((error) => error);
+  }
+
+  private mostrarErroresGeneral(): void {
+    let mensaje = '⚠️ Por favor complete los siguientes campos:\n';
+    if (this.erroresGeneral.solicitudProceso) mensaje += '• Solicitud del proceso\n';
+    if (this.erroresGeneral.proceso) mensaje += '• Proceso solicitante\n';
+    if (this.erroresGeneral.area) mensaje += '• Área\n';
+    if (this.erroresGeneral.vicepresidencia) mensaje += '• Vicepresidencia\n';
+    if (this.erroresGeneral.tipoSolicitud) mensaje += '• Tipo de solicitud\n';
+    alert(mensaje);
   }
 
   private validarImpacto(): boolean {
@@ -390,6 +431,16 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     }
     this.errorImpacto = false;
     return true;
+  }
+
+  private validarRequerimientosFuncionales(): boolean {
+    const lista = this.solicitudActual.requerimientosFuncionales || [];
+    return lista.length > 0;
+  }
+
+  private validarRequerimientosNoFuncionales(): boolean {
+    const lista = this.solicitudActual.requerimientosNoFuncionales || [];
+    return lista.length > 0;
   }
 
   // ============================================================
@@ -445,6 +496,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   agregarRequerimiento(tipo: 'funcional' | 'noFuncional', descripcion: string): void {
+    // Validar que la descripción no esté vacía
+    if (!descripcion || descripcion.trim() === '') {
+      alert('⚠️ Por favor ingrese una descripción para el requerimiento.');
+      return;
+    }
+
     const lista = tipo === 'funcional'
       ? (this.solicitudActual.requerimientosFuncionales || [])
       : (this.solicitudActual.requerimientosNoFuncionales || []);
@@ -455,7 +512,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     const nuevoReq: RequerimientoItem = {
       id: id,
-      descripcion: descripcion || `Requerimiento ${numero}`,
+      descripcion: descripcion.trim(),
       archivos: this.archivoAdjuntoTemporal ? [{ ...this.archivoAdjuntoTemporal }] : []
     };
 
@@ -472,6 +529,9 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     }
 
     this.archivoAdjuntoTemporal = null;
+
+    // Limpiar el input después de agregar (se hace desde el HTML)
+    // El HTML ya tiene rfObjetivo.value='' etc.
   }
 
   confirmarEliminarRequerimiento(tipo: 'funcional' | 'noFuncional', index: number): void {
@@ -523,7 +583,28 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // GUARDAR SOLICITUD
   // ============================================================
   guardarSolicitud(): void {
-    if (!this.validarPasoGeneral() || !this.validarImpacto()) {
+    // Validar todos los pasos antes de guardar
+    if (!this.validarPasoGeneral()) {
+      this.mostrarErroresGeneral();
+      return;
+    }
+
+    if (!this.validarImpacto()) {
+      this.errorImpacto = true;
+      alert('⚠️ Debe describir el impacto (mínimo 10 caracteres).');
+      this.pasoActivo = 2;
+      return;
+    }
+
+    if (!this.validarRequerimientosFuncionales()) {
+      alert('⚠️ Debe agregar al menos un requerimiento funcional.');
+      this.pasoActivo = 3;
+      return;
+    }
+
+    if (!this.validarRequerimientosNoFuncionales()) {
+      alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
+      this.pasoActivo = 4;
       return;
     }
 
@@ -629,4 +710,3 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     return solicitud.estado === 'En documentación' || solicitud.estado === 'Pendiente';
   }
 }
-
