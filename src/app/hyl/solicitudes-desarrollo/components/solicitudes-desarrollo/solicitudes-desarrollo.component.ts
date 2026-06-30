@@ -139,6 +139,17 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   ];
 
   // ============================================================
+  // MAPA DE ÁREAS (PARA TRADUCIR IDs A NOMBRES)
+  // ============================================================
+  private areaMap: { [key: number]: string } = {
+    1: 'Transformación Digital',
+    2: 'Servicios de salud financiera',
+    3: 'Gestión Documental',
+    4: 'Talento Humano',
+    5: 'Desarrollo Organizacional'
+  };
+
+  // ============================================================
   // CONSTRUCTOR
   // ============================================================
   constructor(private solicitudesService: SolicitudesDesarrolloService) {}
@@ -183,6 +194,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           this.solicitudesFiltradas = [];
         }
         console.log('✅ Solicitudes cargadas:', this.solicitudes.length);
+        
+        // ============================================================
+        // LOGS CON BACKTICKS (CORREGIDO)
+        // ============================================================
         console.log('📊 Total requerimientos por solicitud:');
         this.solicitudes.forEach(s => {
           console.log(`  ${s.numeroSolicitud}: ${s.totalRequerimientos} requerimientos`);
@@ -197,30 +212,33 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // MAPEAR SOLICITUD DESDE EL BACKEND (CORREGIDO)
+  // MAPEAR SOLICITUD DESDE EL BACKEND (ÁREA TRADUCIDA)
   // ============================================================
   private mapearSolicitud(item: any): SolicitudDesarrollo {
     let tieneImagenes = false;
     let totalReq = 0;
 
-    // ✅ Usar el campo que viene del backend
     if (item.totalRequerimientos !== undefined) {
       totalReq = item.totalRequerimientos;
     }
 
-    // Verificar si tiene imágenes (si el backend las envía)
     if (item.requerimientos && item.requerimientos.length > 0) {
       tieneImagenes = item.requerimientos.some((req: any) =>
         req.imagenes && req.imagenes.length > 0
       );
     }
 
+    // ============================================================
+    // TRADUCIR EL ID DEL ÁREA A SU NOMBRE USANDO EL MAPA
+    // ============================================================
+    const areaNombre = this.areaMap[item.areaId] || 'Área no definida';
+
     return {
       id: item.id,
       numeroSolicitud: item.codigo,
       objetivo: item.solicitudProceso || 'Sin nombre',
       solicitante: item.empleadoNombre || 'Desconocido',
-      area: item.areaId?.toString() || 'N/A',
+      area: areaNombre,
       estado: item.estado?.nombre || 'Pendiente',
       tipo: item.tipoSolicitud?.nombre || 'N/A',
       fechaCreacion: new Date(item.fechaCreacion),
