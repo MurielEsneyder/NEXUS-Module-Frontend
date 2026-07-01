@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { SolicitudesDesarrolloService } from '../../services/solicitudes-desarrollo.service';
+import { SecurityService } from '../../../../commons/services/security.service';
+import { HttpClient } from '@angular/common/http';
 
 // ============================================================
 // INTERFACES
@@ -66,13 +68,13 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   requerimientoAEliminar: { id: string; index: number; tipo: 'funcional' | 'noFuncional' } | null = null;
 
   // ============================================================
-  // DATOS DEL COLABORADOR (QUEMADOS PARA PRUEBAS)
+  // DATOS DEL COLABORADOR (SE ACTUALIZARÁN CON LOS LOGS)
   // ============================================================
   datosColaborador = {
-    nombreCompleto: 'Julian Calambas',
-    correo: 'julian.calambas@asmetsalud.com',
-    cargo: 'Desarrollador Senior',
-    sede: 'Bogotá'
+    nombreCompleto: 'Cargando...',
+    correo: 'Cargando...',
+    cargo: 'Cargando...',
+    sede: 'Cargando...'
   };
 
   fechaIngreso = new Date().toISOString().split('T')[0];
@@ -139,7 +141,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   ];
 
   // ============================================================
-  // MAPA DE ÁREAS (PARA TRADUCIR IDs A NOMBRES)
+  // MAPA DE ÁREAS
   // ============================================================
   private areaMap: { [key: number]: string } = {
     1: 'Transformación Digital',
@@ -152,15 +154,95 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   // CONSTRUCTOR
   // ============================================================
-  constructor(private solicitudesService: SolicitudesDesarrolloService) {}
+  constructor(
+    private solicitudesService: SolicitudesDesarrolloService,
+    private securityService: SecurityService,
+    private http: HttpClient
+  ) {}
 
   // ============================================================
   // NG ON INIT
   // ============================================================
   ngOnInit(): void {
+    this.obtenerDatosColaborador();
+  }
+
+  // ============================================================
+  // OBTENER DATOS DEL COLABORADOR (CON LOGS DETALLADOS)
+  // ============================================================
+  private obtenerDatosColaborador(): void {
+  console.log('🔍 Iniciando obtención de datos del colaborador...');
+
+  // ============================================================
+  // PASO 1: Intentar desde sessionStorage (getAfilInfo)
+  // ============================================================
+  try {
+    const afilInfo = this.securityService.getAfilInfo();
+    console.log('📦 getAfilInfo():', afilInfo);
+    
+    if (afilInfo) {
+      // Obtener el nombre desde el token si no está en getAfilInfo
+      const token = this.securityService.getLocalToken();
+      const nombre = afilInfo.nombreCompleto || token?.sub || 'Usuario';
+      
+      this.datosColaborador = {
+        nombreCompleto: nombre,
+        correo: (afilInfo as any).email || (afilInfo as any).correo || nombre + '@asmetsalud.com',
+        cargo: (afilInfo as any).cargo || 'Colaborador',
+        sede: (afilInfo as any).sede || 'Sede Principal'
+      };
+      
+      console.log('✅ Datos combinados (sessionStorage + token):', this.datosColaborador);
+      console.log('   📌 NOTA: Si cargo/sede son genéricos, el token no los contiene');
+      this.continuarInicializacion();
+      return;
+    }
+  } catch (e) {
+    console.warn('⚠️ Error en getAfilInfo():', e);
+  }
+
+  // ============================================================
+  // PASO 2: Fallback desde el token
+  // ============================================================
+  try {
+    const token = this.securityService.getLocalToken();
+    if (token && token.sub) {
+      this.datosColaborador = {
+        nombreCompleto: token.sub,
+        correo: token.sub + '@asmetsalud.com',
+        cargo: 'Colaborador',
+        sede: 'Sede Principal'
+      };
+      console.log('✅ Datos desde el token:', this.datosColaborador);
+      this.continuarInicializacion();
+      return;
+    }
+  } catch (e) {
+    console.warn('⚠️ Error al leer el token:', e);
+  }
+
+  // ============================================================
+  // PASO 3: Fallback final
+  // ============================================================
+  console.warn('⚠️ No se pudieron obtener datos, usando fallback');
+  this.datosColaborador = {
+    nombreCompleto: 'Usuario',
+    correo: 'usuario@asmetsalud.com',
+    cargo: 'Colaborador',
+    sede: 'Sede Principal'
+  };
+  this.continuarInicializacion();
+}
+
+  // ============================================================
+  // CONTINUAR INICIALIZACIÓN
+  // ============================================================
+  private continuarInicializacion(): void {
+    console.log('');
+    console.log('🚀 CONTINUANDO INICIALIZACIÓN DEL COMPONENTE');
+    console.log('📋 Datos finales del colaborador:', this.datosColaborador);
     this.solicitudActual = this.inicializarNuevaSolicitud();
     this.cargarSolicitudes();
-    console.log('✅ Componente inicializado con datos del colaborador:', this.datosColaborador);
   }
 
   // ============================================================
@@ -181,27 +263,22 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // CARGAR SOLICITUDES DESDE EL BACKEND
+  // CARGAR SOLICITUDES
   // ============================================================
   cargarSolicitudes(): void {
+    console.log('📥 Cargando solicitudes desde el backend...');
     this.solicitudesService.obtenerTodas().subscribe({
       next: (data: any) => {
+        console.log('📡 Respuesta del backend:', data);
         if (data && data.content) {
           this.solicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
           this.solicitudesFiltradas = [...this.solicitudes];
+          console.log('✅ Solicitudes cargadas:', this.solicitudes.length);
         } else {
           this.solicitudes = [];
           this.solicitudesFiltradas = [];
+          console.warn('⚠️ No hay solicitudes en la respuesta');
         }
-        console.log('✅ Solicitudes cargadas:', this.solicitudes.length);
-        
-        // ============================================================
-        // LOGS CON BACKTICKS (CORREGIDO)
-        // ============================================================
-        console.log('📊 Total requerimientos por solicitud:');
-        this.solicitudes.forEach(s => {
-          console.log(`  ${s.numeroSolicitud}: ${s.totalRequerimientos} requerimientos`);
-        });
       },
       error: (err: any) => {
         console.error('❌ Error al cargar solicitudes:', err);
@@ -212,7 +289,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // MAPEAR SOLICITUD DESDE EL BACKEND (ÁREA TRADUCIDA)
+  // MAPEAR SOLICITUD
   // ============================================================
   private mapearSolicitud(item: any): SolicitudDesarrollo {
     let tieneImagenes = false;
@@ -228,9 +305,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       );
     }
 
-    // ============================================================
-    // TRADUCIR EL ID DEL ÁREA A SU NOMBRE USANDO EL MAPA
-    // ============================================================
     const areaNombre = this.areaMap[item.areaId] || 'Área no definida';
 
     return {
@@ -288,7 +362,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.solicitudSeleccionada = null;
   }
 
-  
+  editarSolicitud(solicitud: SolicitudDesarrollo): void {
+    console.log('✏️ Editar solicitud:', solicitud.numeroSolicitud);
+  }
+
   eliminarSolicitud(solicitud: SolicitudDesarrollo): void {
     if (confirm(`¿Está seguro que desea eliminar la solicitud ${solicitud.numeroSolicitud}?`)) {
       if (solicitud.id) {
@@ -361,8 +438,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     }
 
     switch (this.pasoActivo) {
-      case 0:
-        break;
       case 1:
         if (!this.validarPasoGeneral()) {
           this.mostrarErroresGeneral();
@@ -377,13 +452,13 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         break;
       case 3:
         if (!this.validarRequerimientosFuncionales()) {
-          alert('⚠️ Debe agregar al menos un requerimiento funcional antes de continuar.');
+          alert('⚠️ Debe agregar al menos un requerimiento funcional.');
           return;
         }
         break;
       case 4:
         if (!this.validarRequerimientosNoFuncionales()) {
-          alert('⚠️ Debe agregar al menos un requerimiento no funcional antes de continuar.');
+          alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
           return;
         }
         break;
@@ -591,6 +666,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // GUARDAR SOLICITUD
   // ============================================================
   guardarSolicitud(): void {
+    console.log('📤 Guardando solicitud...');
+    
     if (!this.validarPasoGeneral()) {
       this.mostrarErroresGeneral();
       return;

@@ -6,10 +6,6 @@ import { Observable, BehaviorSubject } from 'rxjs';
 import { AfilInfo } from './constants';
 import { localStorageMock } from './local-storage.mock';
 
-// ============================================================
-// INTERFACES EXPORTADAS
-// ============================================================
-
 export interface tokenData {
   jti: string;
   iat: number;
@@ -20,6 +16,9 @@ export interface tokenData {
   localTime: number;
   key: string;
   origin: any;
+  cargo?: string;
+  sede?: string;
+  email?: string;
 }
 
 export interface ldapUsrData {
@@ -45,12 +44,9 @@ export interface ColaboradorData {
   sede?: string;
 }
 
-// ============================================================
-// SERVICIO
-// ============================================================
-
 @Injectable({ providedIn: 'root' })
 export class SecurityService {
+
   private authKey: any;
   private usrOnSession: usrSession = { status: false, username: '', context: null };
   public userSession: BehaviorSubject<usrSession> = new BehaviorSubject<usrSession>(this.usrOnSession);
@@ -78,9 +74,8 @@ export class SecurityService {
   }
 
   // ============================================================
-  // MÉTODOS DE AUTENTICACIÓN
+  // MÉTODOS EXISTENTES
   // ============================================================
-
   public requestAuth(pass: string): Observable<Object> {
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     return this.http.post(environment.auth, {}, { headers });
@@ -116,10 +111,6 @@ export class SecurityService {
     this.userSession.next(this.usrOnSession);
     sessionStorage.clear();
   }
-
-  // ============================================================
-  // MÉTODOS DE TOKEN
-  // ============================================================
 
   public setLocalAuthKey(mode: string, key: string = ''): void {
     this.authKey = mode + ' ' + key;
@@ -162,33 +153,69 @@ export class SecurityService {
   }
 
   // ============================================================
-  // AFIL INFO (sessionStorage)
+  // 🔥 AFIL INFO CON CORRECCIÓN DE NOMBRE COMPLETO
   // ============================================================
-
   public setAfilInfo(info: AfilInfo): void {
-    info.nombreCompleto =
-      (info.nombre1 || '') +
-      ' ' +
-      (info.nombre2 || '') +
-      ' ' +
-      (info.apellido1 || '') +
-      ' ' +
-      (info.apellido2 || '');
-    info.nombreCompleto = info.nombreCompleto.replace('undefined', '').replace('  ', ' ').trim();
-    sessionStorage.setItem('usrAfilInfo', btoa(JSON.stringify(info)));
+    // ============================================================
+    // SI YA TIENE NOMBRE COMPLETO, MANTENERLO
+    // ============================================================
+    if (info.nombreCompleto && info.nombreCompleto.trim() !== '') {
+      sessionStorage.setItem("usrAfilInfo", btoa(JSON.stringify(info)));
+      return;
+    }
+
+    // Si no tiene nombre completo, construirlo desde los componentes
+    info.nombreCompleto = info.nombre1 + ' ' + info.nombre2 + ' ' + info.apellido1 + ' ' + info.apellido2;
+    info.nombreCompleto = info.nombreCompleto.replace('undefined', '').replace("  ", " ").trim();
+    sessionStorage.setItem("usrAfilInfo", btoa(JSON.stringify(info)));
   }
 
   public getAfilInfo(): AfilInfo {
-    const y = sessionStorage.getItem('usrAfilInfo') || '';
+    const y = sessionStorage.getItem("usrAfilInfo") || '';
     return JSON.parse(atob(y));
   }
 
   // ============================================================
-  // OBTENER DATOS DEL COLABORADOR DESDE EL BACKEND
+  // NUEVOS MÉTODOS PARA OBTENER DATOS DEL COLABORADOR
   // ============================================================
+  public getNombreCompleto(): string {
+    const token = this.getLocalToken();
+    return token?.sub || 'Usuario';
+  }
 
-  public obtenerDatosColaborador(): Observable<ColaboradorData> {
-    const url = environment.services + '/colaborador/actual';
-    return this.http.get<ColaboradorData>(url);
+  public getEmail(): string {
+    const token = this.getLocalToken();
+    return token?.email || token?.sub + '@asmetsalud.com' || 'usuario@asmetsalud.com';
+  }
+
+  public getCargo(): string {
+    const token = this.getLocalToken();
+    return token?.cargo || 'Colaborador';
+  }
+
+  public getSede(): string {
+    const token = this.getLocalToken();
+    return token?.sede || 'Sede Principal';
+  }
+
+  public getDatosColaborador(): ColaboradorData {
+    const token = this.getLocalToken();
+    return {
+      nombreCompleto: token?.sub || 'Usuario',
+      email: token?.email || token?.sub + '@asmetsalud.com' || 'usuario@asmetsalud.com',
+      cargo: token?.cargo || 'Colaborador',
+      sede: token?.sede || 'Sede Principal'
+    };
+  }
+
+  public hasRole(role: string): boolean {
+    const token = this.getLocalToken();
+    if (!token) return false;
+    const roles = token.aud || token.roles || [];
+    return roles.includes(role);
+  }
+
+  public hasAnyRole(roles: string[]): boolean {
+    return roles.some(role => this.hasRole(role));
   }
 }
