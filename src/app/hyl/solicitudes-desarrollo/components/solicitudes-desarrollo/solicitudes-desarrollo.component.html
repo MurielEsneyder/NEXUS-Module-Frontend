@@ -463,12 +463,21 @@
 </div>
 
 <!-- Modal Éxito -->
-<div class="overlay-modal" *ngIf="mostrarModalExito"></div>
+<div class="overlay-modal" *ngIf="mostrarModalExito" (click)="cerrarModalExito()"></div>
 <div class="modal-exito" *ngIf="mostrarModalExito">
   <div class="modal-exito-contenido">
-    <button class="btn-cerrar-exito" (click)="cerrarModalExito()">X</button>
-    <p class="exito-titulo">Agradecemos el diligenciamiento de la Solicitud de Desarrollo.</p>
-    <p class="exito-subtitulo">Su solicitud ha sido recibida y se dará inicio al proceso de gestión correspondiente.</p>
-    <p class="exito-numero">Número de Solicitud de Desarrollo: {{ numeroSolicitudExito }}</p>
+    <div class="modal-exito-header">
+      <button class="btn-cerrar-exito" (click)="cerrarModalExito()">✕</button>
+    </div>
+    <div class="modal-exito-body">
+      <div class="icono-exito">✅</div>
+      <p class="exito-titulo">¡Agradecemos el diligenciamiento de la Solicitud de Desarrollo!</p>
+      <p class="exito-subtitulo">Su solicitud ha sido recibida y se dará inicio al proceso de gestión correspondiente.</p>
+      <div class="exito-numero-container">
+        <span class="exito-numero-label">Número de Solicitud:</span>
+        <span class="exito-numero">{{ numeroSolicitudExito }}</span>
+      </div>
+      <button class="btn-exito-aceptar" (click)="cerrarModalExito()">Aceptar</button>
+    </div>
   </div>
 </div>

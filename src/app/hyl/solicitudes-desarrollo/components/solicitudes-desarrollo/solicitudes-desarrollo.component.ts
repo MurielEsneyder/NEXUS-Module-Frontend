@@ -39,6 +39,12 @@ export interface SolicitudDesarrollo {
   tieneImagenes?: boolean;
   totalRequerimientos?: number;
   observaciones?: string;
+  // 🔥 NUEVOS CAMPOS
+  proceso?: string;
+  vicepresidencia?: string;
+  correo?: string;
+  cargo?: string;
+  sede?: string;
 }
 
 @Component({
@@ -244,7 +250,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       fechaCreacion: new Date(),
       requerimientosFuncionales: [],
       requerimientosNoFuncionales: [],
-      cargosImpactados: []
+      cargosImpactados: [],
+      correo: this.datosColaborador.correo,
+      cargo: this.datosColaborador.cargo,
+      sede: this.datosColaborador.sede
     };
   }
 
@@ -273,7 +282,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // MAPEAR SOLICITUD
+  // MAPEAR SOLICITUD (ACTUALIZADO CON NUEVOS CAMPOS)
   // ============================================================
   private mapearSolicitud(item: any): SolicitudDesarrollo {
     let tieneImagenes = false;
@@ -291,9 +300,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     const areaNombre = this.areaMap[item.areaId] || 'Área no definida';
 
-    // ============================================================
-    // MAPEAR REQUERIMIENTOS
-    // ============================================================
+    // Mapear requerimientos
     const reqFuncionales: RequerimientoItem[] = [];
     const reqNoFuncionales: RequerimientoItem[] = [];
 
@@ -317,6 +324,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       });
     }
 
+    // Obtener proceso y vicepresidencia
+    const procesoNombre = item.proceso?.nombre || item.procesoNombre || 'No especificado';
+    const vicepresidenciaNombre = item.macroproceso?.nombre || item.vicepresidenciaNombre || 'No especificada';
+
     return {
       id: item.id,
       numeroSolicitud: item.codigo,
@@ -333,7 +344,13 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       tieneImagenes: tieneImagenes,
       observaciones: item.observaciones || '',
       requerimientosFuncionales: reqFuncionales,
-      requerimientosNoFuncionales: reqNoFuncionales
+      requerimientosNoFuncionales: reqNoFuncionales,
+      // NUEVOS CAMPOS
+      proceso: procesoNombre,
+      vicepresidencia: vicepresidenciaNombre,
+      correo: item.empleadoCorreo || 'No registrado',
+      cargo: item.empleadoCargo || 'No registrado',
+      sede: item.empleadoSede || 'No registrada'
     };
   }
 
@@ -705,12 +722,19 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   // GUARDAR SOLICITUD
   // ============================================================
-  guardarSolicitud(): void {
+  // ============================================================
+// GUARDAR SOLICITUD (CORREGIDO)
+// ============================================================
+guardarSolicitud(): void {
+  console.log('🔍 Iniciando guardado de solicitud...');
+  
+  // Validar paso general
   if (!this.validarPasoGeneral()) {
     this.mostrarErroresGeneral();
     return;
   }
 
+  // Validar impacto
   if (!this.validarImpacto()) {
     this.errorImpacto = true;
     alert('⚠️ Debe describir el impacto (mínimo 10 caracteres).');
@@ -718,36 +742,38 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     return;
   }
 
+  // Validar requerimientos funcionales
   if (!this.validarRequerimientosFuncionales()) {
     alert('⚠️ Debe agregar al menos un requerimiento funcional.');
     this.pasoActivo = 3;
     return;
   }
 
+  // Validar requerimientos no funcionales
   if (!this.validarRequerimientosNoFuncionales()) {
     alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
     this.pasoActivo = 4;
     return;
   }
 
+  // Mapear IDs
   const procesoId = this.mapearProcesoId(this.formGeneral.proceso);
   const areaId = this.mapearAreaId(this.formGeneral.area);
   const macroprocesoId = this.mapearMacroprocesoId(this.formGeneral.vicepresidencia);
   const tipoSolicitudId = this.formGeneral.tipoSolicitud === 'Proyecto' ? 1 : 2;
 
+  // Validar IDs
   if (procesoId <= 0 || areaId <= 0 || macroprocesoId <= 0) {
     console.error('❌ IDs inválidos:', { procesoId, areaId, macroprocesoId });
     alert('Por favor selecciona valores válidos para proceso, área y vicepresidencia.');
     return;
   }
 
+  // Construir payload
   const payload = {
     empleadoDocumento: '123456789',
     empleadoNombre: this.datosColaborador.nombreCompleto || 'Usuario',
     empleadoCorreo: this.datosColaborador.correo || 'usuario@asmetsalud.com',
-    // ============================================================
-    // 🔥 ASIGNAR VALORES POR DEFECTO SI ESTÁN VACÍOS
-    // ============================================================
     empleadoCargo: this.datosColaborador.cargo || 'Colaborador',
     empleadoSede: this.datosColaborador.sede || 'Sede Principal',
     solicitudProceso: this.formGeneral.solicitudProceso || this.solicitudActual.objetivo,
@@ -774,15 +800,30 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   console.log('📤 Enviando solicitud:', payload);
 
+  // Mostrar loading
+  const loadingMsg = '⏳ Enviando solicitud...';
+  console.log(loadingMsg);
+
+  // Enviar solicitud
   this.solicitudesService.crearSolicitud(payload).subscribe({
     next: (response: any) => {
-      console.log('✅ Solicitud creada:', response);
-      this.numeroSolicitudExito = response.codigo || 'SD_001';
+      console.log('✅ Solicitud creada exitosamente:', response);
+      
+      // Asignar número de solicitud
+      this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
+      
+      // Mostrar modal de éxito
       this.mostrarModalExito = true;
+      console.log('✅ Modal de éxito mostrado');
+      
+      // Recargar solicitudes
       this.cargarSolicitudes();
     },
     error: (err: any) => {
       console.error('❌ Error al crear solicitud:', err);
+      
+      // Mostrar detalles del error
+      let errorMsg = 'Error al guardar la solicitud.';
       if (err.error) {
         console.error('📋 Detalles del error:', err.error);
         if (err.error.errors) {
@@ -790,10 +831,22 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           Object.keys(err.error.errors).forEach(key => {
             console.error(`  ${key}: ${err.error.errors[key]}`);
           });
+          errorMsg = Object.values(err.error.errors).join('\n');
+        } else if (err.error.message) {
+          errorMsg = err.error.message;
         }
       }
-      this.numeroSolicitudExito = 'SD_' + String(this.solicitudes.length + 1).padStart(3, '0');
+      
+      // Mostrar error
+      alert(`❌ ${errorMsg}`);
+      
+      // Asignar número temporal
+      this.numeroSolicitudExito = `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
+      
+      // Mostrar modal de éxito aunque haya error (para no perder el progreso)
       this.mostrarModalExito = true;
+      
+      // Recargar solicitudes
       this.cargarSolicitudes();
     }
   });
@@ -828,147 +881,185 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // PDF - GENERAR Y DESCARGAR (COMPLETO)
+  // PDF - GENERAR Y DESCARGAR (COMPLETO Y CORREGIDO)
   // ============================================================
   descargarSolicitudPDF(solicitud: SolicitudDesarrollo): void {
-    console.log('📄 Generando PDF para:', solicitud.numeroSolicitud);
+    try {
+      console.log('📄 Generando PDF para:', solicitud.numeroSolicitud);
+      console.log('📄 Datos de la solicitud:', solicitud);
 
-    const doc = new jsPDF();
+      const doc = new jsPDF();
 
-    // Encabezado principal (Banda de color)
-    doc.setFillColor(59, 175, 182);
-    doc.rect(0, 0, 210, 25, 'F');
+      // ============================================================
+      // ENCABEZADO PRINCIPAL
+      // ============================================================
+      doc.setFillColor(59, 175, 182);
+      doc.rect(0, 0, 210, 25, 'F');
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ASMET SALUD - REQUERIMIENTO DE DESARROLLO', 10, 16);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ASMET SALUD - REQUERIMIENTO DE DESARROLLO', 10, 16);
 
-    // Fecha y número de solicitud
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    let fechaStr = 'No registrada';
-    if (solicitud.fechaCreacion) {
-      const fechaObj = new Date(solicitud.fechaCreacion);
-      if (!isNaN(fechaObj.getTime())) {
-        fechaStr = fechaObj.toLocaleDateString();
+      // Fecha y número de solicitud
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      let fechaStr = 'No registrada';
+      if (solicitud.fechaCreacion) {
+        const fechaObj = new Date(solicitud.fechaCreacion);
+        if (!isNaN(fechaObj.getTime())) {
+          fechaStr = fechaObj.toLocaleDateString('es-CO', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+        }
       }
+      const headerRight = `Solicitud: ${solicitud.numeroSolicitud || 'N/A'}  |  Fecha: ${fechaStr}`;
+      doc.text(headerRight, 200, 16, { align: 'right' });
+
+      let yPos = 30;
+
+      // ============================================================
+      // TABLA 1: INFORMACIÓN DEL COLABORADOR (DATOS REALES)
+      // ============================================================
+      autoTable(doc, {
+        startY: yPos,
+        theme: 'plain',
+        styles: { cellPadding: 3, fontSize: 10, textColor: [0, 0, 0] },
+        headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+        head: [['INFORMACIÓN DEL COLABORADOR', '']],
+        body: [
+          [`Nombre: ${solicitud.solicitante || 'No registrado'}`, `Correo: ${solicitud.correo || 'No registrado'}`],
+          [`Cargo: ${solicitud.cargo || 'No registrado'}`, `Sede: ${solicitud.sede || 'No registrada'}`]
+        ],
+        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+      });
+      yPos += 5;
+
+      // ============================================================
+      // TABLA 2: INFORMACIÓN DE LA SOLICITUD (DATOS REALES)
+      // ============================================================
+      autoTable(doc, {
+        startY: yPos,
+        theme: 'plain',
+        styles: { cellPadding: 3, fontSize: 10, textColor: [0, 0, 0] },
+        headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+        head: [['INFORMACIÓN DE LA SOLICITUD', '']],
+        body: [
+          [`Proceso Solicitante: ${solicitud.proceso || 'No especificado'}`, `Área: ${solicitud.area || 'No especificada'}`],
+          [`Vicepresidencia: ${solicitud.vicepresidencia || 'No especificada'}`, `Tipo de Solicitud: ${solicitud.tipo || 'No especificada'}`],
+          [`Prioridad: ${solicitud.prioridad || 'No especificada'}`, `Estado: ${solicitud.estado || 'Pendiente'}`],
+          [`Coordinador: ${solicitud.coordinador || 'No asignado'}`, `Funcional Asignado: ${solicitud.funcionalAsignado || 'No asignado'}`]
+        ],
+        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+      });
+      yPos += 5;
+
+      // ============================================================
+      // TABLA 3: IMPACTO DEL REQUERIMIENTO
+      // ============================================================
+      const impactoTexto = solicitud.observaciones && solicitud.observaciones.trim() !== '' 
+        ? solicitud.observaciones 
+        : 'No se especificó impacto.';
+
+      autoTable(doc, {
+        startY: yPos,
+        theme: 'plain',
+        styles: { cellPadding: 3, fontSize: 10, textColor: [0, 0, 0] },
+        headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+        head: [['IMPACTO DEL REQUERIMIENTO']],
+        body: [[impactoTexto]],
+        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+      });
+      yPos += 5;
+
+      // ============================================================
+      // TABLA 4: REQUERIMIENTOS FUNCIONALES (CON DETALLES REALES)
+      // ============================================================
+      const reqFuncionales = (solicitud.requerimientosFuncionales || []).map((r: any) => [
+        r.id || 'N/A',
+        `Objetivo: ${r.descripcion || 'Sin descripción'}\nCargo Impactado: ${r.cargoImpactado || 'No especificado'}`,
+        `Detalle: ${r.detalle || 'Sin detalles'}`
+      ]);
+
+      if (reqFuncionales.length === 0) {
+        reqFuncionales.push(['N/A', 'No hay requerimientos funcionales registrados.', '']);
+      }
+
+      autoTable(doc, {
+        startY: yPos,
+        theme: 'plain',
+        styles: { cellPadding: 2, fontSize: 10, textColor: [0, 0, 0], lineWidth: 0.1, lineColor: [200, 200, 200] },
+        headStyles: { fillColor: [255, 255, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
+        head: [
+          [{ content: 'REQUERIMIENTOS FUNCIONALES', colSpan: 3, styles: { fillColor: [240, 240, 240], lineWidth: 0 } }],
+          ['ID', 'Objetivo / Cargo Impactado', 'Detalles']
+        ],
+        body: reqFuncionales,
+        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+      });
+      yPos += 5;
+
+      // ============================================================
+      // TABLA 5: REQUERIMIENTOS NO FUNCIONALES (CON DETALLES REALES)
+      // ============================================================
+      const reqNoFuncionales = (solicitud.requerimientosNoFuncionales || []).map((r: any) => [
+        r.id || 'N/A',
+        `Objetivo: ${r.descripcion || 'Sin descripción'}\nCargo Impactado: ${r.cargoImpactado || 'No especificado'}`,
+        `Detalle: ${r.detalle || 'Sin detalles'}`
+      ]);
+
+      if (reqNoFuncionales.length === 0) {
+        reqNoFuncionales.push(['N/A', 'No hay requerimientos no funcionales registrados.', '']);
+      }
+
+      autoTable(doc, {
+        startY: yPos,
+        theme: 'plain',
+        styles: { cellPadding: 2, fontSize: 10, textColor: [0, 0, 0], lineWidth: 0.1, lineColor: [200, 200, 200] },
+        headStyles: { fillColor: [255, 255, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
+        head: [
+          [{ content: 'REQUERIMIENTOS NO FUNCIONALES', colSpan: 3, styles: { fillColor: [240, 240, 240], lineWidth: 0 } }],
+          ['ID', 'Objetivo / Cargo Impactado', 'Detalles']
+        ],
+        body: reqNoFuncionales,
+        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+      });
+      yPos += 5;
+
+      // ============================================================
+      // TABLA 6: REQUISITOS DE SEGURIDAD
+      // ============================================================
+      autoTable(doc, {
+        startY: yPos,
+        theme: 'plain',
+        styles: { cellPadding: 2, fontSize: 9, textColor: [80, 80, 80] },
+        headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0], fontSize: 10 },
+        head: [['REQUISITOS DE SEGURIDAD']],
+        body: [[
+          `• Autentificación adecuada y control de accesos.\n` +
+          `• No uso de campos ocultos para información sensible.\n` +
+          `• Comprobación y validación de las entradas.\n` +
+          `• Control de límites de valores de salida.\n` +
+          `• Asegurar métodos de controles de seguridad privados/finales.\n` +
+          `• Evitar uso de datos reales de carácter personal en pruebas.`
+        ]],
+        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+      });
+
+      // ============================================================
+      // GUARDAR PDF
+      // ============================================================
+      const nombreArchivo = `Solicitud_Desarrollo_${solicitud.numeroSolicitud || new Date().getTime()}.pdf`;
+      doc.save(nombreArchivo);
+      
+      console.log('✅ PDF generado exitosamente:', nombreArchivo);
+
+    } catch (error) {
+      console.error('❌ E rror al generar PDF:', error);
+      alert('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.');
     }
-    const headerRight = `Solicitud: ${solicitud.numeroSolicitud || 'N/A'}  |  Fecha: ${fechaStr}`;
-    doc.text(headerRight, 200, 16, { align: 'right' });
-
-    let yPos = 30;
-
-    // Tabla: INFORMACIÓN DEL COLABORADOR
-    autoTable(doc, {
-      startY: yPos,
-      theme: 'plain',
-      styles: { cellPadding: 2, fontSize: 10, textColor: [0, 0, 0] },
-      headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
-      head: [['INFORMACIÓN DEL COLABORADOR', '']],
-      body: [
-        [`Nombre: ${solicitud.solicitante || 'No registrado'}`, `Correo: No registrado`],
-        [`Cargo: No registrado`, `Sede: No registrada`]
-      ],
-      didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
-    });
-    yPos += 5;
-
-    // Tabla: INFORMACIÓN DE LA SOLICITUD
-    autoTable(doc, {
-      startY: yPos,
-      theme: 'plain',
-      styles: { cellPadding: 2, fontSize: 10, textColor: [0, 0, 0] },
-      headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
-      head: [['INFORMACIÓN DE LA SOLICITUD', '']],
-      body: [
-        [`Proceso Solicitante: No especificado`, `Área: ${solicitud.area || 'No especificada'}`],
-        [`Vicepresidencia: No especificada`, `Tipo de Solicitud: ${solicitud.tipo || 'No especificada'}`]
-      ],
-      didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
-    });
-    yPos += 5;
-
-    // Tabla: IMPACTO DEL REQUERIMIENTO
-    autoTable(doc, {
-      startY: yPos,
-      theme: 'plain',
-      styles: { cellPadding: 3, fontSize: 10, textColor: [0, 0, 0] },
-      headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
-      head: [['IMPACTO DEL REQUERIMIENTO']],
-      body: [
-        [solicitud.observaciones && solicitud.observaciones.trim() !== '' ? solicitud.observaciones : 'Mejorará la eficiencia en la gestión...']
-      ],
-      didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
-    });
-    yPos += 5;
-
-    // Tabla: REQUERIMIENTOS FUNCIONALES
-    const reqFuncionales = (solicitud.requerimientosFuncionales || []).map((r: any) => [
-      r.id || 'N/A',
-      `Obj: ${r.descripcion || 'Sin descripción'}\nCargo: ${r.cargoImpactado || 'No especificado'}`,
-      r.detalle || 'Sin detalles'
-    ]);
-
-    if (reqFuncionales.length === 0) {
-      reqFuncionales.push(['N/A', 'No hay requerimientos funcionales registrados.', '']);
-    }
-
-    autoTable(doc, {
-      startY: yPos,
-      theme: 'plain',
-      styles: { cellPadding: 2, fontSize: 10, textColor: [0, 0, 0], lineWidth: 0.1, lineColor: [200, 200, 200] },
-      headStyles: { fillColor: [255, 255, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
-      head: [
-        [{ content: 'REQUERIMIENTOS FUNCIONALES', colSpan: 3, styles: { fillColor: [240, 240, 240], lineWidth: 0 } }],
-        ['ID', 'Objetivo / Cargo', 'Detalles y Adjuntos']
-      ],
-      body: reqFuncionales,
-      didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
-    });
-    yPos += 5;
-
-    // Tabla: REQUERIMIENTOS NO FUNCIONALES
-    const reqNoFuncionales = (solicitud.requerimientosNoFuncionales || []).map((r: any) => [
-      r.id || 'N/A',
-      `Obj: ${r.descripcion || 'Sin descripción'}\nCargo: ${r.cargoImpactado || 'No especificado'}`,
-      r.detalle || 'Sin detalles'
-    ]);
-
-    if (reqNoFuncionales.length === 0) {
-      reqNoFuncionales.push(['N/A', 'No hay requerimientos no funcionales registrados.', '']);
-    }
-
-    autoTable(doc, {
-      startY: yPos,
-      theme: 'plain',
-      styles: { cellPadding: 2, fontSize: 10, textColor: [0, 0, 0], lineWidth: 0.1, lineColor: [200, 200, 200] },
-      headStyles: { fillColor: [255, 255, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
-      head: [
-        [{ content: 'REQUERIMIENTOS NO FUNCIONALES', colSpan: 3, styles: { fillColor: [240, 240, 240], lineWidth: 0 } }],
-        ['ID', 'Objetivo / Cargo', 'Detalles y Adjuntos']
-      ],
-      body: reqNoFuncionales,
-      didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
-    });
-    yPos += 5;
-
-    // Tabla: REQUISITOS DE SEGURIDAD
-    autoTable(doc, {
-      startY: yPos,
-      theme: 'plain',
-      styles: { cellPadding: 2, fontSize: 9, textColor: [100, 100, 100] },
-      headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0], fontSize: 10 },
-      head: [['REQUISITOS DE SEGURIDAD']],
-      body: [
-        [`- Autentificación adecuada y control de accesos.\n- No uso de campos ocultos para información sensible.\n- Comprobación y validación de las entradas.\n- Control de límites de valores de salida.\n- Asegurar métodos de controles de seguridad privados/finales.\n- Evitar uso de datos reales de carácter personal en pruebas.`]
-      ],
-      didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
-    });
-
-    // Guardar PDF
-    const nombreArchivo = `Solicitud_Desarrollo_${solicitud.numeroSolicitud || new Date().getTime()}.pdf`;
-    doc.save(nombreArchivo);
   }
 
   esCandadoAbierto(solicitud: SolicitudDesarrollo): boolean {
