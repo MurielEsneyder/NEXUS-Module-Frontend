@@ -327,6 +327,49 @@
   color: #555;
 }
 
+/* ============================================================ */
+/* BOTÓN PDF */
+/* ============================================================ */
+.btn-pdf {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s;
+}
+
+.btn-pdf:hover {
+  background-color: #c82333;
+}
+
+.btn-pdf mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Para el botón en la tabla (más pequeño) */
+.btn-accion.btn-pdf {
+  background-color: #dc3545;
+  color: white;
+  padding: 4px 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-accion.btn-pdf:hover {
+  background-color: #c82333;
+}
+
 .btn-cerrar-modal:hover { background: #f0f0f0; }
 
 .campo-observaciones { margin-top: 12px; }

@@ -32,13 +32,12 @@
   </div>
 
   <!-- ============================================================ -->
-  <!-- BANDEJA DE SOLICITUDES (CON BOTONES ALINEADOS) -->
+  <!-- BANDEJA DE SOLICITUDES -->
   <!-- ============================================================ -->
   <div *ngIf="vistaActual === 'bandeja'" class="bandeja-section">
     
     <div class="bandeja-header">
       <div class="bandeja-header-left">
-        <!-- Botón Volver con clase específica -->
         <button class="btn-volver-bandeja" (click)="volverPrincipal()" title="Volver al inicio">
           <mat-icon>arrow_back</mat-icon>
           <span>Volver</span>
@@ -105,9 +104,11 @@
                 {{ solicitud.estado }}
               </span>
             </td>
+            <!-- ✅ COLUMNA ADJUNTOS: AHORA ES UN BOTÓN PDF -->
             <td class="text-center">
-              <span *ngIf="solicitud.tieneImagenes" title="Tiene imágenes adjuntas" class="icono-imagen">🖼️</span>
-              <span *ngIf="!solicitud.tieneImagenes" title="Sin imágenes adjuntas" class="icono-sin-imagen">📄</span>
+              <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
+                📄 Descargar PDF
+              </button>
             </td>
             <td class="acciones-cell">
               <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️‍🗨️</button>
