@@ -39,7 +39,6 @@ export interface SolicitudDesarrollo {
   tieneImagenes?: boolean;
   totalRequerimientos?: number;
   observaciones?: string;
-  // 🔥 NUEVOS CAMPOS
   proceso?: string;
   vicepresidencia?: string;
   correo?: string;
@@ -55,9 +54,10 @@ export interface SolicitudDesarrollo {
 export class SolicitudesDesarrolloComponent implements OnInit {
 
   // ============================================================
-  // VARIABLES DE ESTADO
+  // VARIABLES DE ESTADO - CORREGIDO
   // ============================================================
-  vistaActual: 'principal' | 'bandeja' | 'wizard' = 'principal';
+  // ✅ CAMBIADO: usar string en lugar de tipo literal estricto
+  vistaActual: string = 'principal';
   pasoActivo = 0;
   mostrarModalInf = false;
   mostrarModalEliminar = false;
@@ -282,7 +282,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // MAPEAR SOLICITUD (ACTUALIZADO CON NUEVOS CAMPOS)
+  // MAPEAR SOLICITUD
   // ============================================================
   private mapearSolicitud(item: any): SolicitudDesarrollo {
     let tieneImagenes = false;
@@ -300,7 +300,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     const areaNombre = this.areaMap[item.areaId] || 'Área no definida';
 
-    // Mapear requerimientos
     const reqFuncionales: RequerimientoItem[] = [];
     const reqNoFuncionales: RequerimientoItem[] = [];
 
@@ -324,7 +323,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       });
     }
 
-    // Obtener proceso y vicepresidencia
     const procesoNombre = item.proceso?.nombre || item.procesoNombre || 'No especificado';
     const vicepresidenciaNombre = item.macroproceso?.nombre || item.vicepresidenciaNombre || 'No especificada';
 
@@ -345,7 +343,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       observaciones: item.observaciones || '',
       requerimientosFuncionales: reqFuncionales,
       requerimientosNoFuncionales: reqNoFuncionales,
-      // NUEVOS CAMPOS
       proceso: procesoNombre,
       vicepresidencia: vicepresidenciaNombre,
       correo: item.empleadoCorreo || 'No registrado',
@@ -382,8 +379,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ACCIONES DE BANDEJA
   // ============================================================
   verDetalle(solicitud: SolicitudDesarrollo): void {
+    console.log('👁️ Ver detalle de:', solicitud);
     this.solicitudSeleccionada = solicitud;
     this.mostrarModalDetalle = true;
+    console.log('✅ Modal abierto:', this.mostrarModalDetalle);
   }
 
   cerrarModalDetalle(): void {
@@ -722,135 +721,104 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   // GUARDAR SOLICITUD
   // ============================================================
-  // ============================================================
-// GUARDAR SOLICITUD (CORREGIDO)
-// ============================================================
-guardarSolicitud(): void {
-  console.log('🔍 Iniciando guardado de solicitud...');
-  
-  // Validar paso general
-  if (!this.validarPasoGeneral()) {
-    this.mostrarErroresGeneral();
-    return;
-  }
-
-  // Validar impacto
-  if (!this.validarImpacto()) {
-    this.errorImpacto = true;
-    alert('⚠️ Debe describir el impacto (mínimo 10 caracteres).');
-    this.pasoActivo = 2;
-    return;
-  }
-
-  // Validar requerimientos funcionales
-  if (!this.validarRequerimientosFuncionales()) {
-    alert('⚠️ Debe agregar al menos un requerimiento funcional.');
-    this.pasoActivo = 3;
-    return;
-  }
-
-  // Validar requerimientos no funcionales
-  if (!this.validarRequerimientosNoFuncionales()) {
-    alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
-    this.pasoActivo = 4;
-    return;
-  }
-
-  // Mapear IDs
-  const procesoId = this.mapearProcesoId(this.formGeneral.proceso);
-  const areaId = this.mapearAreaId(this.formGeneral.area);
-  const macroprocesoId = this.mapearMacroprocesoId(this.formGeneral.vicepresidencia);
-  const tipoSolicitudId = this.formGeneral.tipoSolicitud === 'Proyecto' ? 1 : 2;
-
-  // Validar IDs
-  if (procesoId <= 0 || areaId <= 0 || macroprocesoId <= 0) {
-    console.error('❌ IDs inválidos:', { procesoId, areaId, macroprocesoId });
-    alert('Por favor selecciona valores válidos para proceso, área y vicepresidencia.');
-    return;
-  }
-
-  // Construir payload
-  const payload = {
-    empleadoDocumento: '123456789',
-    empleadoNombre: this.datosColaborador.nombreCompleto || 'Usuario',
-    empleadoCorreo: this.datosColaborador.correo || 'usuario@asmetsalud.com',
-    empleadoCargo: this.datosColaborador.cargo || 'Colaborador',
-    empleadoSede: this.datosColaborador.sede || 'Sede Principal',
-    solicitudProceso: this.formGeneral.solicitudProceso || this.solicitudActual.objetivo,
-    procesoId: procesoId,
-    areaId: areaId,
-    macroprocesoId: macroprocesoId,
-    tipoSolicitudId: tipoSolicitudId,
-    estadoId: 2,
-    observaciones: this.formGeneral.observacion || '',
-    impacto: this.impactoTexto,
-    requerimientos: [
-      ...(this.solicitudActual.requerimientosFuncionales || []).map((req: RequerimientoItem) => ({
-        tipoRequerimiento: 0,
-        objetivo: req.descripcion,
-        detalle: req.descripcion
-      })),
-      ...(this.solicitudActual.requerimientosNoFuncionales || []).map((req: RequerimientoItem) => ({
-        tipoRequerimiento: 1,
-        objetivo: req.descripcion,
-        detalle: req.descripcion
-      }))
-    ]
-  };
-
-  console.log('📤 Enviando solicitud:', payload);
-
-  // Mostrar loading
-  const loadingMsg = '⏳ Enviando solicitud...';
-  console.log(loadingMsg);
-
-  // Enviar solicitud
-  this.solicitudesService.crearSolicitud(payload).subscribe({
-    next: (response: any) => {
-      console.log('✅ Solicitud creada exitosamente:', response);
-      
-      // Asignar número de solicitud
-      this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
-      
-      // Mostrar modal de éxito
-      this.mostrarModalExito = true;
-      console.log('✅ Modal de éxito mostrado');
-      
-      // Recargar solicitudes
-      this.cargarSolicitudes();
-    },
-    error: (err: any) => {
-      console.error('❌ Error al crear solicitud:', err);
-      
-      // Mostrar detalles del error
-      let errorMsg = 'Error al guardar la solicitud.';
-      if (err.error) {
-        console.error('📋 Detalles del error:', err.error);
-        if (err.error.errors) {
-          console.error('📋 Errores de validación:');
-          Object.keys(err.error.errors).forEach(key => {
-            console.error(`  ${key}: ${err.error.errors[key]}`);
-          });
-          errorMsg = Object.values(err.error.errors).join('\n');
-        } else if (err.error.message) {
-          errorMsg = err.error.message;
-        }
-      }
-      
-      // Mostrar error
-      alert(`❌ ${errorMsg}`);
-      
-      // Asignar número temporal
-      this.numeroSolicitudExito = `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
-      
-      // Mostrar modal de éxito aunque haya error (para no perder el progreso)
-      this.mostrarModalExito = true;
-      
-      // Recargar solicitudes
-      this.cargarSolicitudes();
+  guardarSolicitud(): void {
+    console.log('🔍 Iniciando guardado de solicitud...');
+    
+    if (!this.validarPasoGeneral()) {
+      this.mostrarErroresGeneral();
+      return;
     }
-  });
-}
+
+    if (!this.validarImpacto()) {
+      this.errorImpacto = true;
+      alert('⚠️ Debe describir el impacto (mínimo 10 caracteres).');
+      this.pasoActivo = 2;
+      return;
+    }
+
+    if (!this.validarRequerimientosFuncionales()) {
+      alert('⚠️ Debe agregar al menos un requerimiento funcional.');
+      this.pasoActivo = 3;
+      return;
+    }
+
+    if (!this.validarRequerimientosNoFuncionales()) {
+      alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
+      this.pasoActivo = 4;
+      return;
+    }
+
+    const procesoId = this.mapearProcesoId(this.formGeneral.proceso);
+    const areaId = this.mapearAreaId(this.formGeneral.area);
+    const macroprocesoId = this.mapearMacroprocesoId(this.formGeneral.vicepresidencia);
+    const tipoSolicitudId = this.formGeneral.tipoSolicitud === 'Proyecto' ? 1 : 2;
+
+    if (procesoId <= 0 || areaId <= 0 || macroprocesoId <= 0) {
+      console.error('❌ IDs inválidos:', { procesoId, areaId, macroprocesoId });
+      alert('Por favor selecciona valores válidos para proceso, área y vicepresidencia.');
+      return;
+    }
+
+    const payload = {
+      empleadoDocumento: '123456789',
+      empleadoNombre: this.datosColaborador.nombreCompleto || 'Usuario',
+      empleadoCorreo: this.datosColaborador.correo || 'usuario@asmetsalud.com',
+      empleadoCargo: this.datosColaborador.cargo || 'Colaborador',
+      empleadoSede: this.datosColaborador.sede || 'Sede Principal',
+      solicitudProceso: this.formGeneral.solicitudProceso || this.solicitudActual.objetivo,
+      procesoId: procesoId,
+      areaId: areaId,
+      macroprocesoId: macroprocesoId,
+      tipoSolicitudId: tipoSolicitudId,
+      estadoId: 2,
+      observaciones: this.formGeneral.observacion || '',
+      impacto: this.impactoTexto,
+      requerimientos: [
+        ...(this.solicitudActual.requerimientosFuncionales || []).map((req: RequerimientoItem) => ({
+          tipoRequerimiento: 0,
+          objetivo: req.descripcion,
+          detalle: req.descripcion
+        })),
+        ...(this.solicitudActual.requerimientosNoFuncionales || []).map((req: RequerimientoItem) => ({
+          tipoRequerimiento: 1,
+          objetivo: req.descripcion,
+          detalle: req.descripcion
+        }))
+      ]
+    };
+
+    console.log('📤 Enviando solicitud:', payload);
+
+    this.solicitudesService.crearSolicitud(payload).subscribe({
+      next: (response: any) => {
+        console.log('✅ Solicitud creada exitosamente:', response);
+        this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
+        this.mostrarModalExito = true;
+        console.log('✅ Modal de éxito mostrado');
+        this.cargarSolicitudes();
+      },
+      error: (err: any) => {
+        console.error('❌ Error al crear solicitud:', err);
+        let errorMsg = 'Error al guardar la solicitud.';
+        if (err.error) {
+          console.error('📋 Detalles del error:', err.error);
+          if (err.error.errors) {
+            console.error('📋 Errores de validación:');
+            Object.keys(err.error.errors).forEach(key => {
+              console.error(`  ${key}: ${err.error.errors[key]}`);
+            });
+            errorMsg = Object.values(err.error.errors).join('\n');
+          } else if (err.error.message) {
+            errorMsg = err.error.message;
+          }
+        }
+        alert(`❌ ${errorMsg}`);
+        this.numeroSolicitudExito = `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
+        this.mostrarModalExito = true;
+        this.cargarSolicitudes();
+      }
+    });
+  }
 
   cerrarModalExito(): void {
     this.mostrarModalExito = false;
@@ -881,7 +849,7 @@ guardarSolicitud(): void {
   }
 
   // ============================================================
-  // PDF - GENERAR Y DESCARGAR (COMPLETO Y CORREGIDO)
+  // PDF - GENERAR Y DESCARGAR
   // ============================================================
   descargarSolicitudPDF(solicitud: SolicitudDesarrollo): void {
     try {
@@ -890,9 +858,6 @@ guardarSolicitud(): void {
 
       const doc = new jsPDF();
 
-      // ============================================================
-      // ENCABEZADO PRINCIPAL
-      // ============================================================
       doc.setFillColor(59, 175, 182);
       doc.rect(0, 0, 210, 25, 'F');
 
@@ -901,7 +866,6 @@ guardarSolicitud(): void {
       doc.setFont('helvetica', 'bold');
       doc.text('ASMET SALUD - REQUERIMIENTO DE DESARROLLO', 10, 16);
 
-      // Fecha y número de solicitud
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       let fechaStr = 'No registrada';
@@ -920,9 +884,6 @@ guardarSolicitud(): void {
 
       let yPos = 30;
 
-      // ============================================================
-      // TABLA 1: INFORMACIÓN DEL COLABORADOR (DATOS REALES)
-      // ============================================================
       autoTable(doc, {
         startY: yPos,
         theme: 'plain',
@@ -937,9 +898,6 @@ guardarSolicitud(): void {
       });
       yPos += 5;
 
-      // ============================================================
-      // TABLA 2: INFORMACIÓN DE LA SOLICITUD (DATOS REALES)
-      // ============================================================
       autoTable(doc, {
         startY: yPos,
         theme: 'plain',
@@ -956,9 +914,6 @@ guardarSolicitud(): void {
       });
       yPos += 5;
 
-      // ============================================================
-      // TABLA 3: IMPACTO DEL REQUERIMIENTO
-      // ============================================================
       const impactoTexto = solicitud.observaciones && solicitud.observaciones.trim() !== '' 
         ? solicitud.observaciones 
         : 'No se especificó impacto.';
@@ -974,9 +929,6 @@ guardarSolicitud(): void {
       });
       yPos += 5;
 
-      // ============================================================
-      // TABLA 4: REQUERIMIENTOS FUNCIONALES (CON DETALLES REALES)
-      // ============================================================
       const reqFuncionales = (solicitud.requerimientosFuncionales || []).map((r: any) => [
         r.id || 'N/A',
         `Objetivo: ${r.descripcion || 'Sin descripción'}\nCargo Impactado: ${r.cargoImpactado || 'No especificado'}`,
@@ -1001,9 +953,6 @@ guardarSolicitud(): void {
       });
       yPos += 5;
 
-      // ============================================================
-      // TABLA 5: REQUERIMIENTOS NO FUNCIONALES (CON DETALLES REALES)
-      // ============================================================
       const reqNoFuncionales = (solicitud.requerimientosNoFuncionales || []).map((r: any) => [
         r.id || 'N/A',
         `Objetivo: ${r.descripcion || 'Sin descripción'}\nCargo Impactado: ${r.cargoImpactado || 'No especificado'}`,
@@ -1028,9 +977,6 @@ guardarSolicitud(): void {
       });
       yPos += 5;
 
-      // ============================================================
-      // TABLA 6: REQUISITOS DE SEGURIDAD
-      // ============================================================
       autoTable(doc, {
         startY: yPos,
         theme: 'plain',
@@ -1048,16 +994,13 @@ guardarSolicitud(): void {
         didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
       });
 
-      // ============================================================
-      // GUARDAR PDF
-      // ============================================================
       const nombreArchivo = `Solicitud_Desarrollo_${solicitud.numeroSolicitud || new Date().getTime()}.pdf`;
       doc.save(nombreArchivo);
       
       console.log('✅ PDF generado exitosamente:', nombreArchivo);
 
     } catch (error) {
-      console.error('❌ E rror al generar PDF:', error);
+      console.error('❌ Error al generar PDF:', error);
       alert('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.');
     }
   }

@@ -104,7 +104,6 @@
                 {{ solicitud.estado }}
               </span>
             </td>
-            <!-- ✅ COLUMNA ADJUNTOS: AHORA ES UN BOTÓN PDF -->
             <td class="text-center">
               <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
                 📄 Descargar PDF
@@ -125,28 +124,34 @@
       </table>
     </div>
 
-    <!-- Modal de Detalle -->
+    <!-- ============================================================ -->
+    <!-- MODAL DE DETALLE - DENTRO DE bandeja-section -->
+    <!-- ============================================================ -->
+    <!-- Overlay -->
     <div class="overlay-modal" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()"></div>
+    
+    <!-- Modal -->
     <div class="modal-detalle" *ngIf="mostrarModalDetalle && solicitudSeleccionada">
       <div class="modal-detalle-contenido">
         <button class="btn-cerrar-modal" (click)="cerrarModalDetalle()">✕</button>
         <h3>📋 Detalle de Solicitud</h3>
+        
         <div class="detalle-grid">
           <div class="detalle-item">
             <label>Código:</label>
-            <span>{{ solicitudSeleccionada.numeroSolicitud }}</span>
+            <span>{{ solicitudSeleccionada.numeroSolicitud || 'N/A' }}</span>
           </div>
           <div class="detalle-item">
             <label>Proyecto:</label>
-            <span>{{ solicitudSeleccionada.objetivo }}</span>
+            <span>{{ solicitudSeleccionada.objetivo || 'N/A' }}</span>
           </div>
           <div class="detalle-item">
             <label>Solicitante:</label>
-            <span>{{ solicitudSeleccionada.solicitante }}</span>
+            <span>{{ solicitudSeleccionada.solicitante || 'N/A' }}</span>
           </div>
           <div class="detalle-item">
             <label>Área:</label>
-            <span>{{ solicitudSeleccionada.area }}</span>
+            <span>{{ solicitudSeleccionada.area || 'N/A' }}</span>
           </div>
           <div class="detalle-item">
             <label>Tipo:</label>
@@ -154,7 +159,7 @@
           </div>
           <div class="detalle-item">
             <label>Estado:</label>
-            <span>{{ solicitudSeleccionada.estado }}</span>
+            <span>{{ solicitudSeleccionada.estado || 'N/A' }}</span>
           </div>
           <div class="detalle-item">
             <label>Fecha:</label>
@@ -169,10 +174,13 @@
             <span>{{ solicitudSeleccionada.tieneImagenes ? '🖼️ Sí tiene imágenes' : '📄 Sin imágenes' }}</span>
           </div>
         </div>
+        
+        <!-- OBSERVACIONES -->
         <div class="detalle-observaciones" *ngIf="solicitudSeleccionada.observaciones">
           <label>Observaciones:</label>
           <p>{{ solicitudSeleccionada.observaciones }}</p>
         </div>
+        
         <div class="modal-footer">
           <button class="btn-cerrar" (click)="cerrarModalDetalle()">Cerrar</button>
           <button class="btn-cambiar-estado" (click)="cambiarEstadoSolicitud(solicitudSeleccionada)">Cambiar Estado</button>
