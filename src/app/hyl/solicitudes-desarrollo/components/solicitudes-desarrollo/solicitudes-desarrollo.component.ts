@@ -39,6 +39,7 @@ export interface SolicitudDesarrollo {
   tieneImagenes?: boolean;
   totalRequerimientos?: number;
   observaciones?: string;
+  impacto?: string;
   proceso?: string;
   vicepresidencia?: string;
   correo?: string;
@@ -68,6 +69,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   impactoTexto = '';
   errorImpacto = false;
   archivoAdjuntoTemporal: any = null;
+  mostrarModalCambioEstado = false;
+  nuevoEstadoSeleccionadoId: number | null = null;
+  observacionCambioEstado = '';
+  estadosList: any[] = [];
 
   // ============================================================
   // DATOS
@@ -145,8 +150,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   ];
 
   estadosDisponibles: string[] = [
+    'Borrador',
     'Enviada',
+    'En documentación',
+    'En pruebas funcionales',
     'En desarrollo',
+    'En pruebas de aceptación',
     'Cerrada',
     'Rechazada'
   ];
@@ -234,6 +243,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   private continuarInicializacion(): void {
     console.log('✅ Datos finales del colaborador:', this.datosColaborador);
     this.solicitudActual = this.inicializarNuevaSolicitud();
+    this.cargarEstados();
     this.cargarSolicitudes();
   }
 
@@ -313,10 +323,13 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           archivos: req.imagenes || []
         };
 
-        if (req.tipoRequerimiento === 0) {
+        const tipoReq = req.tipoRequerimiento !== undefined ? req.tipoRequerimiento : req.tipo_requerimiento;
+        const tipoReqNum = tipoReq !== undefined ? Number(tipoReq) : -1;
+
+        if (tipoReqNum === 0) {
           reqMapped.id = reqMapped.id || `RF_${reqFuncionales.length + 1}`;
           reqFuncionales.push(reqMapped);
-        } else if (req.tipoRequerimiento === 1) {
+        } else if (tipoReqNum === 1) {
           reqMapped.id = reqMapped.id || `RNF_${reqNoFuncionales.length + 1}`;
           reqNoFuncionales.push(reqMapped);
         }
@@ -341,6 +354,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       totalRequerimientos: totalReq,
       tieneImagenes: tieneImagenes,
       observaciones: item.observaciones || '',
+      impacto: item.impacto || '',
       requerimientosFuncionales: reqFuncionales,
       requerimientosNoFuncionales: reqNoFuncionales,
       proceso: procesoNombre,
@@ -408,8 +422,73 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     }
   }
 
+  cargarEstados(): void {
+    this.solicitudesService.obtenerEstados().subscribe({
+      next: (data) => {
+        if (data && data.length > 0) {
+          this.estadosList = data;
+          this.estadosList.sort((a, b) => (a.id || 0) - (b.id || 0));
+        } else {
+          this.setFallbackEstados();
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error al obtener estados del backend:', err);
+        this.setFallbackEstados();
+      }
+    });
+  }
+
+  private setFallbackEstados(): void {
+    this.estadosList = [
+      { id: 1, codigo: 'BORRADOR', nombre: 'Borrador' },
+      { id: 2, codigo: 'ENVIADA', nombre: 'Enviada' },
+      { id: 3, codigo: 'EN_DOCUMENTACION', nombre: 'En documentación' },
+      { id: 4, codigo: 'EN_PRUEBAS_FUNCIONALES', nombre: 'En pruebas funcionales' },
+      { id: 5, codigo: 'EN_DESARROLLO', nombre: 'En desarrollo' },
+      { id: 6, codigo: 'EN_PRUEBAS_ACEPTACION', nombre: 'En pruebas de aceptación' },
+      { id: 7, codigo: 'CERRADA', nombre: 'Cerrada' },
+      { id: 8, codigo: 'RECHAZADA', nombre: 'Rechazada' }
+    ];
+  }
+
   cambiarEstadoSolicitud(solicitud: SolicitudDesarrollo): void {
-    console.log('🔄 Cambiar estado de:', solicitud.numeroSolicitud);
+    this.solicitudSeleccionada = solicitud;
+    const currentEstado = this.estadosList.find(e => e.nombre === solicitud.estado);
+    this.nuevoEstadoSeleccionadoId = currentEstado ? currentEstado.id : null;
+    this.observacionCambioEstado = '';
+    this.mostrarModalCambioEstado = true;
+  }
+
+  cerrarModalCambioEstado(): void {
+    this.mostrarModalCambioEstado = false;
+    this.nuevoEstadoSeleccionadoId = null;
+    this.observacionCambioEstado = '';
+  }
+
+  guardarCambioEstado(): void {
+    if (!this.solicitudSeleccionada || !this.solicitudSeleccionada.id || !this.nuevoEstadoSeleccionadoId) {
+      console.warn('⚠️ Faltan datos para realizar el cambio de estado');
+      return;
+    }
+
+    const id = this.solicitudSeleccionada.id;
+    const nuevoEstadoId = Number(this.nuevoEstadoSeleccionadoId);
+    const observacion = this.observacionCambioEstado.trim();
+
+    this.solicitudesService.cambiarEstado(id, nuevoEstadoId, observacion).subscribe({
+      next: (response) => {
+        console.log('✅ Estado cambiado exitosamente:', response);
+        this.cerrarModalCambioEstado();
+        this.cerrarModalDetalle();
+        this.cargarSolicitudes();
+        alert('El estado de la solicitud ha sido actualizado correctamente.');
+      },
+      error: (err) => {
+        console.error('❌ Error al cambiar el estado de la solicitud:', err);
+        alert('Hubo un error al intentar cambiar el estado de la solicitud. Por favor intente de nuevo.');
+      }
+    });
   }
 
   // ============================================================
@@ -777,12 +856,14 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         ...(this.solicitudActual.requerimientosFuncionales || []).map((req: RequerimientoItem) => ({
           tipoRequerimiento: 0,
           objetivo: req.descripcion,
-          detalle: req.descripcion
+          detalle: req.detalle || req.descripcion,
+          cargoImpactado: req.cargoImpactado || ''
         })),
         ...(this.solicitudActual.requerimientosNoFuncionales || []).map((req: RequerimientoItem) => ({
           tipoRequerimiento: 1,
           objetivo: req.descripcion,
-          detalle: req.descripcion
+          detalle: req.detalle || req.descripcion,
+          cargoImpactado: req.cargoImpactado || ''
         }))
       ]
     };
@@ -884,6 +965,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
       let yPos = 30;
 
+      // 1. INFORMACIÓN DEL COLABORADOR
       autoTable(doc, {
         startY: yPos,
         theme: 'plain',
@@ -893,11 +975,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         body: [
           [`Nombre: ${solicitud.solicitante || 'No registrado'}`, `Correo: ${solicitud.correo || 'No registrado'}`],
           [`Cargo: ${solicitud.cargo || 'No registrado'}`, `Sede: ${solicitud.sede || 'No registrada'}`]
-        ],
-        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+        ]
       });
-      yPos += 5;
+      yPos = (doc as any).lastAutoTable.finalY + 5;
 
+      // 2. INFORMACIÓN DE LA SOLICITUD
       autoTable(doc, {
         startY: yPos,
         theme: 'plain',
@@ -905,17 +987,18 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
         head: [['INFORMACIÓN DE LA SOLICITUD', '']],
         body: [
+          [`Solicitud del Proceso: ${solicitud.objetivo || 'No especificado'}`, `Tipo de Solicitud: ${solicitud.tipo || 'No especificada'}`],
           [`Proceso Solicitante: ${solicitud.proceso || 'No especificado'}`, `Área: ${solicitud.area || 'No especificada'}`],
-          [`Vicepresidencia: ${solicitud.vicepresidencia || 'No especificada'}`, `Tipo de Solicitud: ${solicitud.tipo || 'No especificada'}`],
-          [`Prioridad: ${solicitud.prioridad || 'No especificada'}`, `Estado: ${solicitud.estado || 'Pendiente'}`],
-          [`Coordinador: ${solicitud.coordinador || 'No asignado'}`, `Funcional Asignado: ${solicitud.funcionalAsignado || 'No asignado'}`]
-        ],
-        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+          [`Vicepresidencia: ${solicitud.vicepresidencia || 'No especificada'}`, `Prioridad: ${solicitud.prioridad || 'No especificada'}`],
+          [`Estado: ${solicitud.estado || 'Pendiente'}`, `Coordinador: ${solicitud.coordinador || 'No asignado'}`],
+          [`Funcional Asignado: ${solicitud.funcionalAsignado || 'No asignado'}`, ``]
+        ]
       });
-      yPos += 5;
+      yPos = (doc as any).lastAutoTable.finalY + 5;
 
-      const impactoTexto = solicitud.observaciones && solicitud.observaciones.trim() !== '' 
-        ? solicitud.observaciones 
+      // 3. IMPACTO DEL REQUERIMIENTO
+      const impactoTexto = solicitud.impacto && solicitud.impacto.trim() !== '' 
+        ? solicitud.impacto 
         : 'No se especificó impacto.';
 
       autoTable(doc, {
@@ -924,11 +1007,24 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         styles: { cellPadding: 3, fontSize: 10, textColor: [0, 0, 0] },
         headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
         head: [['IMPACTO DEL REQUERIMIENTO']],
-        body: [[impactoTexto]],
-        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+        body: [[impactoTexto]]
       });
-      yPos += 5;
+      yPos = (doc as any).lastAutoTable.finalY + 5;
 
+      // 4. OBSERVACIONES (SI EXISTEN)
+      if (solicitud.observaciones && solicitud.observaciones.trim() !== '') {
+        autoTable(doc, {
+          startY: yPos,
+          theme: 'plain',
+          styles: { cellPadding: 3, fontSize: 10, textColor: [0, 0, 0] },
+          headStyles: { fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+          head: [['OBSERVACIONES']],
+          body: [[solicitud.observaciones]]
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 5;
+      }
+
+      // 5. REQUERIMIENTOS FUNCIONALES
       const reqFuncionales = (solicitud.requerimientosFuncionales || []).map((r: any) => [
         r.id || 'N/A',
         `Objetivo: ${r.descripcion || 'Sin descripción'}\nCargo Impactado: ${r.cargoImpactado || 'No especificado'}`,
@@ -948,11 +1044,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           [{ content: 'REQUERIMIENTOS FUNCIONALES', colSpan: 3, styles: { fillColor: [240, 240, 240], lineWidth: 0 } }],
           ['ID', 'Objetivo / Cargo Impactado', 'Detalles']
         ],
-        body: reqFuncionales,
-        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+        body: reqFuncionales
       });
-      yPos += 5;
+      yPos = (doc as any).lastAutoTable.finalY + 5;
 
+      // 6. REQUERIMIENTOS NO FUNCIONALES
       const reqNoFuncionales = (solicitud.requerimientosNoFuncionales || []).map((r: any) => [
         r.id || 'N/A',
         `Objetivo: ${r.descripcion || 'Sin descripción'}\nCargo Impactado: ${r.cargoImpactado || 'No especificado'}`,
@@ -972,11 +1068,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           [{ content: 'REQUERIMIENTOS NO FUNCIONALES', colSpan: 3, styles: { fillColor: [240, 240, 240], lineWidth: 0 } }],
           ['ID', 'Objetivo / Cargo Impactado', 'Detalles']
         ],
-        body: reqNoFuncionales,
-        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+        body: reqNoFuncionales
       });
-      yPos += 5;
+      yPos = (doc as any).lastAutoTable.finalY + 5;
 
+      // 7. REQUISITOS DE SEGURIDAD
       autoTable(doc, {
         startY: yPos,
         theme: 'plain',
@@ -990,8 +1086,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           `• Control de límites de valores de salida.\n` +
           `• Asegurar métodos de controles de seguridad privados/finales.\n` +
           `• Evitar uso de datos reales de carácter personal en pruebas.`
-        ]],
-        didDrawPage: (data: any) => { yPos = data.cursor?.y || yPos; }
+        ]]
       });
 
       const nombreArchivo = `Solicitud_Desarrollo_${solicitud.numeroSolicitud || new Date().getTime()}.pdf`;

@@ -189,6 +189,53 @@
     </div>
   </div>
 
+  <!-- Overlay para cambio de estado -->
+  <div class="overlay-modal-estado" *ngIf="mostrarModalCambioEstado" (click)="cerrarModalCambioEstado()"></div>
+
+  <!-- Modal para cambiar estado -->
+  <div class="modal-cambio-estado" *ngIf="mostrarModalCambioEstado && solicitudSeleccionada">
+    <div class="modal-cambio-estado-contenido">
+      <button class="btn-cerrar-modal" (click)="cerrarModalCambioEstado()">✕</button>
+      <h3>🔄 Cambiar Estado</h3>
+      
+      <div class="solicitud-info-box">
+        <p class="solicitud-info">Solicitud: <strong>{{ solicitudSeleccionada.numeroSolicitud }}</strong></p>
+        <p class="solicitud-info">Estado actual: 
+          <span class="estado-badge" [ngClass]="{
+            'estado-pendiente': solicitudSeleccionada.estado === 'Pendiente' || solicitudSeleccionada.estado === 'Borrador',
+            'estado-enviada': solicitudSeleccionada.estado === 'Enviada',
+            'estado-documentacion': solicitudSeleccionada.estado === 'En documentación',
+            'estado-funcional': solicitudSeleccionada.estado === 'En pruebas funcionales',
+            'estado-desarrollo': solicitudSeleccionada.estado === 'En desarrollo',
+            'estado-aceptacion': solicitudSeleccionada.estado === 'En pruebas de aceptación',
+            'estado-cerrada': solicitudSeleccionada.estado === 'Cerrada',
+            'estado-rechazada': solicitudSeleccionada.estado === 'Rechazada'
+          }">
+            {{ solicitudSeleccionada.estado }}
+          </span>
+        </p>
+      </div>
+      
+      <div class="form-group-estado">
+        <label for="nuevoEstado">Seleccionar Nuevo Estado:</label>
+        <select id="nuevoEstado" [(ngModel)]="nuevoEstadoSeleccionadoId" class="select-cambio-estado">
+          <option [value]="null" disabled selected>-- Seleccione un estado --</option>
+          <option *ngFor="let est of estadosList" [value]="est.id">{{ est.nombre }}</option>
+        </select>
+      </div>
+
+      <div class="form-group-estado">
+        <label for="observacionEstado">Observación / Justificación:</label>
+        <textarea id="observacionEstado" [(ngModel)]="observacionCambioEstado" placeholder="Escriba la razón del cambio de estado..." rows="4" class="textarea-observacion"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cerrar" (click)="cerrarModalCambioEstado()">Cancelar</button>
+        <button class="btn-guardar-estado" [disabled]="!nuevoEstadoSeleccionadoId" (click)="guardarCambioEstado()">Actualizar Estado</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============================================================ -->
   <!-- WIZARD DE 5 PASOS -->
   <!-- ============================================================ -->
@@ -366,7 +413,7 @@
           </div>
 
           <div class="agregar-req-footer">
-            <button class="btn-guardar-req" (click)="agregarRequerimiento('funcional', rfObjetivo.value); rfObjetivo.value=''; rfCargo.value=''; rfDetalle.value=''">Agregar requerimiento</button>
+            <button class="btn-guardar-req" (click)="agregarRequerimiento('funcional', rfObjetivo.value, rfCargo.value, rfDetalle.value); rfObjetivo.value=''; rfCargo.value=''; rfDetalle.value=''">Agregar requerimiento</button>
           </div>
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(2)">Atras</button>
@@ -423,7 +470,7 @@
           </div>
 
           <div class="agregar-req-footer">
-            <button class="btn-guardar-req" (click)="agregarRequerimiento('noFuncional', rnfObjetivo.value); rnfObjetivo.value=''; rnfCargo.value=''; rnfDetalle.value=''">Agregar requerimiento</button>
+            <button class="btn-guardar-req" (click)="agregarRequerimiento('noFuncional', rnfObjetivo.value, rnfCargo.value, rnfDetalle.value); rnfObjetivo.value=''; rnfCargo.value=''; rnfDetalle.value=''">Agregar requerimiento</button>
           </div>
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(3)">Atras</button>
