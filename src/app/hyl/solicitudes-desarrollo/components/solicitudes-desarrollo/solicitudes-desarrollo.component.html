@@ -1,7 +1,7 @@
 <div class="container">
 
   <!-- ============================================================ -->
-  <!-- VISTA PRINCIPAL (CON BOTÓN VOLVER - MISMO ESTILO QUE WIZARD) -->
+  <!-- VISTA PRINCIPAL -->
   <!-- ============================================================ -->
   <div *ngIf="vistaActual === 'principal'" class="vista-principal">
     
@@ -61,6 +61,7 @@
       </select>
     </div>
 
+    <!-- TABLA DE SOLICITUDES -->
     <div class="tabla-bandeja-wrapper">
       <table class="tabla-bandeja">
         <thead>
@@ -71,10 +72,10 @@
             <th>Tipo</th>
             <th>Solicitante</th>
             <th>Área</th>
-            <th>Req.</th>
+            <th class="text-center">Req.</th>
             <th>Estado</th>
-            <th>Prioridad</th>
-            <th>Adjuntos</th>
+            <th class="text-center">Prioridad</th>
+            <th class="text-center">Adjuntos</th>
             <th class="acciones-header">Acciones</th>
           </tr>
         </thead>
@@ -82,13 +83,13 @@
           <tr *ngFor="let solicitud of solicitudesFiltradas" class="fila-solicitud">
             <td>{{ solicitud.fechaCreacion | date:'dd/MM/yyyy' }}</td>
             <td><strong>{{ solicitud.numeroSolicitud }}</strong></td>
-            <td title="{{ solicitud.objetivo }}">{{ solicitud.objetivo | slice:0:30 }}{{ solicitud.objetivo.length > 30 ? '...' : '' }}</td>
+            <td title="{{ solicitud.objetivo }}">{{ solicitud.objetivo | slice:0:25 }}{{ solicitud.objetivo.length > 25 ? '...' : '' }}</td>
             <td>
               <span class="badge-tipo" [class.badge-proyecto]="solicitud.tipo === 'Proyecto'" [class.badge-mejora]="solicitud.tipo === 'Mejora'">
                 {{ solicitud.tipo || 'N/A' }}
               </span>
             </td>
-            <td>{{ solicitud.solicitante | slice:0:20 }}{{ solicitud.solicitante.length > 20 ? '...' : '' }}</td>
+            <td>{{ solicitud.solicitante | slice:0:18 }}{{ solicitud.solicitante.length > 18 ? '...' : '' }}</td>
             <td>{{ solicitud.area }}</td>
             <td class="text-center">{{ solicitud.totalRequerimientos || 0 }}</td>
             <td>
@@ -105,22 +106,22 @@
                 {{ solicitud.estado }}
               </span>
             </td>
-            <td>
+            <td class="text-center">
               <span class="prioridad-badge" [ngClass]="{
-              'prioridad-alta': solicitud.prioridad === 'alta',
-              'prioridad-media': solicitud.prioridad === 'media',
-              'prioridad-baja': solicitud.prioridad === 'baja'
-          }">
+                'prioridad-alta': solicitud.prioridad === 'alta',
+                'prioridad-media': solicitud.prioridad === 'media',
+                'prioridad-baja': solicitud.prioridad === 'baja'
+              }">
                 {{ solicitud.prioridad || 'Media' }}
               </span>
             </td>
             <td class="text-center">
               <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
-                📄 Descargar PDF
+                📄 PDF
               </button>
             </td>
             <td class="acciones-cell">
-              <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️‍🗨️</button>
+              <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
               <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
             </td>
           </tr>
@@ -134,13 +135,8 @@
       </table>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- MODAL DE DETALLE - MEJORADO -->
-    <!-- ============================================================ -->
-    <!-- Overlay -->
+    <!-- MODAL DE DETALLE -->
     <div class="overlay-modal" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()"></div>
-
-    <!-- Modal -->
     <div class="modal-detalle" *ngIf="mostrarModalDetalle && solicitudSeleccionada">
       <div class="modal-detalle-contenido">
         <button class="btn-cerrar-modal" (click)="cerrarModalDetalle()">✕</button>
@@ -169,18 +165,7 @@
           </div>
           <div class="detalle-item">
             <label>Estado:</label>
-            <span class="estado-badge" [ngClass]="{
-              'estado-pendiente': solicitudSeleccionada.estado === 'Pendiente' || solicitudSeleccionada.estado === 'Borrador',
-              'estado-enviada': solicitudSeleccionada.estado === 'Enviada',
-              'estado-documentacion': solicitudSeleccionada.estado === 'En documentación',
-              'estado-funcional': solicitudSeleccionada.estado === 'En pruebas funcionales',
-              'estado-desarrollo': solicitudSeleccionada.estado === 'En desarrollo',
-              'estado-aceptacion': solicitudSeleccionada.estado === 'En pruebas de aceptación',
-              'estado-cerrada': solicitudSeleccionada.estado === 'Cerrada',
-              'estado-rechazada': solicitudSeleccionada.estado === 'Rechazada'
-            }">
-              {{ solicitudSeleccionada.estado || 'N/A' }}
-            </span>
+            <span>{{ solicitudSeleccionada.estado || 'N/A' }}</span>
           </div>
           <div class="detalle-item">
             <label>Fecha:</label>
@@ -204,7 +189,6 @@
           </div>
         </div>
         
-        <!-- OBSERVACIONES -->
         <div class="detalle-observaciones" *ngIf="solicitudSeleccionada.observaciones">
           <label>Observaciones:</label>
           <p>{{ solicitudSeleccionada.observaciones }}</p>
@@ -218,10 +202,8 @@
     </div>
   </div>
 
-  <!-- Overlay para cambio de estado -->
+  <!-- MODAL CAMBIO DE ESTADO -->
   <div class="overlay-modal-estado" *ngIf="mostrarModalCambioEstado" (click)="cerrarModalCambioEstado()"></div>
-
-  <!-- Modal para cambiar estado -->
   <div class="modal-cambio-estado" *ngIf="mostrarModalCambioEstado && solicitudSeleccionada">
     <div class="modal-cambio-estado-contenido">
       <button class="btn-cerrar-modal" (click)="cerrarModalCambioEstado()">✕</button>

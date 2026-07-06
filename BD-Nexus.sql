@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS sd_requerimiento (
     codigo             VARCHAR(10)  NOT NULL,
     tipo_requerimiento SMALLINT     NOT NULL,
     objetivo           VARCHAR(200) NOT NULL,
-    detalle            TEXT         NOT NULL,
+    detalle            TEXT         NOT NULL,  //varchar 20000
     
     -- ============================================================
     -- ✅ NUEVO CAMPO: cargo_impactado
@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS sd_auditoria (
     solicitud_id       BIGINT       NOT NULL REFERENCES sd_solicitud(id) ON DELETE CASCADE,
     estado_anterior_id BIGINT       REFERENCES sd_estado_solicitud(id),
     estado_nuevo_id    BIGINT       NOT NULL REFERENCES sd_estado_solicitud(id),
-    observacion        TEXT,
+    observacion        TEXT,  // Observación del cambio de estado VARCHAR 20000
     fase               INTEGER      NOT NULL DEFAULT 1,
     usuario_registro   VARCHAR(100) NOT NULL,
     created_at         TIMESTAMP    NOT NULL DEFAULT NOW()
