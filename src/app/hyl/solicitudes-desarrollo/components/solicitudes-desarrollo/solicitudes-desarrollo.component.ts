@@ -104,6 +104,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     area: '',
     vicepresidencia: '',
     tipoSolicitud: '',
+    prioridad: 'media',
     observacion: ''
   };
 
@@ -112,7 +113,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     area: false,
     vicepresidencia: false,
     tipoSolicitud: false,
-    solicitudProceso: false
+    solicitudProceso: false,
+    prioridad: false
   };
 
   // ============================================================
@@ -294,6 +296,23 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   // MAPEAR SOLICITUD
   // ============================================================
+  private normalizarPrioridad(valor: unknown): 'alta' | 'media' | 'baja' {
+    const texto = String(valor ?? '').trim().toLowerCase();
+    if (texto === 'alta' || texto === 'high') return 'alta';
+    if (texto === 'baja' || texto === 'low') return 'baja';
+    if (texto === 'media' || texto === 'medio' || texto === 'medium') return 'media';
+    return 'media';
+  }
+
+  private extraerPrioridad(item: any): 'alta' | 'media' | 'baja' {
+    const cruda = item?.prioridad ?? item?.prioridadNombre ?? item?.prioridadCodigo;
+    if (cruda === undefined || cruda === null || String(cruda).trim() === '') {
+      console.warn('⚠️ La API no devolvió prioridad para la solicitud:', item?.codigo || item?.id);
+      return 'media';
+    }
+    return this.normalizarPrioridad(cruda);
+  }
+
   private mapearSolicitud(item: any): SolicitudDesarrollo {
     let tieneImagenes = false;
     let totalReq = 0;
@@ -348,7 +367,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       estado: item.estado?.nombre || 'Pendiente',
       tipo: item.tipoSolicitud?.nombre || 'N/A',
       fechaCreacion: new Date(item.fechaCreacion),
-      prioridad: 'media',
+      prioridad: this.extraerPrioridad(item),
       coordinador: 'Coordinador Asignado',
       funcionalAsignado: 'Funcional Asignado',
       totalRequerimientos: totalReq,
@@ -510,6 +529,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       area: '',
       vicepresidencia: '',
       tipoSolicitud: '',
+      prioridad: 'media',
       observacion: ''
     };
     this.erroresGeneral = {
@@ -517,7 +537,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       area: false,
       vicepresidencia: false,
       tipoSolicitud: false,
-      solicitudProceso: false
+      solicitudProceso: false,
+      prioridad: false
     };
     this.archivoAdjuntoTemporal = null;
   }
@@ -603,7 +624,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       area: !this.formGeneral.area || this.formGeneral.area === '',
       vicepresidencia: !this.formGeneral.vicepresidencia || this.formGeneral.vicepresidencia === '',
       tipoSolicitud: !this.formGeneral.tipoSolicitud || this.formGeneral.tipoSolicitud === '',
-      solicitudProceso: !this.formGeneral.solicitudProceso || this.formGeneral.solicitudProceso.trim() === ''
+      solicitudProceso: !this.formGeneral.solicitudProceso || this.formGeneral.solicitudProceso.trim() === '',
+      prioridad: !this.formGeneral.prioridad || this.formGeneral.prioridad === ''
     };
     return !Object.values(this.erroresGeneral).some((error) => error);
   }
@@ -615,6 +637,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     if (this.erroresGeneral.area) mensaje += '• Área\n';
     if (this.erroresGeneral.vicepresidencia) mensaje += '• Vicepresidencia\n';
     if (this.erroresGeneral.tipoSolicitud) mensaje += '• Tipo de solicitud\n';
+    if (this.erroresGeneral.prioridad) mensaje += '• Prioridad\n';
     alert(mensaje);
   }
 
@@ -850,6 +873,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       macroprocesoId: macroprocesoId,
       tipoSolicitudId: tipoSolicitudId,
       estadoId: 2,
+      prioridad: this.normalizarPrioridad(this.formGeneral.prioridad),
       observaciones: this.formGeneral.observacion || '',
       impacto: this.impactoTexto,
       requerimientos: [

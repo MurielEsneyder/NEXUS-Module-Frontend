@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS sd_solicitud (
     macroproceso_id       BIGINT       NOT NULL,
     tipo_solicitud_id     BIGINT       NOT NULL REFERENCES sd_tipo_solicitud(id),
     estado_id             BIGINT       NOT NULL REFERENCES sd_estado_solicitud(id) DEFAULT 1,
+    prioridad             VARCHAR(20)  NOT NULL DEFAULT 'media',
     observaciones         TEXT,
     impacto               TEXT         NOT NULL,
     pdf_nombre            VARCHAR(255),
@@ -271,7 +272,9 @@ SELECT
     s.empleado_nombre,
     s.empleado_correo,
     s.empleado_cargo,
+    s.empleado_sede,
     s.solicitud_proceso,
+    s.prioridad,
     s.impacto,
     s.observaciones,
     s.estado_id,
@@ -331,3 +334,54 @@ ORDER BY
 --  10. sd_notificacion
 --  11. sd_vista_resumen_solicitudes (vista)
 -- ============================================================
+
+-- ============================================================
+-- 12. MIGRACIÓN: columna prioridad (bases de datos existentes)
+-- Ejecutar solo si la tabla ya existía sin este campo.
+-- ============================================================
+ALTER TABLE sd_solicitud
+    ADD COLUMN IF NOT EXISTS prioridad VARCHAR(20) NOT NULL DEFAULT 'media';
+
+ALTER TABLE sd_solicitud
+    ADD COLUMN IF NOT EXISTS empleado_sede VARCHAR(100);
+
+-- Recrear la vista para incluir prioridad y empleado_sede
+CREATE OR REPLACE VIEW sd_vista_resumen_solicitudes AS
+SELECT
+    s.id,
+    s.codigo,
+    s.fecha_creacion,
+    s.empleado_documento,
+    s.empleado_nombre,
+    s.empleado_correo,
+    s.empleado_cargo,
+    s.empleado_sede,
+    s.solicitud_proceso,
+    s.prioridad,
+    s.impacto,
+    s.observaciones,
+    s.estado_id,
+    e.codigo AS estado_codigo,
+    e.nombre AS estado_nombre,
+    e.color AS estado_color,
+    e.fase AS estado_fase,
+    s.tipo_solicitud_id,
+    t.codigo AS tipo_codigo,
+    t.nombre AS tipo_nombre,
+    s.proceso_id,
+    s.area_id,
+    s.macroproceso_id,
+    s.usuario_registro,
+    s.created_at,
+    s.updated_at,
+    (SELECT COUNT(*) FROM sd_requerimiento r WHERE r.solicitud_id = s.id) AS total_requerimientos,
+    (SELECT COUNT(*) FROM sd_requerimiento r WHERE r.solicitud_id = s.id AND r.tipo_requerimiento = 0) AS req_funcionales,
+    (SELECT COUNT(*) FROM sd_requerimiento r WHERE r.solicitud_id = s.id AND r.tipo_requerimiento = 1) AS req_no_funcionales
+FROM
+    sd_solicitud s
+    LEFT JOIN sd_estado_solicitud e ON s.estado_id = e.id
+    LEFT JOIN sd_tipo_solicitud t ON s.tipo_solicitud_id = t.id
+WHERE
+    s.estado_id NOT IN (7, 8)
+ORDER BY
+    s.fecha_creacion DESC;

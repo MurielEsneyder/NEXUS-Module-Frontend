@@ -73,6 +73,7 @@
             <th>Área</th>
             <th>Req.</th>
             <th>Estado</th>
+            <th>Prioridad</th>
             <th>Adjuntos</th>
             <th class="acciones-header">Acciones</th>
           </tr>
@@ -104,6 +105,15 @@
                 {{ solicitud.estado }}
               </span>
             </td>
+            <td>
+              <span class="prioridad-badge" [ngClass]="{
+              'prioridad-alta': solicitud.prioridad === 'alta',
+              'prioridad-media': solicitud.prioridad === 'media',
+              'prioridad-baja': solicitud.prioridad === 'baja'
+          }">
+                {{ solicitud.prioridad || 'Media' }}
+              </span>
+            </td>
             <td class="text-center">
               <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
                 📄 Descargar PDF
@@ -115,7 +125,7 @@
             </td>
           </tr>
           <tr *ngIf="solicitudesFiltradas.length === 0">
-            <td colspan="10" class="text-center sin-datos">
+            <td colspan="11" class="text-center sin-datos">
               <p>📭 No hay solicitudes registradas</p>
               <button class="btn-crear-primera" (click)="mostrarNuevaSolicitud()">Crear primera solicitud</button>
             </td>
@@ -164,6 +174,14 @@
           <div class="detalle-item">
             <label>Fecha:</label>
             <span>{{ solicitudSeleccionada.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="detalle-item">
+            <label>Prioridad:</label>
+            <span class="prioridad-badge" [ngClass]="{
+              'prioridad-alta': solicitudSeleccionada.prioridad === 'alta',
+              'prioridad-media': solicitudSeleccionada.prioridad === 'media',
+              'prioridad-baja': solicitudSeleccionada.prioridad === 'baja'
+            }">{{ solicitudSeleccionada.prioridad || 'N/A' }}</span>
           </div>
           <div class="detalle-item">
             <label>Requerimientos:</label>
@@ -332,13 +350,26 @@
             </div>
           </div>
 
-          <div class="selector-grupo tipo-solicitud-grupo">
-            <label class="campo-label campo-requerido">Tipo de solicitud</label>
-            <select class="select-wizard" [(ngModel)]="formGeneral.tipoSolicitud">
-              <option value="">-- Seleccione --</option>
-              <option *ngFor="let t of tiposSolicitud" [value]="t">{{ t }}</option>
-            </select>
-            <span class="error-campo" *ngIf="erroresGeneral.tipoSolicitud">Requerido</span>
+          <div class="selectores-row">
+            <div class="selector-grupo">
+              <label class="campo-label campo-requerido">TIPO DE SOLICITUD</label>
+              <select class="select-wizard" [(ngModel)]="formGeneral.tipoSolicitud">
+                <option value="">-- Seleccione --</option>
+                <option *ngFor="let t of tiposSolicitud" [value]="t">{{ t }}</option>
+              </select>
+              <span class="error-campo" *ngIf="erroresGeneral.tipoSolicitud">Requerido</span>
+            </div>
+
+            <div class="selector-grupo">
+              <label class="campo-label campo-requerido">PRIORIDAD</label>
+              <select class="select-wizard" [(ngModel)]="formGeneral.prioridad">
+                <option value="">-- Seleccione --</option>
+                <option value="alta">Alta</option>
+                <option value="media">Media</option>
+                <option value="baja">Baja</option>
+              </select>
+              <span class="error-campo" *ngIf="erroresGeneral.prioridad">Requerido</span>
+            </div>
           </div>
 
           <div class="form-grupo">
