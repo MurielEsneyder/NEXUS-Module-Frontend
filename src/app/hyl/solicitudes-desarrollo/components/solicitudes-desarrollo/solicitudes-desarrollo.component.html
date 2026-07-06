@@ -135,11 +135,11 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- MODAL DE DETALLE - DENTRO DE bandeja-section -->
+    <!-- MODAL DE DETALLE - MEJORADO -->
     <!-- ============================================================ -->
     <!-- Overlay -->
     <div class="overlay-modal" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()"></div>
-    
+
     <!-- Modal -->
     <div class="modal-detalle" *ngIf="mostrarModalDetalle && solicitudSeleccionada">
       <div class="modal-detalle-contenido">
@@ -169,7 +169,18 @@
           </div>
           <div class="detalle-item">
             <label>Estado:</label>
-            <span>{{ solicitudSeleccionada.estado || 'N/A' }}</span>
+            <span class="estado-badge" [ngClass]="{
+              'estado-pendiente': solicitudSeleccionada.estado === 'Pendiente' || solicitudSeleccionada.estado === 'Borrador',
+              'estado-enviada': solicitudSeleccionada.estado === 'Enviada',
+              'estado-documentacion': solicitudSeleccionada.estado === 'En documentación',
+              'estado-funcional': solicitudSeleccionada.estado === 'En pruebas funcionales',
+              'estado-desarrollo': solicitudSeleccionada.estado === 'En desarrollo',
+              'estado-aceptacion': solicitudSeleccionada.estado === 'En pruebas de aceptación',
+              'estado-cerrada': solicitudSeleccionada.estado === 'Cerrada',
+              'estado-rechazada': solicitudSeleccionada.estado === 'Rechazada'
+            }">
+              {{ solicitudSeleccionada.estado || 'N/A' }}
+            </span>
           </div>
           <div class="detalle-item">
             <label>Fecha:</label>
