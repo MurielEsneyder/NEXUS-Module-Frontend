@@ -1,3 +1,4 @@
+// solicitudes-desarrollo.component.ts
 import { Component, OnInit } from '@angular/core';
 import { SolicitudesDesarrolloService } from '../../services/solicitudes-desarrollo.service';
 import { SecurityService } from '../../../../commons/services/security.service';
@@ -87,6 +88,18 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   solicitudActual!: SolicitudDesarrollo;
   solicitudSeleccionada: SolicitudDesarrollo | null = null;
   requerimientoAEliminar: { id: string; index: number; tipo: 'funcional' | 'noFuncional' } | null = null;
+
+  // ============================================================
+  // VARIABLES PARA CARGA MEJORADA
+  // ============================================================
+  cargandoSolicitudes: boolean = false;
+  totalSolicitudesBD: number = 0;
+  solicitudesCargadas: number = 0;
+  errorCargandoSolicitudes: boolean = false;
+  todasCargadas: boolean = false;
+  private PAGE_SIZE = 20;
+  private paginaActual = 0;
+  private totalPaginas = 0;
 
   // ============================================================
   // DATOS DEL COLABORADOR
@@ -275,27 +288,125 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // CARGAR SOLICITUDES
+  // CARGAR SOLICITUDES - VERSIÓN COMPLETA CON TODAS LAS PÁGINAS
   // ============================================================
   cargarSolicitudes(): void {
-    console.log('📥 Cargando solicitudes...');
-    this.solicitudesService.obtenerTodas().subscribe({
+    if (this.cargandoSolicitudes) {
+      console.log('⏳ Ya se están cargando solicitudes...');
+      return;
+    }
+
+    this.cargandoSolicitudes = true;
+    this.errorCargandoSolicitudes = false;
+    this.solicitudes = [];
+    this.solicitudesFiltradas = [];
+    this.solicitudesCargadas = 0;
+    this.totalSolicitudesBD = 0;
+    this.todasCargadas = false;
+    
+    console.log('📥 Cargando TODAS las solicitudes...');
+    
+    // Usar el nuevo método que obtiene todas las páginas
+    this.solicitudesService.obtenerTodasCompletas().subscribe({
       next: (data: any) => {
+        console.log('📦 Datos completos recibidos:', data);
+        
         if (data && data.content) {
           this.solicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
           this.solicitudesFiltradas = [...this.solicitudes];
+          this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
+          this.solicitudesCargadas = this.solicitudes.length;
+          this.todasCargadas = true;
+          
+          console.log(`✅ ${this.solicitudes.length} solicitudes cargadas (total en BD: ${this.totalSolicitudesBD})`);
+          this.guardarSolicitudesEnCache();
+          
+          if (this.solicitudes.length > 0) {
+            this.mostrarNotificacion(`✅ ${this.solicitudes.length} solicitudes cargadas correctamente`, 'success');
+          }
         } else {
           this.solicitudes = [];
           this.solicitudesFiltradas = [];
+          this.totalSolicitudesBD = 0;
+          console.warn('⚠️ No se recibieron datos');
         }
-        console.log('✅ Solicitudes cargadas:', this.solicitudes.length);
+        this.cargandoSolicitudes = false;
       },
       error: (err: any) => {
         console.error('❌ Error al cargar solicitudes:', err);
-        this.solicitudes = [];
-        this.solicitudesFiltradas = [];
+        this.cargandoSolicitudes = false;
+        this.errorCargandoSolicitudes = true;
+        
+        const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
+        if (!cargadoDesdeCache) {
+          this.mostrarNotificacion('Error al cargar solicitudes. Intente recargar.', 'error');
+          this.solicitudes = [];
+          this.solicitudesFiltradas = [];
+        }
       }
     });
+  }
+
+  // ============================================================
+  // RECARGAR SOLICITUDES (FORZADO)
+  // ============================================================
+  recargarSolicitudes(): void {
+    console.log('🔄 Recargando todas las solicitudes...');
+    this.cargarSolicitudes();
+  }
+
+  // ============================================================
+  // CARGAR DESDE LOCAL STORAGE (FALLBACK)
+  // ============================================================
+  private cargarSolicitudesDesdeLocalStorage(): boolean {
+    try {
+      const stored = localStorage.getItem('solicitudes_desarrollo_cache');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.solicitudes = parsed;
+          this.solicitudesFiltradas = [...this.solicitudes];
+          this.totalSolicitudesBD = this.solicitudes.length;
+          this.solicitudesCargadas = this.solicitudes.length;
+          this.todasCargadas = true;
+          console.log(`✅ ${this.solicitudes.length} solicitudes cargadas desde caché`);
+          this.mostrarNotificacion(`Cargadas ${this.solicitudes.length} solicitudes desde caché`, 'info');
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ No se pudieron cargar desde caché:', e);
+    }
+    return false;
+  }
+
+  // ============================================================
+  // GUARDAR EN LOCAL STORAGE (CACHE)
+  // ============================================================
+  private guardarSolicitudesEnCache(): void {
+    try {
+      if (this.solicitudes && this.solicitudes.length > 0) {
+        localStorage.setItem('solicitudes_desarrollo_cache', JSON.stringify(this.solicitudes));
+        console.log('💾 Solicitudes guardadas en caché');
+      }
+    } catch (e) {
+      console.warn('⚠️ No se pudo guardar en caché:', e);
+    }
+  }
+
+  // ============================================================
+  // OBTENER PROGRESO DE CARGA
+  // ============================================================
+  getProgresoCarga(): number {
+    if (this.totalSolicitudesBD === 0) return 0;
+    return Math.round((this.solicitudesCargadas / this.totalSolicitudesBD) * 100);
+  }
+
+  // ============================================================
+  // VERIFICAR SI HAY MÁS SOLICITUDES POR CARGAR
+  // ============================================================
+  tieneMasSolicitudes(): boolean {
+    return !this.todasCargadas && this.solicitudesCargadas < this.totalSolicitudesBD;
   }
 
   // ============================================================
@@ -401,7 +512,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.solicitudesFiltradas = this.solicitudes.filter(s =>
       s.objetivo.toLowerCase().includes(term) ||
       s.numeroSolicitud?.toLowerCase().includes(term) ||
-      s.solicitante.toLowerCase().includes(term)
+      s.solicitante.toLowerCase().includes(term) ||
+      s.area.toLowerCase().includes(term)
     );
   }
 
@@ -418,7 +530,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   verDetalle(solicitud: SolicitudDesarrollo): void {
     console.log('👁️ Ver detalle de:', solicitud);
-    this.solicitudSeleccionada = { ...solicitud }; // Copia para no modificar el original directamente
+    this.solicitudSeleccionada = { ...solicitud };
     this.modoEdicion = false;
     this.estadoEditado = this.solicitudSeleccionada.estado;
     this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
@@ -438,7 +550,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   toggleModoEdicion(): void {
     this.modoEdicion = !this.modoEdicion;
     if (this.modoEdicion && this.solicitudSeleccionada) {
-      // Inicializar los valores editables con los actuales
       this.estadoEditado = this.solicitudSeleccionada.estado;
       this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
     }
@@ -462,7 +573,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       return;
     }
 
-    // Verificar si hubo cambios
     const estadoCambiado = this.estadoEditado !== solicitudOriginal.estado;
     const prioridadCambiada = this.prioridadEditada !== solicitudOriginal.prioridad;
 
@@ -473,16 +583,13 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       return;
     }
 
-    // Primero actualizar estado si cambió
     if (estadoCambiado) {
-      // Buscar el ID del estado seleccionado
       const estadoSeleccionado = this.estadosList.find(e => e.nombre === this.estadoEditado);
       if (estadoSeleccionado) {
         const observacion = `Cambio de estado desde edición: ${solicitudOriginal.estado} → ${this.estadoEditado}`;
         this.solicitudesService.cambiarEstado(this.solicitudSeleccionada.id, estadoSeleccionado.id, observacion).subscribe({
           next: () => {
             console.log('✅ Estado actualizado correctamente');
-            // Si también hay que actualizar prioridad
             if (prioridadCambiada) {
               this.actualizarPrioridadEnServicio(this.solicitudSeleccionada!.id!, this.prioridadEditada);
             } else {
@@ -496,7 +603,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           }
         });
       } else {
-        // Si no se encuentra el estado, solo actualizar prioridad
         if (prioridadCambiada) {
           this.actualizarPrioridadEnServicio(this.solicitudSeleccionada.id!, this.prioridadEditada);
         } else {
@@ -504,7 +610,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         }
       }
     } else if (prioridadCambiada) {
-      // Solo actualizar prioridad
       this.actualizarPrioridadEnServicio(this.solicitudSeleccionada.id!, this.prioridadEditada);
     } else {
       this.finalizarGuardado();
@@ -531,7 +636,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.cargarSolicitudes();
     this.mostrarNotificacion('Cambios guardados exitosamente');
     
-    // Actualizar la solicitud seleccionada con los nuevos valores
     if (this.solicitudSeleccionada) {
       this.solicitudSeleccionada.estado = this.estadoEditado;
       this.solicitudSeleccionada.prioridad = this.normalizarPrioridad(this.prioridadEditada);
@@ -539,13 +643,15 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // NOTIFICACIONES
+  // NOTIFICACIONES MEJORADAS
   // ============================================================
-  private mostrarNotificacion(mensaje: string, tipo: 'success' | 'error' = 'success'): void {
-    if (tipo === 'success') {
-      alert(`✅ ${mensaje}`);
-    } else {
+  private mostrarNotificacion(mensaje: string, tipo: 'success' | 'error' | 'info' = 'success'): void {
+    if (tipo === 'error') {
       alert(`❌ ${mensaje}`);
+    } else if (tipo === 'info') {
+      console.log(`ℹ️ ${mensaje}`);
+    } else {
+      alert(`✅ ${mensaje}`);
     }
   }
 
@@ -600,7 +706,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // MODAL CAMBIO DE ESTADO (rápido fuera del modo edición)
+  // MODAL CAMBIO DE ESTADO
   // ============================================================
   abrirModalCambioEstado(solicitud: SolicitudDesarrollo): void {
     this.solicitudSeleccionada = solicitud;
