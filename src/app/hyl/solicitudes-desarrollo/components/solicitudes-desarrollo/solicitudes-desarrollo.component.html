@@ -135,13 +135,22 @@
       </table>
     </div>
 
-    <!-- MODAL DE DETALLE -->
+    <!-- MODAL DE DETALLE CON EDICIÓN -->
     <div class="overlay-modal" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()"></div>
     <div class="modal-detalle" *ngIf="mostrarModalDetalle && solicitudSeleccionada">
       <div class="modal-detalle-contenido">
         <button class="btn-cerrar-modal" (click)="cerrarModalDetalle()">✕</button>
         <h3>📋 Detalle de Solicitud</h3>
         
+        <!-- Modo de visualización o edición -->
+        <div class="detalle-actions">
+          <button class="btn-toggle-edicion" (click)="toggleModoEdicion()">
+            <span *ngIf="!modoEdicion">✏️ Editar</span>
+            <span *ngIf="modoEdicion">👁️ Ver</span>
+          </button>
+          <span class="modo-indicador" *ngIf="modoEdicion" class="modo-edicion-activo">✏️ Modo Edición</span>
+        </div>
+
         <div class="detalle-grid">
           <div class="detalle-item">
             <label>Código:</label>
@@ -164,21 +173,57 @@
             <span>{{ solicitudSeleccionada.tipo || 'N/A' }}</span>
           </div>
           <div class="detalle-item">
-            <label>Estado:</label>
-            <span>{{ solicitudSeleccionada.estado || 'N/A' }}</span>
-          </div>
-          <div class="detalle-item">
             <label>Fecha:</label>
             <span>{{ solicitudSeleccionada.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
           </div>
-          <div class="detalle-item">
-            <label>Prioridad:</label>
-            <span class="prioridad-badge" [ngClass]="{
-              'prioridad-alta': solicitudSeleccionada.prioridad === 'alta',
-              'prioridad-media': solicitudSeleccionada.prioridad === 'media',
-              'prioridad-baja': solicitudSeleccionada.prioridad === 'baja'
-            }">{{ solicitudSeleccionada.prioridad || 'N/A' }}</span>
+
+          <!-- ESTADO - EDITABLE -->
+          <div class="detalle-item detalle-editable">
+            <label>Estado:</label>
+            <div *ngIf="!modoEdicion" class="estado-display">
+              <span class="estado-badge" [ngClass]="{
+                'estado-pendiente': solicitudSeleccionada.estado === 'Pendiente' || solicitudSeleccionada.estado === 'Borrador',
+                'estado-enviada': solicitudSeleccionada.estado === 'Enviada',
+                'estado-documentacion': solicitudSeleccionada.estado === 'En documentación',
+                'estado-funcional': solicitudSeleccionada.estado === 'En pruebas funcionales',
+                'estado-desarrollo': solicitudSeleccionada.estado === 'En desarrollo',
+                'estado-aceptacion': solicitudSeleccionada.estado === 'En pruebas de aceptación',
+                'estado-cerrada': solicitudSeleccionada.estado === 'Cerrada',
+                'estado-rechazada': solicitudSeleccionada.estado === 'Rechazada'
+              }">
+                {{ solicitudSeleccionada.estado }}
+              </span>
+            </div>
+            <div *ngIf="modoEdicion" class="estado-editable">
+              <select class="select-edicion" [(ngModel)]="estadoEditado">
+                <option *ngFor="let estado of estadosList" [value]="estado.nombre">
+                  {{ estado.nombre }}
+                </option>
+              </select>
+            </div>
           </div>
+
+          <!-- PRIORIDAD - EDITABLE -->
+          <div class="detalle-item detalle-editable">
+            <label>Prioridad:</label>
+            <div *ngIf="!modoEdicion" class="prioridad-display">
+              <span class="prioridad-badge" [ngClass]="{
+                'prioridad-alta': solicitudSeleccionada.prioridad === 'alta',
+                'prioridad-media': solicitudSeleccionada.prioridad === 'media',
+                'prioridad-baja': solicitudSeleccionada.prioridad === 'baja'
+              }">
+                {{ solicitudSeleccionada.prioridad || 'Media' }}
+              </span>
+            </div>
+            <div *ngIf="modoEdicion" class="prioridad-editable">
+              <select class="select-edicion" [(ngModel)]="prioridadEditada">
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+              </select>
+            </div>
+          </div>
+
           <div class="detalle-item">
             <label>Requerimientos:</label>
             <span>{{ solicitudSeleccionada.totalRequerimientos || 0 }}</span>
@@ -196,53 +241,17 @@
         
         <div class="modal-footer">
           <button class="btn-cerrar" (click)="cerrarModalDetalle()">Cerrar</button>
-          <button class="btn-cambiar-estado" (click)="cambiarEstadoSolicitud(solicitudSeleccionada)">Cambiar Estado</button>
+          <!-- Botón Guardar Cambios - SOLO visible en modo edición -->
+          <button 
+            *ngIf="modoEdicion" 
+            class="btn-guardar-cambios" 
+            (click)="guardarCambiosDetalle()"
+            [disabled]="guardandoCambios"
+          >
+            <span *ngIf="!guardandoCambios">💾 Guardar Cambios</span>
+            <span *ngIf="guardandoCambios">⏳ Guardando...</span>
+          </button>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL CAMBIO DE ESTADO -->
-  <div class="overlay-modal-estado" *ngIf="mostrarModalCambioEstado" (click)="cerrarModalCambioEstado()"></div>
-  <div class="modal-cambio-estado" *ngIf="mostrarModalCambioEstado && solicitudSeleccionada">
-    <div class="modal-cambio-estado-contenido">
-      <button class="btn-cerrar-modal" (click)="cerrarModalCambioEstado()">✕</button>
-      <h3>🔄 Cambiar Estado</h3>
-      
-      <div class="solicitud-info-box">
-        <p class="solicitud-info">Solicitud: <strong>{{ solicitudSeleccionada.numeroSolicitud }}</strong></p>
-        <p class="solicitud-info">Estado actual: 
-          <span class="estado-badge" [ngClass]="{
-            'estado-pendiente': solicitudSeleccionada.estado === 'Pendiente' || solicitudSeleccionada.estado === 'Borrador',
-            'estado-enviada': solicitudSeleccionada.estado === 'Enviada',
-            'estado-documentacion': solicitudSeleccionada.estado === 'En documentación',
-            'estado-funcional': solicitudSeleccionada.estado === 'En pruebas funcionales',
-            'estado-desarrollo': solicitudSeleccionada.estado === 'En desarrollo',
-            'estado-aceptacion': solicitudSeleccionada.estado === 'En pruebas de aceptación',
-            'estado-cerrada': solicitudSeleccionada.estado === 'Cerrada',
-            'estado-rechazada': solicitudSeleccionada.estado === 'Rechazada'
-          }">
-            {{ solicitudSeleccionada.estado }}
-          </span>
-        </p>
-      </div>
-      
-      <div class="form-group-estado">
-        <label for="nuevoEstado">Seleccionar Nuevo Estado:</label>
-        <select id="nuevoEstado" [(ngModel)]="nuevoEstadoSeleccionadoId" class="select-cambio-estado">
-          <option [value]="null" disabled selected>-- Seleccione un estado --</option>
-          <option *ngFor="let est of estadosList" [value]="est.id">{{ est.nombre }}</option>
-        </select>
-      </div>
-
-      <div class="form-group-estado">
-        <label for="observacionEstado">Observación / Justificación:</label>
-        <textarea id="observacionEstado" [(ngModel)]="observacionCambioEstado" placeholder="Escriba la razón del cambio de estado..." rows="4" class="textarea-observacion"></textarea>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn-cerrar" (click)="cerrarModalCambioEstado()">Cancelar</button>
-        <button class="btn-guardar-estado" [disabled]="!nuevoEstadoSeleccionadoId" (click)="guardarCambioEstado()">Actualizar Estado</button>
       </div>
     </div>
   </div>
@@ -352,17 +361,6 @@
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.tipoSolicitud">Requerido</span>
             </div>
-
-            <div class="selector-grupo">
-              <label class="campo-label campo-requerido">PRIORIDAD</label>
-              <select class="select-wizard" [(ngModel)]="formGeneral.prioridad">
-                <option value="">-- Seleccione --</option>
-                <option value="alta">Alta</option>
-                <option value="media">Media</option>
-                <option value="baja">Baja</option>
-              </select>
-              <span class="error-campo" *ngIf="erroresGeneral.prioridad">Requerido</span>
-            </div>
           </div>
 
           <div class="form-grupo">
@@ -428,7 +426,7 @@
                     <td>{{ solicitudActual.fechaCreacion | date:'dd/MM/yyyy' }}</td>
                     <td>{{ req.id }}</td>
                     <td><span *ngIf="req.archivos && req.archivos.length > 0" title="Archivo adjunto: {{ req.archivos[0].nombre }}">📎 {{ req.archivos[0].nombre }}</span></td>
-                    <td><span class="radio-ver">⊙</span></td>
+                    <td><span class="radio-ver" (click)="verAdjunto(req)">⊙</span></td>
                     <td><button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('funcional', i)">🗑</button></td>
                   </tr>
                 </tbody>
@@ -485,7 +483,7 @@
                     <td>{{ solicitudActual.fechaCreacion | date:'dd/MM/yyyy' }}</td>
                     <td>{{ req.id }}</td>
                     <td><span *ngIf="req.archivos && req.archivos.length > 0" title="Archivo adjunto: {{ req.archivos[0].nombre }}">📎 {{ req.archivos[0].nombre }}</span></td>
-                    <td><span class="radio-ver">⊙</span></td>
+                    <td><span class="radio-ver" (click)="verAdjunto(req)">⊙</span></td>
                     <td><button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('noFuncional', i)">🗑</button></td>
                   </tr>
                 </tbody>

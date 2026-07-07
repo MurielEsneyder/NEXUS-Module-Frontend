@@ -55,9 +55,8 @@ export interface SolicitudDesarrollo {
 export class SolicitudesDesarrolloComponent implements OnInit {
 
   // ============================================================
-  // VARIABLES DE ESTADO - CORREGIDO
+  // VARIABLES DE ESTADO
   // ============================================================
-  // ✅ CAMBIADO: usar string en lugar de tipo literal estricto
   vistaActual: string = 'principal';
   pasoActivo = 0;
   mostrarModalInf = false;
@@ -73,6 +72,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   nuevoEstadoSeleccionadoId: number | null = null;
   observacionCambioEstado = '';
   estadosList: any[] = [];
+  
+  // VARIABLES PARA EDICIÓN EN MODAL
+  modoEdicion = false;
+  estadoEditado = '';
+  prioridadEditada = 'media';
+  guardandoCambios = false;
 
   // ============================================================
   // DATOS
@@ -413,7 +418,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   verDetalle(solicitud: SolicitudDesarrollo): void {
     console.log('👁️ Ver detalle de:', solicitud);
-    this.solicitudSeleccionada = solicitud;
+    this.solicitudSeleccionada = { ...solicitud }; // Copia para no modificar el original directamente
+    this.modoEdicion = false;
+    this.estadoEditado = this.solicitudSeleccionada.estado;
+    this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
     this.mostrarModalDetalle = true;
     console.log('✅ Modal abierto:', this.mostrarModalDetalle);
   }
@@ -421,12 +429,129 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   cerrarModalDetalle(): void {
     this.mostrarModalDetalle = false;
     this.solicitudSeleccionada = null;
+    this.modoEdicion = false;
   }
 
-  editarSolicitud(solicitud: SolicitudDesarrollo): void {
-    console.log('✏️ Editar solicitud:', solicitud.numeroSolicitud);
+  // ============================================================
+  // MODO EDICIÓN EN MODAL
+  // ============================================================
+  toggleModoEdicion(): void {
+    this.modoEdicion = !this.modoEdicion;
+    if (this.modoEdicion && this.solicitudSeleccionada) {
+      // Inicializar los valores editables con los actuales
+      this.estadoEditado = this.solicitudSeleccionada.estado;
+      this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
+    }
   }
 
+  // ============================================================
+  // GUARDAR CAMBIOS DEL MODAL
+  // ============================================================
+  guardarCambiosDetalle(): void {
+    if (!this.solicitudSeleccionada || !this.solicitudSeleccionada.id) {
+      console.warn('⚠️ No hay solicitud seleccionada para guardar cambios');
+      return;
+    }
+
+    this.guardandoCambios = true;
+    const solicitudOriginal = this.solicitudes.find(s => s.id === this.solicitudSeleccionada!.id);
+    
+    if (!solicitudOriginal) {
+      this.guardandoCambios = false;
+      this.mostrarNotificacion('No se encontró la solicitud en la lista', 'error');
+      return;
+    }
+
+    // Verificar si hubo cambios
+    const estadoCambiado = this.estadoEditado !== solicitudOriginal.estado;
+    const prioridadCambiada = this.prioridadEditada !== solicitudOriginal.prioridad;
+
+    if (!estadoCambiado && !prioridadCambiada) {
+      this.guardandoCambios = false;
+      this.mostrarNotificacion('No hay cambios para guardar');
+      this.modoEdicion = false;
+      return;
+    }
+
+    // Primero actualizar estado si cambió
+    if (estadoCambiado) {
+      // Buscar el ID del estado seleccionado
+      const estadoSeleccionado = this.estadosList.find(e => e.nombre === this.estadoEditado);
+      if (estadoSeleccionado) {
+        const observacion = `Cambio de estado desde edición: ${solicitudOriginal.estado} → ${this.estadoEditado}`;
+        this.solicitudesService.cambiarEstado(this.solicitudSeleccionada.id, estadoSeleccionado.id, observacion).subscribe({
+          next: () => {
+            console.log('✅ Estado actualizado correctamente');
+            // Si también hay que actualizar prioridad
+            if (prioridadCambiada) {
+              this.actualizarPrioridadEnServicio(this.solicitudSeleccionada!.id!, this.prioridadEditada);
+            } else {
+              this.finalizarGuardado();
+            }
+          },
+          error: (err) => {
+            console.error('❌ Error al actualizar estado:', err);
+            this.guardandoCambios = false;
+            this.mostrarNotificacion('Error al actualizar el estado', 'error');
+          }
+        });
+      } else {
+        // Si no se encuentra el estado, solo actualizar prioridad
+        if (prioridadCambiada) {
+          this.actualizarPrioridadEnServicio(this.solicitudSeleccionada.id!, this.prioridadEditada);
+        } else {
+          this.finalizarGuardado();
+        }
+      }
+    } else if (prioridadCambiada) {
+      // Solo actualizar prioridad
+      this.actualizarPrioridadEnServicio(this.solicitudSeleccionada.id!, this.prioridadEditada);
+    } else {
+      this.finalizarGuardado();
+    }
+  }
+
+  private actualizarPrioridadEnServicio(id: number, prioridad: string): void {
+    this.solicitudesService.actualizarPrioridad(id, prioridad).subscribe({
+      next: () => {
+        console.log('✅ Prioridad actualizada correctamente');
+        this.finalizarGuardado();
+      },
+      error: (err) => {
+        console.error('❌ Error al actualizar prioridad:', err);
+        this.guardandoCambios = false;
+        this.mostrarNotificacion('Error al actualizar la prioridad', 'error');
+      }
+    });
+  }
+
+  private finalizarGuardado(): void {
+    this.guardandoCambios = false;
+    this.modoEdicion = false;
+    this.cargarSolicitudes();
+    this.mostrarNotificacion('Cambios guardados exitosamente');
+    
+    // Actualizar la solicitud seleccionada con los nuevos valores
+    if (this.solicitudSeleccionada) {
+      this.solicitudSeleccionada.estado = this.estadoEditado;
+      this.solicitudSeleccionada.prioridad = this.normalizarPrioridad(this.prioridadEditada);
+    }
+  }
+
+  // ============================================================
+  // NOTIFICACIONES
+  // ============================================================
+  private mostrarNotificacion(mensaje: string, tipo: 'success' | 'error' = 'success'): void {
+    if (tipo === 'success') {
+      alert(`✅ ${mensaje}`);
+    } else {
+      alert(`❌ ${mensaje}`);
+    }
+  }
+
+  // ============================================================
+  // ELIMINAR SOLICITUD
+  // ============================================================
   eliminarSolicitud(solicitud: SolicitudDesarrollo): void {
     if (confirm(`¿Está seguro que desea eliminar la solicitud ${solicitud.numeroSolicitud}?`)) {
       if (solicitud.id) {
@@ -441,6 +566,9 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     }
   }
 
+  // ============================================================
+  // CARGAR ESTADOS
+  // ============================================================
   cargarEstados(): void {
     this.solicitudesService.obtenerEstados().subscribe({
       next: (data) => {
@@ -471,12 +599,19 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     ];
   }
 
-  cambiarEstadoSolicitud(solicitud: SolicitudDesarrollo): void {
+  // ============================================================
+  // MODAL CAMBIO DE ESTADO (rápido fuera del modo edición)
+  // ============================================================
+  abrirModalCambioEstado(solicitud: SolicitudDesarrollo): void {
     this.solicitudSeleccionada = solicitud;
     const currentEstado = this.estadosList.find(e => e.nombre === solicitud.estado);
     this.nuevoEstadoSeleccionadoId = currentEstado ? currentEstado.id : null;
     this.observacionCambioEstado = '';
     this.mostrarModalCambioEstado = true;
+  }
+
+  cambiarEstadoSolicitud(solicitud: SolicitudDesarrollo): void {
+    this.abrirModalCambioEstado(solicitud);
   }
 
   cerrarModalCambioEstado(): void {
@@ -495,6 +630,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     const nuevoEstadoId = Number(this.nuevoEstadoSeleccionadoId);
     const observacion = this.observacionCambioEstado.trim();
 
+    console.log(`🔄 Cambiando estado de solicitud ${id} a: ${nuevoEstadoId}`);
+
     this.solicitudesService.cambiarEstado(id, nuevoEstadoId, observacion).subscribe({
       next: (response) => {
         console.log('✅ Estado cambiado exitosamente:', response);
@@ -505,7 +642,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       },
       error: (err) => {
         console.error('❌ Error al cambiar el estado de la solicitud:', err);
-        alert('Hubo un error al intentar cambiar el estado de la solicitud. Por favor intente de nuevo.');
+        let mensajeError = 'Hubo un error al intentar cambiar el estado de la solicitud.';
+        if (err.error && err.error.message) {
+          mensajeError += '\n' + err.error.message;
+        }
+        alert(mensajeError);
       }
     });
   }

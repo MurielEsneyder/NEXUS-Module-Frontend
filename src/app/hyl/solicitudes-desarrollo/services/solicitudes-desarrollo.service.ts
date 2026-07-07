@@ -60,6 +60,16 @@ export class SolicitudesDesarrolloService {
     return this.http.patch(`${this.apiUrl}/${id}/estado?${params.toString()}`, {});
   }
 
+  // ============================================================
+  // ACTUALIZAR PRIORIDAD - NUEVO MÉTODO AGREGADO
+  // ============================================================
+  actualizarPrioridad(id: number, prioridad: string): Observable<any> {
+    console.log(`📤 Actualizando prioridad: ID=${id}, Prioridad=${prioridad}`);
+    const params = new URLSearchParams();
+    params.set('prioridad', prioridad);
+    return this.http.patch(`${this.apiUrl}/${id}/prioridad?${params.toString()}`, {});
+  }
+
   // Eliminar
   eliminar(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
