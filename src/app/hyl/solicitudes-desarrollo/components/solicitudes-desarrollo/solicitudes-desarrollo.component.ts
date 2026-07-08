@@ -1,5 +1,5 @@
 // solicitudes-desarrollo.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { SolicitudesDesarrolloService } from '../../services/solicitudes-desarrollo.service';
 import { SecurityService } from '../../../../commons/services/security.service';
 import { HttpClient } from '@angular/common/http';
@@ -69,7 +69,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   observacionesModal = '';
   impactoTexto = '';
   errorImpacto = false;
-  archivoAdjuntoTemporal: any = null;
+  archivosAdjuntosTemporales: any[] = [];
   mostrarModalCambioEstado = false;
   nuevoEstadoSeleccionadoId: number | null = null;
   observacionCambioEstado = '';
@@ -202,7 +202,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   constructor(
     private solicitudesService: SolicitudesDesarrolloService,
     private securityService: SecurityService,
-    private http: HttpClient
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
   ) {}
 
   // ============================================================
@@ -839,7 +840,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       solicitudProceso: false,
       prioridad: false
     };
-    this.archivoAdjuntoTemporal = null;
+    this.archivosAdjuntosTemporales = [];
   }
 
   mostrarBandeja(): void {
@@ -1000,19 +1001,63 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   seleccionarArchivo(event: any): void {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.archivoAdjuntoTemporal = {
-          nombre: file.name,
-          tipo: file.type,
-          size: file.size,
-          archivo: file,
-          base64: reader.result
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = () => {
+          this.archivosAdjuntosTemporales.push({
+            nombre: file.name,
+            tipo: file.type,
+            size: file.size,
+            archivo: file,
+            base64: reader.result
+          });
+          this.cdr.detectChanges();
         };
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      }
+    }
+    // Reset so same/new files can always trigger change event
+    event.target.value = '';
+  }
+
+  eliminarArchivoTemporal(index: number): void {
+    this.archivosAdjuntosTemporales.splice(index, 1);
+  }
+
+  seleccionarArchivoModal(event: any): void {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      if (this.requerimientoSeleccionadoModal) {
+        if (!this.requerimientoSeleccionadoModal.archivos) {
+          this.requerimientoSeleccionadoModal.archivos = [];
+        }
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const reader = new FileReader();
+          reader.onload = () => {
+            this.requerimientoSeleccionadoModal!.archivos!.push({
+              nombre: file.name,
+              tipo: file.type,
+              size: file.size,
+              archivo: file,
+              base64: reader.result
+            });
+            this.cdr.detectChanges();
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+    // Reset value so repeated selections accumulate instead of replace
+    event.target.value = '';
+  }
+
+  eliminarImagenModal(index: number): void {
+    if (this.requerimientoSeleccionadoModal && this.requerimientoSeleccionadoModal.archivos) {
+      this.requerimientoSeleccionadoModal.archivos.splice(index, 1);
     }
   }
 
@@ -1038,7 +1083,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       descripcion: descripcion.trim(),
       detalle: detalle?.trim() || '',
       cargoImpactado: cargo || '',
-      archivos: this.archivoAdjuntoTemporal ? [{ ...this.archivoAdjuntoTemporal }] : []
+      archivos: [...this.archivosAdjuntosTemporales]
     };
 
     if (tipo === 'funcional') {
@@ -1053,7 +1098,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       this.solicitudActual.requerimientosNoFuncionales.push(nuevoReq);
     }
 
-    this.archivoAdjuntoTemporal = null;
+    this.archivosAdjuntosTemporales = [];
   }
 
 

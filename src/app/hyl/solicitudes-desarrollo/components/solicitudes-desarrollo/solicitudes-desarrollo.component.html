@@ -452,9 +452,17 @@
                 <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rfDetalle maxlength="2000"></textarea>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Adjuntar Imagen</label>
-                <input type="file" accept="image/*" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRF>
-                <span *ngIf="archivoAdjuntoTemporal" style="font-size:12px; color:green; display:block; margin-top:5px;">Archivo seleccionado: {{ archivoAdjuntoTemporal.nombre }}</span>
+                <label class="campo-label">Adjuntar Imágenes</label>
+                <input type="file" multiple accept="image/*" (change)="seleccionarArchivo($event)" style="display:none" #fileInputRF>
+                <div class="img-preview-grid">
+                  <div *ngFor="let arch of archivosAdjuntosTemporales; let k = index" class="img-preview-tile">
+                    <img [src]="arch.base64" [alt]="arch.nombre" class="img-preview-thumb">
+                    <button class="img-preview-x" (click)="eliminarArchivoTemporal(k)" title="Eliminar imagen">✕</button>
+                  </div>
+                  <div class="img-preview-add" (click)="fileInputRF.click()" title="Agregar imágenes">
+                    <span>+</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -510,9 +518,17 @@
                 <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rnfDetalle maxlength="2000"></textarea>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Adjuntar Imagen</label>
-                <input type="file" accept="image/*" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRNF>
-                <span *ngIf="archivoAdjuntoTemporal" style="font-size:12px; color:green; display:block; margin-top:5px;">Archivo seleccionado: {{ archivoAdjuntoTemporal.nombre }}</span>
+                <label class="campo-label">Adjuntar Imágenes</label>
+                <input type="file" multiple accept="image/*" (change)="seleccionarArchivo($event)" style="display:none" #fileInputRNF>
+                <div class="img-preview-grid">
+                  <div *ngFor="let arch of archivosAdjuntosTemporales; let k = index" class="img-preview-tile">
+                    <img [src]="arch.base64" [alt]="arch.nombre" class="img-preview-thumb">
+                    <button class="img-preview-x" (click)="eliminarArchivoTemporal(k)" title="Eliminar imagen">✕</button>
+                  </div>
+                  <div class="img-preview-add" (click)="fileInputRNF.click()" title="Agregar imágenes">
+                    <span>+</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -646,19 +662,33 @@
       <textarea *ngIf="modoEdicionReq" class="textarea-wizard" rows="4" [(ngModel)]="requerimientoSeleccionadoModal.detalle" maxlength="2000"></textarea>
     </div>
     
-    <div class="detalle-item detalle-full-width" style="margin-top: 15px;" *ngIf="requerimientoSeleccionadoModal.archivos?.length">
+    <div class="detalle-item detalle-full-width" style="margin-top: 15px;" [class.detalle-editable]="modoEdicionReq">
       <label>Imágenes adjuntas:</label>
-      <div class="adjuntos-lista" style="display: flex; flex-direction: column; gap: 10px; margin-top: 5px;">
-        <div *ngFor="let archivo of requerimientoSeleccionadoModal.archivos" class="adjunto-item">
-          <img *ngIf="archivo.base64" [src]="archivo.base64" [alt]="archivo.nombre" style="max-width: 100%; max-height: 250px; border-radius: 4px; border: 1px solid #ddd; object-fit: contain;">
-          <span *ngIf="!archivo.base64" class="text-muted">📎 {{ archivo.nombre || 'Imagen adjunta' }}</span>
+      
+      <!-- Vista Normal -->
+      <div *ngIf="!modoEdicionReq">
+        <div class="img-preview-grid" *ngIf="requerimientoSeleccionadoModal.archivos?.length">
+          <div *ngFor="let archivo of requerimientoSeleccionadoModal.archivos" class="img-preview-tile" style="cursor:default;">
+            <img *ngIf="archivo.base64" [src]="archivo.base64" [alt]="archivo.nombre" class="img-preview-thumb">
+            <span *ngIf="!archivo.base64" class="text-muted" style="padding:8px; font-size:12px;">📎 {{ archivo.nombre }}</span>
+          </div>
         </div>
+        <div *ngIf="!requerimientoSeleccionadoModal.archivos?.length" class="text-muted" style="font-size:13px; margin-top:5px;">Sin imágenes / adjuntos</div>
       </div>
-    </div>
-    <div class="detalle-item detalle-full-width" style="margin-top: 15px;" *ngIf="!requerimientoSeleccionadoModal.archivos?.length">
-      <label>Imágenes adjuntas:</label>
-      <div class="adjuntos-lista">
-        <div class="adjunto-item text-muted">Sin imágenes / adjuntos</div>
+
+      <!-- Modo Edición -->
+      <div *ngIf="modoEdicionReq">
+        <input type="file" multiple accept="image/*" (change)="seleccionarArchivoModal($event)" style="display:none" #fileInputModal>
+        <div class="img-preview-grid">
+          <div *ngFor="let archivo of requerimientoSeleccionadoModal.archivos; let j = index" class="img-preview-tile">
+            <img *ngIf="archivo.base64" [src]="archivo.base64" [alt]="archivo.nombre" class="img-preview-thumb">
+            <span *ngIf="!archivo.base64" class="text-muted" style="font-size:11px; padding:4px;">📎 {{ archivo.nombre }}</span>
+            <button class="img-preview-x" (click)="eliminarImagenModal(j)" title="Eliminar imagen">✕</button>
+          </div>
+          <div class="img-preview-add" (click)="fileInputModal.click()" title="Agregar imágenes">
+            <span>+</span>
+          </div>
+        </div>
       </div>
     </div>
 
