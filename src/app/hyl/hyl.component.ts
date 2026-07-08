@@ -158,6 +158,13 @@ export class HealthLifeComponent implements OnInit, OnDestroy {
       e => {
         if (e instanceof NavigationEnd) {
           this.fullActiveRoute = e.url.toUpperCase().replace("/HYL/", "").replace(/\//g, "\t‣\t").replace(/-/g, " ");
+
+          const url = e.urlAfterRedirects || e.url;
+          const shouldCloseMenu = /\/hyl\/solicitudes-desarrollo(\/|$)/.test(url) || /\/hyl\/solicitudes-desarrollo\/.*(nueva|crear|bandeja)/i.test(url);
+
+          if (shouldCloseMenu && this.drawer?.opened) {
+            this.drawer.close();
+          }
         }
       }
     );

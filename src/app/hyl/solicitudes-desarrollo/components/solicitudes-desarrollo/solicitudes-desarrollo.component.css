@@ -2,28 +2,32 @@
    VARIABLES GENERALES
    ============================================================ */
 :host {
-  --primary-dark: #009999;
-  --primary-blue: #00A9AB;
-  --primary-light: #34B3AF;
-  --accent-gold: #30A19A;
-  --btn-blue: #00A9AB;
-  --btn-green: #30A19A;
-  --btn-verde-light: #34B3AF;
-  --bg-light: #C1E5DE;
-  --text-dark: #006b6c;
-  --text-medium: #2f6f70;
-  --text-light: #5d8d8b;
+  --primary-dark: #0f6b6c;
+  --primary-blue: #2b8f93;
+  --primary-light: #5fb4b1;
+  --accent-gold: #7ba7a3;
+  --btn-blue: #2b8f93;
+  --btn-green: #4f9b8d;
+  --btn-verde-light: #7eb8b1;
+  --bg-light: #eef7f6;
+  --text-dark: #255b5d;
+  --text-medium: #4f6f70;
+  --text-light: #6f8788;
   --white: #ffffff;
-  --shadow: 0 2px 8px rgba(0,0,0,0.1);
+  --shadow: 0 2px 8px rgba(15, 107, 108, 0.08);
+  --border-soft: #dce8e7;
   --border-radius: 1px;
 }
 
 .container {
-  padding: 20px 30px;
-  max-width: 1400px;
+  padding: 16px 18px;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
   background: var(--bg-light);
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow-x: auto;
 }
 
 /* ============================================================
@@ -89,6 +93,11 @@
    ============================================================ */
 .bandeja-section { 
   animation: fadeIn 0.3s ease-in; 
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  box-sizing: border-box;
 }
 
 /* HEADER */
@@ -106,6 +115,7 @@
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .btn-volver-bandeja {
@@ -114,7 +124,7 @@
   gap: 6px;
   background: transparent;
   border: none;
-  color: #1565C0;
+  color: var(--primary-dark);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -125,7 +135,7 @@
 }
 
 .btn-volver-bandeja:hover {
-  background: #e3f2fd;
+  background: var(--bg-light);
 }
 
 .btn-volver-bandeja mat-icon {
@@ -157,7 +167,7 @@
 }
 
 .btn-nueva {
-  background: #2e7d32;
+  background: var(--btn-green);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -172,7 +182,7 @@
 }
 
 .btn-nueva:hover {
-  background: #1b5e20;
+  background: var(--primary-dark);
 }
 
 /* FILTROS */
@@ -213,8 +223,13 @@
    ============================================================ */
 .tabla-bandeja-wrapper {
   overflow-x: auto;
+  overflow-y: hidden;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .tabla-bandeja {
@@ -223,6 +238,7 @@
   border-collapse: collapse;
   background: #fff;
   font-size: 13px;
+  table-layout: fixed;
 }
 
 .tabla-bandeja thead tr {
@@ -281,9 +297,9 @@
   border-bottom: 1px solid #ecf0f1;
   color: #34495e;
   vertical-align: middle;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 /* Altura uniforme de filas */
@@ -310,12 +326,17 @@
    BADGES
    ============================================================ */
 .badge-tipo {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 3px 12px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .badge-proyecto {
@@ -329,49 +350,66 @@
 }
 
 .estado-badge {
-  display: inline-block;
-  padding: 4px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  box-sizing: border-box;
 }
 
 .estado-pendiente {
   background: #f5f5f5;
   color: #616161;
+  border: 1px solid #d9d9d9;
 }
 .estado-enviada {
   background: #e3f2fd;
   color: #0d47a1;
+  border: 1px solid #bbdefb;
 }
 .estado-documentacion {
   background: #fff3e0;
   color: #e65100;
+  border: 1px solid #ffe0b2;
 }
 .estado-funcional {
   background: #fce4ec;
   color: #880e4f;
+  border: 1px solid #f8bbd0;
 }
 .estado-desarrollo {
   background: #e8eaf6;
   color: #1a237e;
+  border: 1px solid #c5cae9;
 }
 .estado-aceptacion {
   background: #f3e5f5;
   color: #4a148c;
+  border: 1px solid #d1c4e9;
 }
 .estado-cerrada {
   background: #e8f5e9;
   color: #1b5e20;
+  border: 1px solid #c8e6c9;
 }
 .estado-rechazada {
   background: #ffebee;
   color: #b71c1c;
+  border: 1px solid #ffcdd2;
 }
 
 .prioridad-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 3px 12px;
   border-radius: 20px;
   font-size: 11px;
@@ -380,6 +418,7 @@
   white-space: nowrap;
   min-width: 50px;
   text-align: center;
+  line-height: 1.2;
 }
 
 .prioridad-alta {
@@ -404,7 +443,7 @@
    BOTÓN PDF
    ============================================================ */
 .btn-pdf-adjunto {
-  background: #dc3545;
+  background: var(--primary-dark);
   color: white;
   border: none;
   padding: 4px 12px;
@@ -416,7 +455,7 @@
 }
 
 .btn-pdf-adjunto:hover {
-  background: #c82333;
+  background: var(--primary-blue);
 }
 
 /* ============================================================
@@ -479,7 +518,7 @@
 }
 
 .btn-crear-primera {
-  background: #1565C0;
+  background: var(--btn-blue);
   color: white;
   border: none;
   padding: 8px 20px;
@@ -490,7 +529,7 @@
 }
 
 .btn-crear-primera:hover {
-  background: #0d47a1;
+  background: var(--primary-dark);
 }
 
 /* ============================================================
@@ -927,7 +966,7 @@
 }
 
 .btn-guardar-cambios {
-  background: #2e7d32;
+  background: var(--btn-green);
   color: white;
   border: none;
   padding: 10px 28px;
@@ -939,17 +978,17 @@
 }
 
 .btn-guardar-cambios:hover:not(:disabled) {
-  background: #1b5e20;
+  background: var(--primary-dark);
   transform: scale(1.02);
 }
 
 .btn-guardar-cambios:disabled {
-  background: #a5d6a7;
+  background: var(--btn-verde-light);
   cursor: not-allowed;
 }
 
 .btn-cambiar-estado {
-  background: #1565C0;
+  background: var(--btn-blue);
   color: white;
   border: none;
   padding: 10px 28px;
@@ -961,7 +1000,7 @@
 }
 
 .btn-cambiar-estado:hover {
-  background: #0d47a1;
+  background: var(--primary-dark);
 }
 
 /* ============================================================
@@ -1466,6 +1505,15 @@
    RESPONSIVE
    ============================================================ */
 @media (max-width: 1024px) {
+  .bandeja-section {
+    overflow-x: hidden;
+  }
+
+  .tabla-bandeja-wrapper {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .tabla-bandeja {
     min-width: 900px;
   }
@@ -1529,6 +1577,10 @@
   .tabla-bandeja th:nth-child(6),
   .tabla-bandeja td:nth-child(6) {
     display: none;
+  }
+
+  .tabla-bandeja-wrapper {
+    margin: 0 -4px;
   }
 
   .tabla-bandeja {

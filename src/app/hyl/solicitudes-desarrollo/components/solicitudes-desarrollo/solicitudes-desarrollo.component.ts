@@ -207,6 +207,48 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     private cdr: ChangeDetectorRef
   ) {}
 
+  getEstadoVisual(estado?: string): string {
+    const valor = (estado || '').toString().trim().toLowerCase();
+
+    if (!valor) {
+      return 'Pendiente';
+    }
+
+    if (valor.includes('borr') || valor.includes('pend')) {
+      return 'Pendiente';
+    }
+
+    if (valor.includes('envi')) {
+      return 'Enviada';
+    }
+
+    if (valor.includes('doc')) {
+      return 'En documentación';
+    }
+
+    if (valor.includes('funcional')) {
+      return 'En pruebas funcionales';
+    }
+
+    if (valor.includes('desarrollo')) {
+      return 'En desarrollo';
+    }
+
+    if (valor.includes('acept')) {
+      return 'En pruebas de aceptación';
+    }
+
+    if (valor.includes('cerr')) {
+      return 'Cerrada';
+    }
+
+    if (valor.includes('rech')) {
+      return 'Rechazada';
+    }
+
+    return estado || 'Pendiente';
+  }
+
   // ============================================================
   // NG ON INIT
   // ============================================================

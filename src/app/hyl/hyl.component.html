@@ -96,7 +96,9 @@
     </mat-drawer>
 
     <mat-drawer-content>
-      <router-outlet></router-outlet>
+      <div class="route-content" [class.drawer-opened]="drawer.opened">
+        <router-outlet></router-outlet>
+      </div>
     </mat-drawer-content>
   </mat-drawer-container>
 </div>

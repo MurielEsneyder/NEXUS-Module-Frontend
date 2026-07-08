@@ -94,16 +94,16 @@
             <td class="text-center">{{ solicitud.totalRequerimientos || 0 }}</td>
             <td>
               <span class="estado-badge" [ngClass]="{
-                'estado-pendiente': solicitud.estado === 'Pendiente' || solicitud.estado === 'Borrador',
-                'estado-enviada': solicitud.estado === 'Enviada',
-                'estado-documentacion': solicitud.estado === 'En documentación',
-                'estado-funcional': solicitud.estado === 'En pruebas funcionales',
-                'estado-desarrollo': solicitud.estado === 'En desarrollo',
-                'estado-aceptacion': solicitud.estado === 'En pruebas de aceptación',
-                'estado-cerrada': solicitud.estado === 'Cerrada',
-                'estado-rechazada': solicitud.estado === 'Rechazada'
+                'estado-pendiente': getEstadoVisual(solicitud.estado) === 'Pendiente',
+                'estado-enviada': getEstadoVisual(solicitud.estado) === 'Enviada',
+                'estado-documentacion': getEstadoVisual(solicitud.estado) === 'En documentación',
+                'estado-funcional': getEstadoVisual(solicitud.estado) === 'En pruebas funcionales',
+                'estado-desarrollo': getEstadoVisual(solicitud.estado) === 'En desarrollo',
+                'estado-aceptacion': getEstadoVisual(solicitud.estado) === 'En pruebas de aceptación',
+                'estado-cerrada': getEstadoVisual(solicitud.estado) === 'Cerrada',
+                'estado-rechazada': getEstadoVisual(solicitud.estado) === 'Rechazada'
               }">
-                {{ solicitud.estado }}
+                {{ getEstadoVisual(solicitud.estado) }}
               </span>
             </td>
             <td class="text-center">
@@ -182,16 +182,16 @@
             <label>Estado:</label>
             <div *ngIf="!modoEdicion" class="estado-display">
               <span class="estado-badge" [ngClass]="{
-                'estado-pendiente': solicitudSeleccionada.estado === 'Pendiente' || solicitudSeleccionada.estado === 'Borrador',
-                'estado-enviada': solicitudSeleccionada.estado === 'Enviada',
-                'estado-documentacion': solicitudSeleccionada.estado === 'En documentación',
-                'estado-funcional': solicitudSeleccionada.estado === 'En pruebas funcionales',
-                'estado-desarrollo': solicitudSeleccionada.estado === 'En desarrollo',
-                'estado-aceptacion': solicitudSeleccionada.estado === 'En pruebas de aceptación',
-                'estado-cerrada': solicitudSeleccionada.estado === 'Cerrada',
-                'estado-rechazada': solicitudSeleccionada.estado === 'Rechazada'
+                'estado-pendiente': getEstadoVisual(solicitudSeleccionada.estado) === 'Pendiente',
+                'estado-enviada': getEstadoVisual(solicitudSeleccionada.estado) === 'Enviada',
+                'estado-documentacion': getEstadoVisual(solicitudSeleccionada.estado) === 'En documentación',
+                'estado-funcional': getEstadoVisual(solicitudSeleccionada.estado) === 'En pruebas funcionales',
+                'estado-desarrollo': getEstadoVisual(solicitudSeleccionada.estado) === 'En desarrollo',
+                'estado-aceptacion': getEstadoVisual(solicitudSeleccionada.estado) === 'En pruebas de aceptación',
+                'estado-cerrada': getEstadoVisual(solicitudSeleccionada.estado) === 'Cerrada',
+                'estado-rechazada': getEstadoVisual(solicitudSeleccionada.estado) === 'Rechazada'
               }">
-                {{ solicitudSeleccionada.estado }}
+                {{ getEstadoVisual(solicitudSeleccionada.estado) }}
               </span>
             </div>
             <div *ngIf="modoEdicion" class="estado-editable">

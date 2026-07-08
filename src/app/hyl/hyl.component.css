@@ -1,5 +1,36 @@
 .hl-app {
   min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.mat-drawer-container {
+  width: 100%;
+}
+
+.mat-drawer-content {
+  overflow-x: auto;
+  overflow-y: auto;
+  min-width: 0;
+  padding: 0;
+}
+
+.route-content {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 12px 12px 12px;
+  transition: padding-left 0.2s ease;
+}
+
+.route-content.drawer-opened {
+  padding-left: 20px;
+}
+
+.mat-drawer {
+  width: 260px;
+  min-width: 220px;
+  max-width: calc(100vw - 24px);
 }
 
 .img-responsive {
