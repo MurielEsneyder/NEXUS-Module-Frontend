@@ -587,14 +587,14 @@
 </div>
 
 <!-- Modal Eliminar Requerimiento -->
-<div class="overlay-modal" *ngIf="mostrarModalEliminar" (click)="cancelarEliminar()"></div>
+<div class="overlay-modal overlay-alerta" *ngIf="mostrarModalEliminar" (click)="cancelarEliminar()"></div>
 <div class="modal-alerta" *ngIf="mostrarModalEliminar && requerimientoAEliminar">
   <div class="modal-alerta-contenido">
-    <h3>Alerta</h3>
-    <p>Esta seguro que desea eliminar el {{ requerimientoAEliminar.id }}</p>
+    <h3>Confirmar eliminación</h3>
+    <p>¿Está seguro que desea eliminar <strong>{{ requerimientoAEliminar.id }}</strong>?</p>
     <div class="modal-alerta-botones">
       <button class="btn-alerta-no" (click)="cancelarEliminar()">No</button>
-      <button class="btn-alerta-si" (click)="confirmarEliminar()">Yes</button>
+      <button class="btn-alerta-si" (click)="confirmarEliminar()">Sí, eliminar</button>
     </div>
   </div>
 </div>
