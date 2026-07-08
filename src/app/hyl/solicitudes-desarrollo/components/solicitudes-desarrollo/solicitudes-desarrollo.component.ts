@@ -93,6 +93,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   requerimientoSeleccionadoTipo: 'funcional' | 'noFuncional' = 'funcional';
   requerimientoSeleccionadoIndex: number = -1;
   modoEdicionReq = false;
+  mensajeErrorRequerimiento = '';
 
   // ============================================================
   // VARIABLES PARA CARGA MEJORADA
@@ -294,7 +295,26 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   }
 
   // ============================================================
-  // CARGAR SOLICITUDES - VERSIÓN COMPLETA CON TODAS LAS PÁGINAS
+  // ORDENAR SOLICITUDES POR ID DESCENDENTE (MÁS RECIENTE PRIMERO)
+  // ============================================================
+  private ordenarSolicitudesPorId(solicitudes: SolicitudDesarrollo[]): SolicitudDesarrollo[] {
+    return solicitudes.sort((a, b) => {
+      const idA = a.id || 0;
+      const idB = b.id || 0;
+      return idB - idA; // Descendente (mayor a menor - el más reciente primero)
+    });
+  }
+
+  // ============================================================
+  // ACTUALIZAR LISTAS ORDENADAS
+  // ============================================================
+  private actualizarListasOrdenadas(): void {
+    this.solicitudes = this.ordenarSolicitudesPorId([...this.solicitudes]);
+    this.solicitudesFiltradas = this.ordenarSolicitudesPorId([...this.solicitudesFiltradas]);
+  }
+
+  // ============================================================
+  // CARGAR SOLICITUDES - VERSIÓN OPTIMIZADA Y SILENCIOSA
   // ============================================================
   cargarSolicitudes(): void {
     if (this.cargandoSolicitudes) {
@@ -304,53 +324,108 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     this.cargandoSolicitudes = true;
     this.errorCargandoSolicitudes = false;
-    this.solicitudes = [];
-    this.solicitudesFiltradas = [];
-    this.solicitudesCargadas = 0;
-    this.totalSolicitudesBD = 0;
-    this.todasCargadas = false;
     
-    console.log('📥 Cargando TODAS las solicitudes...');
+    console.log('📥 Cargando solicitudes...');
     
-    // Usar el nuevo método que obtiene todas las páginas
+    // 1. CARGAR DESDE CACHÉ PRIMERO (PARA RESPUESTA INMEDIATA)
+    const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
+    if (cargadoDesdeCache) {
+      console.log('📦 Mostrando datos desde caché mientras se actualiza...');
+      this.actualizarListasOrdenadas(); // Ordenar los datos cargados desde caché
+      this.cargandoSolicitudes = false; // Ocultar indicador de carga si ya hay datos
+    }
+    
+    // 2. OBTENER DATOS FRESCOS DEL BACKEND (EN SEGUNDO PLANO)
     this.solicitudesService.obtenerTodasCompletas().subscribe({
       next: (data: any) => {
-        console.log('📦 Datos completos recibidos:', data);
+        console.log('📦 Datos recibidos del backend:', data?.content?.length || 0, 'solicitudes');
         
         if (data && data.content) {
-          this.solicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
-          this.solicitudesFiltradas = [...this.solicitudes];
-          this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
-          this.solicitudesCargadas = this.solicitudes.length;
-          this.todasCargadas = true;
+          // Mapear los datos
+          const nuevasSolicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
           
-          console.log(`✅ ${this.solicitudes.length} solicitudes cargadas (total en BD: ${this.totalSolicitudesBD})`);
-          this.guardarSolicitudesEnCache();
+          // Ordenar las nuevas solicitudes por ID descendente
+          const nuevasSolicitudesOrdenadas = this.ordenarSolicitudesPorId(nuevasSolicitudes);
           
-          if (this.solicitudes.length > 0) {
-            this.mostrarNotificacion(`✅ ${this.solicitudes.length} solicitudes cargadas correctamente`, 'success');
+          // Verificar si hay cambios significativos
+          const hayCambios = this.hayCambiosSignificativos(nuevasSolicitudesOrdenadas);
+          
+          if (hayCambios || !cargadoDesdeCache) {
+            // Actualizar la lista completa con datos ordenados
+            this.solicitudes = nuevasSolicitudesOrdenadas;
+            this.solicitudesFiltradas = [...this.solicitudes];
+            this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
+            this.solicitudesCargadas = this.solicitudes.length;
+            this.todasCargadas = true;
+            
+            console.log(`✅ ${this.solicitudes.length} solicitudes cargadas correctamente (ordenadas por ID descendente - más reciente primero)`);
+            
+            // Guardar en caché para futuras cargas
+            this.guardarSolicitudesEnCache();
+            
+            // SOLO mostrar notificación si hay cambios y no es la primera carga
+            if (cargadoDesdeCache && hayCambios) {
+              this.mostrarNotificacionSnackbar(`Se actualizaron ${nuevasSolicitudes.length} solicitudes`, 'info');
+            }
+          } else {
+            console.log('📦 No hay cambios significativos, manteniendo datos en caché');
+            // Actualizar solo el conteo
+            this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
+            this.todasCargadas = true;
           }
         } else {
-          this.solicitudes = [];
-          this.solicitudesFiltradas = [];
-          this.totalSolicitudesBD = 0;
-          console.warn('⚠️ No se recibieron datos');
+          if (!cargadoDesdeCache) {
+            this.solicitudes = [];
+            this.solicitudesFiltradas = [];
+            this.totalSolicitudesBD = 0;
+            console.warn('⚠️ No se recibieron datos del backend');
+          }
         }
         this.cargandoSolicitudes = false;
+        this.cdr.detectChanges();
       },
       error: (err: any) => {
         console.error('❌ Error al cargar solicitudes:', err);
         this.cargandoSolicitudes = false;
         this.errorCargandoSolicitudes = true;
         
+        // Si no hay caché, mostrar mensaje solo en consola
         const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
         if (!cargadoDesdeCache) {
-          this.mostrarNotificacion('Error al cargar solicitudes. Intente recargar.', 'error');
+          console.error('❌ No hay datos disponibles. Error:', err.message);
           this.solicitudes = [];
           this.solicitudesFiltradas = [];
+          this.mostrarNotificacionSnackbar('Error al cargar solicitudes', 'error');
         }
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  // ============================================================
+  // VERIFICAR SI HAY CAMBIOS SIGNIFICATIVOS
+  // ============================================================
+  private hayCambiosSignificativos(nuevasSolicitudes: SolicitudDesarrollo[]): boolean {
+    if (!this.solicitudes || this.solicitudes.length === 0) return true;
+    if (nuevasSolicitudes.length !== this.solicitudes.length) return true;
+    
+    // Verificar si cambió el estado o prioridad de alguna solicitud
+    for (let i = 0; i < nuevasSolicitudes.length; i++) {
+      const nueva = nuevasSolicitudes[i];
+      const actual = this.solicitudes[i];
+      if (nueva.estado !== actual.estado || nueva.prioridad !== actual.prioridad) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ============================================================
+  // MOSTRAR NOTIFICACIÓN TIPO SNACKBAR (SIN ALERTAS)
+  // ============================================================
+  private mostrarNotificacionSnackbar(mensaje: string, tipo: 'success' | 'error' | 'info' = 'info'): void {
+    const icono = tipo === 'success' ? '✅' : tipo === 'error' ? '❌' : 'ℹ️';
+    console.log(`${icono} ${mensaje}`);
   }
 
   // ============================================================
@@ -358,6 +433,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   recargarSolicitudes(): void {
     console.log('🔄 Recargando todas las solicitudes...');
+    localStorage.removeItem('solicitudes_desarrollo_cache');
     this.cargarSolicitudes();
   }
 
@@ -370,13 +446,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          this.solicitudes = parsed;
+          this.solicitudes = this.ordenarSolicitudesPorId(parsed);
           this.solicitudesFiltradas = [...this.solicitudes];
           this.totalSolicitudesBD = this.solicitudes.length;
           this.solicitudesCargadas = this.solicitudes.length;
           this.todasCargadas = true;
-          console.log(`✅ ${this.solicitudes.length} solicitudes cargadas desde caché`);
-          this.mostrarNotificacion(`Cargadas ${this.solicitudes.length} solicitudes desde caché`, 'info');
+          console.log(`✅ ${this.solicitudes.length} solicitudes cargadas desde caché (ordenadas por ID descendente - más reciente primero)`);
           return true;
         }
       }
@@ -392,8 +467,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   private guardarSolicitudesEnCache(): void {
     try {
       if (this.solicitudes && this.solicitudes.length > 0) {
-        localStorage.setItem('solicitudes_desarrollo_cache', JSON.stringify(this.solicitudes));
-        console.log('💾 Solicitudes guardadas en caché');
+        // Guardar ya ordenadas por ID descendente
+        const solicitudesOrdenadas = this.ordenarSolicitudesPorId([...this.solicitudes]);
+        localStorage.setItem('solicitudes_desarrollo_cache', JSON.stringify(solicitudesOrdenadas));
+        console.log('💾 Solicitudes guardadas en caché (ordenadas por ID descendente)');
       }
     } catch (e) {
       console.warn('⚠️ No se pudo guardar en caché:', e);
@@ -429,7 +506,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   private extraerPrioridad(item: any): 'alta' | 'media' | 'baja' {
     const cruda = item?.prioridad ?? item?.prioridadNombre ?? item?.prioridadCodigo;
     if (cruda === undefined || cruda === null || String(cruda).trim() === '') {
-      console.warn('⚠️ La API no devolvió prioridad para la solicitud:', item?.codigo || item?.id);
       return 'media';
     }
     return this.normalizarPrioridad(cruda);
@@ -468,7 +544,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         const tipoReqNum = tipoReq !== null && tipoReq !== undefined ? Number(tipoReq) : -1;
         const tipoNombre = req.tipoRequerimientoNombre ? String(req.tipoRequerimientoNombre).toLowerCase() : '';
 
-        // Safely determine functional vs non-functional
         if (tipoReqNum === 0 || tipoNombre.includes('funcional') && !tipoNombre.includes('no')) {
           reqMapped.id = reqMapped.id || `RF_${reqFuncionales.length + 1}`;
           reqFuncionales.push(reqMapped);
@@ -476,7 +551,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           reqMapped.id = reqMapped.id || `RNF_${reqNoFuncionales.length + 1}`;
           reqNoFuncionales.push(reqMapped);
         } else {
-          // Fallback if neither matched, assume functional
           reqMapped.id = reqMapped.id || `RF_${reqFuncionales.length + 1}`;
           reqFuncionales.push(reqMapped);
         }
@@ -518,6 +592,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   filtrarSolicitudes(texto: string): void {
     if (!texto || texto.trim() === '') {
       this.solicitudesFiltradas = [...this.solicitudes];
+      // Mantener orden descendente al filtrar
+      this.solicitudesFiltradas = this.ordenarSolicitudesPorId(this.solicitudesFiltradas);
       return;
     }
     const term = texto.toLowerCase().trim();
@@ -527,14 +603,20 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       s.solicitante.toLowerCase().includes(term) ||
       s.area.toLowerCase().includes(term)
     );
+    // Ordenar los resultados filtrados (descendente)
+    this.solicitudesFiltradas = this.ordenarSolicitudesPorId(this.solicitudesFiltradas);
   }
 
   filtrarPorEstado(estado: string): void {
     if (!estado || estado === '') {
       this.solicitudesFiltradas = [...this.solicitudes];
+      // Mantener orden descendente al filtrar
+      this.solicitudesFiltradas = this.ordenarSolicitudesPorId(this.solicitudesFiltradas);
       return;
     }
     this.solicitudesFiltradas = this.solicitudes.filter(s => s.estado === estado);
+    // Ordenar los resultados filtrados (descendente)
+    this.solicitudesFiltradas = this.ordenarSolicitudesPorId(this.solicitudesFiltradas);
   }
 
   // ============================================================
@@ -547,7 +629,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.estadoEditado = this.solicitudSeleccionada.estado;
     this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
     this.mostrarModalDetalle = true;
-    console.log('✅ Modal abierto:', this.mostrarModalDetalle);
   }
 
   cerrarModalDetalle(): void {
@@ -589,7 +670,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     
     this.modoEdicionReq = false;
     this.mostrarModalRequerimiento = false;
-    this.mostrarNotificacion('Requerimiento actualizado exitosamente');
+    this.mostrarNotificacionSnackbar('Requerimiento actualizado exitosamente', 'success');
   }
 
   eliminarRequerimientoDesdeModal(): void {
@@ -622,7 +703,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     
     if (!solicitudOriginal) {
       this.guardandoCambios = false;
-      this.mostrarNotificacion('No se encontró la solicitud en la lista', 'error');
+      this.mostrarNotificacionSnackbar('No se encontró la solicitud en la lista', 'error');
       return;
     }
 
@@ -631,7 +712,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     if (!estadoCambiado && !prioridadCambiada) {
       this.guardandoCambios = false;
-      this.mostrarNotificacion('No hay cambios para guardar');
+      this.mostrarNotificacionSnackbar('No hay cambios para guardar', 'info');
       this.modoEdicion = false;
       return;
     }
@@ -652,7 +733,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           error: (err) => {
             console.error('❌ Error al actualizar estado:', err);
             this.guardandoCambios = false;
-            this.mostrarNotificacion('Error al actualizar el estado', 'error');
+            this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
           }
         });
       } else {
@@ -678,7 +759,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       error: (err) => {
         console.error('❌ Error al actualizar prioridad:', err);
         this.guardandoCambios = false;
-        this.mostrarNotificacion('Error al actualizar la prioridad', 'error');
+        this.mostrarNotificacionSnackbar('Error al actualizar la prioridad', 'error');
       }
     });
   }
@@ -687,24 +768,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.guardandoCambios = false;
     this.modoEdicion = false;
     this.cargarSolicitudes();
-    this.mostrarNotificacion('Cambios guardados exitosamente');
+    this.mostrarNotificacionSnackbar('Cambios guardados exitosamente', 'success');
     
     if (this.solicitudSeleccionada) {
       this.solicitudSeleccionada.estado = this.estadoEditado;
       this.solicitudSeleccionada.prioridad = this.normalizarPrioridad(this.prioridadEditada);
-    }
-  }
-
-  // ============================================================
-  // NOTIFICACIONES MEJORADAS
-  // ============================================================
-  private mostrarNotificacion(mensaje: string, tipo: 'success' | 'error' | 'info' = 'success'): void {
-    if (tipo === 'error') {
-      alert(`❌ ${mensaje}`);
-    } else if (tipo === 'info') {
-      console.log(`ℹ️ ${mensaje}`);
-    } else {
-      alert(`✅ ${mensaje}`);
     }
   }
 
@@ -797,7 +865,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         this.cerrarModalCambioEstado();
         this.cerrarModalDetalle();
         this.cargarSolicitudes();
-        alert('El estado de la solicitud ha sido actualizado correctamente.');
+        this.mostrarNotificacionSnackbar('El estado de la solicitud ha sido actualizado correctamente', 'success');
       },
       error: (err) => {
         console.error('❌ Error al cambiar el estado de la solicitud:', err);
@@ -805,7 +873,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         if (err.error && err.error.message) {
           mensajeError += '\n' + err.error.message;
         }
-        alert(mensajeError);
+        this.mostrarNotificacionSnackbar(mensajeError, 'error');
       }
     });
   }
@@ -845,6 +913,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   mostrarBandeja(): void {
     this.vistaActual = 'bandeja';
+    // Ordenar descendente al mostrar la bandeja (más reciente primero)
+    if (this.solicitudes.length > 0) {
+      this.solicitudes = this.ordenarSolicitudesPorId([...this.solicitudes]);
+      this.solicitudesFiltradas = this.ordenarSolicitudesPorId([...this.solicitudesFiltradas]);
+    }
     this.cargarSolicitudes();
   }
 
@@ -1019,7 +1092,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         reader.readAsDataURL(file);
       }
     }
-    // Reset so same/new files can always trigger change event
     event.target.value = '';
   }
 
@@ -1051,7 +1123,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         }
       }
     }
-    // Reset value so repeated selections accumulate instead of replace
     event.target.value = '';
   }
 
@@ -1065,10 +1136,13 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // AGREGAR REQUERIMIENTO
   // ============================================================
   agregarRequerimiento(tipo: 'funcional' | 'noFuncional', descripcion: string, cargo?: string, detalle?: string): void {
-    if (!descripcion || descripcion.trim() === '') {
-      alert('⚠️ Por favor ingrese una descripción para el requerimiento.');
+    const error = this.validarCamposRequerimiento(descripcion, cargo, detalle);
+    if (error) {
+      this.mensajeErrorRequerimiento = error;
       return;
     }
+
+    this.mensajeErrorRequerimiento = '';
 
     const lista = tipo === 'funcional'
       ? (this.solicitudActual.requerimientosFuncionales || [])
@@ -1082,7 +1156,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       id: id,
       descripcion: descripcion.trim(),
       detalle: detalle?.trim() || '',
-      cargoImpactado: cargo || '',
+      cargoImpactado: cargo?.trim() || '',
       archivos: [...this.archivosAdjuntosTemporales]
     };
 
@@ -1101,7 +1175,45 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.archivosAdjuntosTemporales = [];
   }
 
+  agregarRequerimientoConReset(
+    tipo: 'funcional' | 'noFuncional',
+    descripcion: string,
+    cargo: string,
+    detalle: string,
+    objetivoInput?: HTMLInputElement,
+    cargoInput?: HTMLSelectElement,
+    detalleInput?: HTMLTextAreaElement
+  ): void {
+    this.agregarRequerimiento(tipo, descripcion, cargo, detalle);
 
+    if (!this.mensajeErrorRequerimiento) {
+      if (objetivoInput) {
+        objetivoInput.value = '';
+      }
+      if (cargoInput) {
+        cargoInput.value = '';
+      }
+      if (detalleInput) {
+        detalleInput.value = '';
+      }
+    }
+  }
+
+  private validarCamposRequerimiento(descripcion: string, cargo?: string, detalle?: string): string | null {
+    if (!descripcion || descripcion.trim() === '') {
+      return 'El objetivo del requerimiento es obligatorio.';
+    }
+
+    if (!cargo || cargo.trim() === '') {
+      return 'Debe seleccionar un cargo impactado.';
+    }
+
+    if (!detalle || detalle.trim() === '') {
+      return 'El detalle del requerimiento es obligatorio.';
+    }
+
+    return null;
+  }
 
   verAdjunto(req: RequerimientoItem): void {
     if (!req.archivos || req.archivos.length === 0) {
@@ -1260,7 +1372,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         console.log('✅ Solicitud creada exitosamente:', response);
         this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
         this.mostrarModalExito = true;
-        console.log('✅ Modal de éxito mostrado');
         this.cargarSolicitudes();
       },
       error: (err: any) => {
@@ -1320,7 +1431,6 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   descargarSolicitudPDF(solicitud: SolicitudDesarrollo): void {
     try {
       console.log('📄 Generando PDF para:', solicitud.numeroSolicitud);
-      console.log('📄 Datos de la solicitud:', solicitud);
 
       const doc = new jsPDF();
 

@@ -437,19 +437,19 @@
                 <input type="text" class="input-text-wizard input-readonly" [value]="'RF_' + padNumber((solicitudActual.requerimientosFuncionales?.length || 0) + 1)" readonly>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Objetivo de la solicitud</label>
-                <input type="text" class="input-text-wizard" #rfObjetivo>
+                <label class="campo-label campo-requerido">Objetivo de la solicitud</label>
+                <input type="text" class="input-text-wizard" #rfObjetivo required>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Cargos Impactados</label>
-                <select class="select-wizard" #rfCargo>
+                <label class="campo-label campo-requerido">Cargos Impactados</label>
+                <select class="select-wizard" #rfCargo required>
                   <option value="">CARGOS</option>
                   <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
                 </select>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Detalle de la solicitud</label>
-                <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rfDetalle maxlength="2000"></textarea>
+                <label class="campo-label campo-requerido">Detalle de la solicitud</label>
+                <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rfDetalle maxlength="2000" required></textarea>
               </div>
               <div class="form-grupo">
                 <label class="campo-label">Adjuntar Imágenes</label>
@@ -486,8 +486,9 @@
           </div>
 
           <div class="agregar-req-footer">
-            <button class="btn-guardar-req" (click)="agregarRequerimiento('funcional', rfObjetivo.value, rfCargo.value, rfDetalle.value); rfObjetivo.value=''; rfCargo.value=''; rfDetalle.value=''">Agregar requerimiento</button>
+            <button class="btn-guardar-req" (click)="agregarRequerimientoConReset('funcional', rfObjetivo.value, rfCargo.value, rfDetalle.value, rfObjetivo, rfCargo, rfDetalle)">Agregar requerimiento</button>
           </div>
+          <span class="error-campo" *ngIf="mensajeErrorRequerimiento && pasoActivo === 3">{{ mensajeErrorRequerimiento }}</span>
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(2)">Atras</button>
             <button class="btn-siguiente" (click)="irPaso(4)">siguiente</button>
@@ -503,19 +504,19 @@
                 <input type="text" class="input-text-wizard input-readonly" [value]="'RNF_' + padNumber((solicitudActual.requerimientosNoFuncionales?.length || 0) + 1)" readonly>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Objetivo de la solicitud</label>
-                <input type="text" class="input-text-wizard" #rnfObjetivo>
+                <label class="campo-label campo-requerido">Objetivo de la solicitud</label>
+                <input type="text" class="input-text-wizard" #rnfObjetivo required>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Cargos Impactados</label>
-                <select class="select-wizard" #rnfCargo>
+                <label class="campo-label campo-requerido">Cargos Impactados</label>
+                <select class="select-wizard" #rnfCargo required>
                   <option value="">CARGOS</option>
                   <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
                 </select>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Detalle de la solicitud</label>
-                <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rnfDetalle maxlength="2000"></textarea>
+                <label class="campo-label campo-requerido">Detalle de la solicitud</label>
+                <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rnfDetalle maxlength="2000" required></textarea>
               </div>
               <div class="form-grupo">
                 <label class="campo-label">Adjuntar Imágenes</label>
@@ -552,8 +553,9 @@
           </div>
 
           <div class="agregar-req-footer">
-            <button class="btn-guardar-req" (click)="agregarRequerimiento('noFuncional', rnfObjetivo.value, rnfCargo.value, rnfDetalle.value); rnfObjetivo.value=''; rnfCargo.value=''; rnfDetalle.value=''">Agregar requerimiento</button>
+            <button class="btn-guardar-req" (click)="agregarRequerimientoConReset('noFuncional', rnfObjetivo.value, rnfCargo.value, rnfDetalle.value, rnfObjetivo, rnfCargo, rnfDetalle)">Agregar requerimiento</button>
           </div>
+          <span class="error-campo" *ngIf="mensajeErrorRequerimiento && pasoActivo === 4">{{ mensajeErrorRequerimiento }}</span>
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(3)">Atras</button>
             <button class="btn-siguiente" (click)="irPaso(5)">siguiente</button>
