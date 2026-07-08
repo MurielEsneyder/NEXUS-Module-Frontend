@@ -52,25 +52,26 @@ private getMenu(): void {
         console.log('MENU DATA:', menuData);
 
         const indexContratacion = menuData.findIndex(
-          (m: Menu) => m.title?.trim() === 'Contratacion'
+          (m: Menu) => m.title?.trim() === 'Contratacion' || m.title?.trim() === 'Contratación'
         );
 
+        const nuevoItem: Menu = {
+          title: 'Solicitudes de Desarrollo',
+          url: '/hyl/solicitudes-desarrollo',
+          icon: 'assignment',
+          level: indexContratacion !== -1 ? menuData[indexContratacion].level : 1,
+          disabled: false,
+          open: false,
+          children: [],
+          roles: []
+        };
+
         if (indexContratacion !== -1) {
-
-          const nuevoItem: Menu = {
-            title: 'Solicitudes de Desarrollo',
-            url: '/solicitudes-desarrollo',
-            icon: 'assignment',
-            level: menuData[indexContratacion].level,
-            disabled: false,
-            open: false,
-            children: [],
-            roles: []
-          };
-
           menuData.splice(indexContratacion + 1, 0, nuevoItem);
-
-          console.log('Solicitudes de Desarrollo agregado');
+          console.log('Solicitudes de Desarrollo agregado después de Contratación');
+        } else {
+          menuData.push(nuevoItem);
+          console.log('Solicitudes de Desarrollo agregado al final del menú');
         }
 
         this.menus = menuData;

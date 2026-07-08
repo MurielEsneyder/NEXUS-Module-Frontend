@@ -18,6 +18,13 @@ const routes: Routes = [{
         import("./talento-humano/talento-humano.module").then(
           (m) => m.TalentoHumanoModule
         ),
+    },
+    {
+      path: "solicitudes-desarrollo",
+      loadChildren: () =>
+        import("./solicitudes-desarrollo/solicitudes-desarrollo.module").then(
+          (m) => m.SolicitudesDesarrolloModule
+        ),
     }
   ]
 }];

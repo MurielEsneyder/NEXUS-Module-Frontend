@@ -25,14 +25,6 @@ const routes: Routes = [
         canActivate: [GuardService],
         data: { expectedRoles: null }
       },
-      // 👇 NUEVA RUTA PARA SOLICITUDES DE DESARROLLO
-      {
-        path: 'solicitudes-desarrollo',
-        loadChildren: () => import("./hyl/solicitudes-desarrollo/solicitudes-desarrollo.module")
-          .then(m => m.SolicitudesDesarrolloModule),
-        canActivate: [GuardService],   // Opcional: si requiere autenticación
-        data: { expectedRoles: null }  // Ajusta roles si es necesario
-      },
       { path: '**', component: NotFoundComponent }
     ]
   },

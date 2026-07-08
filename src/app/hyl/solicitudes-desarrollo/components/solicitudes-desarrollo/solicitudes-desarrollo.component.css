@@ -1428,6 +1428,33 @@
   .modal-detalle-contenido {
     padding: 20px 16px;
   }
+  
+  .mat-card {
+    padding: 10px !important;
+  }
+
+  .wizard-header h2 {
+    font-size: 18px;
+  }
+
+  .formato-header2 p {
+    font-size: 10px;
+  }
+
+  .tab-wizard {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  /* Esconder columnas menos importantes en mobile */
+  .tabla-bandeja th:nth-child(4),
+  .tabla-bandeja td:nth-child(4),
+  .tabla-bandeja th:nth-child(5),
+  .tabla-bandeja td:nth-child(5),
+  .tabla-bandeja th:nth-child(6),
+  .tabla-bandeja td:nth-child(6) {
+    display: none;
+  }
 
   .detalle-grid {
     grid-template-columns: 1fr;

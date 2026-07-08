@@ -95,7 +95,7 @@ export class SolicitudesDesarrolloService {
     return new Observable(observer => {
       let todasLasSolicitudes: any[] = [];
       let paginaActual = 0;
-      const tamanioPagina = 20;
+      const tamanioPagina = 1000;
       let totalPages = 1;
       
       console.log('🔄 Iniciando carga de todas las páginas...');

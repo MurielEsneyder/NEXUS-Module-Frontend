@@ -224,9 +224,51 @@
             </div>
           </div>
 
-          <div class="detalle-item">
-            <label>Requerimientos:</label>
-            <span>{{ solicitudSeleccionada.totalRequerimientos || 0 }}</span>
+          <div class="detalle-item detalle-full-width">
+            <label>Requerimientos ({{ solicitudSeleccionada.totalRequerimientos || 0 }}):</label>
+            
+            <div class="requerimientos-list" *ngIf="(solicitudSeleccionada.totalRequerimientos || 0) > 0">
+              <h4 *ngIf="solicitudSeleccionada.requerimientosFuncionales?.length">Funcionales</h4>
+              <table class="tabla-req" *ngIf="solicitudSeleccionada.requerimientosFuncionales?.length">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Objetivo</th>
+                    <th>Cargo Impactado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let req of solicitudSeleccionada.requerimientosFuncionales">
+                    <td>{{ req.id }}</td>
+                    <td>{{ req.descripcion }}</td>
+                    <td>{{ req.cargoImpactado || 'N/A' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h4 *ngIf="solicitudSeleccionada.requerimientosNoFuncionales?.length" style="margin-top: 10px;">No Funcionales</h4>
+              <table class="tabla-req" *ngIf="solicitudSeleccionada.requerimientosNoFuncionales?.length">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Objetivo</th>
+                    <th>Cargo Impactado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let req of solicitudSeleccionada.requerimientosNoFuncionales">
+                    <td>{{ req.id }}</td>
+                    <td>{{ req.descripcion }}</td>
+                    <td>{{ req.cargoImpactado || 'N/A' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <div *ngIf="!solicitudSeleccionada.requerimientosFuncionales?.length && !solicitudSeleccionada.requerimientosNoFuncionales?.length" class="text-muted">
+                Los requerimientos existen pero tienen un formato no reconocido.
+              </div>
+            </div>
+            <span *ngIf="!solicitudSeleccionada.totalRequerimientos">No hay requerimientos registrados.</span>
           </div>
           <div class="detalle-item">
             <label>Adjuntos:</label>
@@ -410,8 +452,8 @@
                 <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rfDetalle maxlength="2000"></textarea>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Adjuntar Imagen o Documento</label>
-                <input type="file" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRF>
+                <label class="campo-label">Adjuntar Imagen</label>
+                <input type="file" accept="image/*" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRF>
                 <span *ngIf="archivoAdjuntoTemporal" style="font-size:12px; color:green; display:block; margin-top:5px;">Archivo seleccionado: {{ archivoAdjuntoTemporal.nombre }}</span>
               </div>
             </div>
@@ -419,15 +461,16 @@
             <div class="tabla-req-wrapper" *ngIf="(solicitudActual.requerimientosFuncionales?.length || 0) > 0">
               <table class="tabla-req">
                 <thead>
-                  <tr><th>Fecha de ingreso</th><th>Numero de la solicitud</th><th>Adjunto</th><th>ver</th><th>eliminar</th></tr>
+                  <tr><th>Fecha de ingreso</th><th>Numero de la solicitud</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
                   <tr *ngFor="let req of solicitudActual.requerimientosFuncionales; let i = index">
                     <td>{{ solicitudActual.fechaCreacion | date:'dd/MM/yyyy' }}</td>
                     <td>{{ req.id }}</td>
-                    <td><span *ngIf="req.archivos && req.archivos.length > 0" title="Archivo adjunto: {{ req.archivos[0].nombre }}">📎 {{ req.archivos[0].nombre }}</span></td>
-                    <td><span class="radio-ver" (click)="verAdjunto(req)">⊙</span></td>
-                    <td><button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('funcional', i)">🗑</button></td>
+                    <td>
+                      <span class="radio-ver" (click)="verDetalleRequerimiento(req, 'funcional', i)">👁️</span>
+                      <button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('funcional', i)">🗑️</button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -467,8 +510,8 @@
                 <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rnfDetalle maxlength="2000"></textarea>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Adjuntar Imagen o Documento</label>
-                <input type="file" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRNF>
+                <label class="campo-label">Adjuntar Imagen</label>
+                <input type="file" accept="image/*" (change)="seleccionarArchivo($event)" class="input-text-wizard" #fileInputRNF>
                 <span *ngIf="archivoAdjuntoTemporal" style="font-size:12px; color:green; display:block; margin-top:5px;">Archivo seleccionado: {{ archivoAdjuntoTemporal.nombre }}</span>
               </div>
             </div>
@@ -476,15 +519,16 @@
             <div class="tabla-req-wrapper" *ngIf="(solicitudActual.requerimientosNoFuncionales?.length || 0) > 0">
               <table class="tabla-req">
                 <thead>
-                  <tr><th>Fecha de ingreso</th><th>Numero de la solicitud</th><th>Adjunto</th><th>ver</th><th>eliminar</th></tr>
+                  <tr><th>Fecha de ingreso</th><th>Numero de la solicitud</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
                   <tr *ngFor="let req of solicitudActual.requerimientosNoFuncionales; let i = index">
                     <td>{{ solicitudActual.fechaCreacion | date:'dd/MM/yyyy' }}</td>
                     <td>{{ req.id }}</td>
-                    <td><span *ngIf="req.archivos && req.archivos.length > 0" title="Archivo adjunto: {{ req.archivos[0].nombre }}">📎 {{ req.archivos[0].nombre }}</span></td>
-                    <td><span class="radio-ver" (click)="verAdjunto(req)">⊙</span></td>
-                    <td><button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('noFuncional', i)">🗑</button></td>
+                    <td>
+                      <span class="radio-ver" (click)="verDetalleRequerimiento(req, 'noFuncional', i)">👁️</span>
+                      <button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('noFuncional', i)">🗑️</button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -555,6 +599,72 @@
         <span class="exito-numero">{{ numeroSolicitudExito }}</span>
       </div>
       <button class="btn-exito-aceptar" (click)="cerrarModalExito()">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE DETALLE DE REQUERIMIENTO -->
+<div class="overlay-modal overlay-modal-req" *ngIf="mostrarModalRequerimiento" (click)="cerrarModalRequerimiento()"></div>
+<div class="modal-detalle modal-detalle-req" *ngIf="mostrarModalRequerimiento && requerimientoSeleccionadoModal">
+  <div class="modal-detalle-contenido">
+    <button class="btn-cerrar-modal" (click)="cerrarModalRequerimiento()">✕</button>
+    <h3>📋 Detalle de Requerimiento</h3>
+
+    <div class="detalle-actions">
+      <button class="btn-toggle-edicion" (click)="toggleModoEdicionReq()">
+        <span *ngIf="!modoEdicionReq">✏️ Editar</span>
+        <span *ngIf="modoEdicionReq">👁️ Ver</span>
+      </button>
+      <span class="modo-indicador" *ngIf="modoEdicionReq" class="modo-edicion-activo">✏️ Modo Edición</span>
+    </div>
+    
+    <div class="detalle-grid">
+      <div class="detalle-item">
+        <label>ID:</label>
+        <span>{{ requerimientoSeleccionadoModal.id || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item" [class.detalle-editable]="modoEdicionReq">
+        <label>Objetivo / Descripción:</label>
+        <span *ngIf="!modoEdicionReq">{{ requerimientoSeleccionadoModal.descripcion || 'N/A' }}</span>
+        <input *ngIf="modoEdicionReq" type="text" class="input-text-wizard" [(ngModel)]="requerimientoSeleccionadoModal.descripcion">
+      </div>
+      <div class="detalle-item" [class.detalle-editable]="modoEdicionReq">
+        <label>Cargo Impactado:</label>
+        <span *ngIf="!modoEdicionReq">{{ requerimientoSeleccionadoModal.cargoImpactado || 'N/A' }}</span>
+        <select *ngIf="modoEdicionReq" class="select-wizard" [(ngModel)]="requerimientoSeleccionadoModal.cargoImpactado">
+          <option value="">CARGOS</option>
+          <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="detalle-item detalle-full-width" style="margin-top: 15px;" [class.detalle-editable]="modoEdicionReq">
+      <label>Detalle completo:</label>
+      <div class="observaciones-caja" *ngIf="!modoEdicionReq">
+        {{ requerimientoSeleccionadoModal.detalle || 'No hay detalle adicional registrado.' }}
+      </div>
+      <textarea *ngIf="modoEdicionReq" class="textarea-wizard" rows="4" [(ngModel)]="requerimientoSeleccionadoModal.detalle" maxlength="2000"></textarea>
+    </div>
+    
+    <div class="detalle-item detalle-full-width" style="margin-top: 15px;" *ngIf="requerimientoSeleccionadoModal.archivos?.length">
+      <label>Imágenes adjuntas:</label>
+      <div class="adjuntos-lista" style="display: flex; flex-direction: column; gap: 10px; margin-top: 5px;">
+        <div *ngFor="let archivo of requerimientoSeleccionadoModal.archivos" class="adjunto-item">
+          <img *ngIf="archivo.base64" [src]="archivo.base64" [alt]="archivo.nombre" style="max-width: 100%; max-height: 250px; border-radius: 4px; border: 1px solid #ddd; object-fit: contain;">
+          <span *ngIf="!archivo.base64" class="text-muted">📎 {{ archivo.nombre || 'Imagen adjunta' }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="detalle-item detalle-full-width" style="margin-top: 15px;" *ngIf="!requerimientoSeleccionadoModal.archivos?.length">
+      <label>Imágenes adjuntas:</label>
+      <div class="adjuntos-lista">
+        <div class="adjunto-item text-muted">Sin imágenes / adjuntos</div>
+      </div>
+    </div>
+
+    <div class="modal-footer" *ngIf="modoEdicionReq">
+      <button class="btn-cerrar" (click)="cerrarModalRequerimiento()">Cancelar</button>
+      <button class="btn-guardar-cambios" (click)="guardarCambiosRequerimiento()">💾 Guardar Cambios</button>
     </div>
   </div>
 </div>

@@ -64,6 +64,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   mostrarModalEliminar = false;
   mostrarModalExito = false;
   mostrarModalDetalle = false;
+  mostrarModalRequerimiento = false;
   numeroSolicitudExito = '';
   observacionesModal = '';
   impactoTexto = '';
@@ -88,6 +89,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   solicitudActual!: SolicitudDesarrollo;
   solicitudSeleccionada: SolicitudDesarrollo | null = null;
   requerimientoAEliminar: { id: string; index: number; tipo: 'funcional' | 'noFuncional' } | null = null;
+  requerimientoSeleccionadoModal: RequerimientoItem | null = null;
+  requerimientoSeleccionadoTipo: 'funcional' | 'noFuncional' = 'funcional';
+  requerimientoSeleccionadoIndex: number = -1;
+  modoEdicionReq = false;
 
   // ============================================================
   // VARIABLES PARA CARGA MEJORADA
@@ -459,14 +464,20 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         };
 
         const tipoReq = req.tipoRequerimiento !== undefined ? req.tipoRequerimiento : req.tipo_requerimiento;
-        const tipoReqNum = tipoReq !== undefined ? Number(tipoReq) : -1;
+        const tipoReqNum = tipoReq !== null && tipoReq !== undefined ? Number(tipoReq) : -1;
+        const tipoNombre = req.tipoRequerimientoNombre ? String(req.tipoRequerimientoNombre).toLowerCase() : '';
 
-        if (tipoReqNum === 0) {
+        // Safely determine functional vs non-functional
+        if (tipoReqNum === 0 || tipoNombre.includes('funcional') && !tipoNombre.includes('no')) {
           reqMapped.id = reqMapped.id || `RF_${reqFuncionales.length + 1}`;
           reqFuncionales.push(reqMapped);
-        } else if (tipoReqNum === 1) {
+        } else if (tipoReqNum === 1 || tipoNombre.includes('no funcional')) {
           reqMapped.id = reqMapped.id || `RNF_${reqNoFuncionales.length + 1}`;
           reqNoFuncionales.push(reqMapped);
+        } else {
+          // Fallback if neither matched, assume functional
+          reqMapped.id = reqMapped.id || `RF_${reqFuncionales.length + 1}`;
+          reqFuncionales.push(reqMapped);
         }
       });
     }
@@ -542,6 +553,47 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.mostrarModalDetalle = false;
     this.solicitudSeleccionada = null;
     this.modoEdicion = false;
+  }
+
+  // ============================================================
+  // MODO DETALLE DE REQUERIMIENTO
+  // ============================================================
+  verDetalleRequerimiento(req: RequerimientoItem, tipo: 'funcional' | 'noFuncional', index: number): void {
+    this.requerimientoSeleccionadoModal = { ...req };
+    this.requerimientoSeleccionadoTipo = tipo;
+    this.requerimientoSeleccionadoIndex = index;
+    this.modoEdicionReq = false;
+    this.mostrarModalRequerimiento = true;
+  }
+
+  cerrarModalRequerimiento(): void {
+    this.mostrarModalRequerimiento = false;
+    this.requerimientoSeleccionadoModal = null;
+    this.modoEdicionReq = false;
+  }
+
+  toggleModoEdicionReq(): void {
+    this.modoEdicionReq = !this.modoEdicionReq;
+  }
+
+  guardarCambiosRequerimiento(): void {
+    if (!this.requerimientoSeleccionadoModal) return;
+    const lista = this.requerimientoSeleccionadoTipo === 'funcional'
+      ? (this.solicitudActual.requerimientosFuncionales || [])
+      : (this.solicitudActual.requerimientosNoFuncionales || []);
+
+    if (this.requerimientoSeleccionadoIndex >= 0 && this.requerimientoSeleccionadoIndex < lista.length) {
+      lista[this.requerimientoSeleccionadoIndex] = { ...this.requerimientoSeleccionadoModal };
+    }
+    
+    this.modoEdicionReq = false;
+    this.mostrarModalRequerimiento = false;
+    this.mostrarNotificacion('Requerimiento actualizado exitosamente');
+  }
+
+  eliminarRequerimientoDesdeModal(): void {
+    this.confirmarEliminarRequerimiento(this.requerimientoSeleccionadoTipo, this.requerimientoSeleccionadoIndex);
+    this.mostrarModalRequerimiento = false;
   }
 
   // ============================================================
@@ -950,12 +1002,17 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   seleccionarArchivo(event: any): void {
     const file = event.target.files[0];
     if (file) {
-      this.archivoAdjuntoTemporal = {
-        nombre: file.name,
-        tipo: file.type,
-        size: file.size,
-        archivo: file
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.archivoAdjuntoTemporal = {
+          nombre: file.name,
+          tipo: file.type,
+          size: file.size,
+          archivo: file,
+          base64: reader.result
+        };
       };
+      reader.readAsDataURL(file);
     }
   }
 
@@ -998,6 +1055,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     this.archivoAdjuntoTemporal = null;
   }
+
+
 
   verAdjunto(req: RequerimientoItem): void {
     if (!req.archivos || req.archivos.length === 0) {
@@ -1128,13 +1187,23 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           tipoRequerimiento: 0,
           objetivo: req.descripcion,
           detalle: req.detalle || req.descripcion,
-          cargoImpactado: req.cargoImpactado || ''
+          cargoImpactado: req.cargoImpactado || '',
+          imagenes: req.archivos && req.archivos.length > 0 ? req.archivos.map((a: any) => ({
+            nombre: a.nombre,
+            tipo: a.tipo,
+            base64: a.base64
+          })) : []
         })),
         ...(this.solicitudActual.requerimientosNoFuncionales || []).map((req: RequerimientoItem) => ({
           tipoRequerimiento: 1,
           objetivo: req.descripcion,
           detalle: req.detalle || req.descripcion,
-          cargoImpactado: req.cargoImpactado || ''
+          cargoImpactado: req.cargoImpactado || '',
+          imagenes: req.archivos && req.archivos.length > 0 ? req.archivos.map((a: any) => ({
+            nombre: a.nombre,
+            tipo: a.tipo,
+            base64: a.base64
+          })) : []
         }))
       ]
     };
