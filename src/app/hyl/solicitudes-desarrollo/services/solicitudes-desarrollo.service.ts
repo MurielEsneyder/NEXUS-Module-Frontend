@@ -175,4 +175,16 @@ export class SolicitudesDesarrolloService {
   obtenerTodasConTamanio(tamanio: number = 1000): Observable<any> {
     return this.http.get(`${this.apiUrl}?page=0&size=${tamanio}`);
   }
+
+  // ============================================================
+  // ENVÍO DE CORREOS
+  // ============================================================
+
+  /**
+   * Envía la solicitud y el PDF al backend para enviar el correo.
+   */
+  enviarNotificacionCorreo(payload: any): Observable<any> {
+    const correoUrl = 'http://localhost:8090/api/v1/notificaciones/enviar-correo-solicitud';
+    return this.http.post(correoUrl, payload);
+  }
 }
