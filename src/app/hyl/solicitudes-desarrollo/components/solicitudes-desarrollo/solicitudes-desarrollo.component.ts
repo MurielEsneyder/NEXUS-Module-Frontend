@@ -1486,7 +1486,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     const payloadCorreo = {
       solicitudId: solicitudId,
       numeroSolicitud: numeroSolicitud,
-      correoDestinatario: 'aprendiz.desarrollo@asmetsalud.com', // Correo quemado para pruebas
+      correoDestinatario: 'aprendiz1.desarrollo@asmetsalud.com',
       nombreSolicitante: this.datosColaborador.nombreCompleto,
       modalidad: this.formGeneral.tipoSolicitud || 'No especificada',
       pdfBase64: pdfBase64
