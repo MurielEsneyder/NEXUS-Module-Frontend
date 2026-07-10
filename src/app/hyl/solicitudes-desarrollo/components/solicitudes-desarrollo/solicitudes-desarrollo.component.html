@@ -126,7 +126,6 @@
             </td>
             <td class="acciones-cell">
               <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
-              <button class="btn-accion btn-historial" (click)="verHistorialCambios(solicitud)" title="Ver historial">⏱️</button>
               <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
             </td>
           </tr>
@@ -140,170 +139,6 @@
       </table>
     </div>
 
-    <!-- MODAL DE DETALLE CON EDICIÓN -->
-    <div class="overlay-modal" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()"></div>
-    <div class="modal-detalle" *ngIf="mostrarModalDetalle && solicitudSeleccionada">
-      <div class="modal-detalle-contenido">
-        <button class="btn-cerrar-modal" (click)="cerrarModalDetalle()">✕</button>
-        <h3>📋 Detalle de Solicitud</h3>
-        
-        <!-- Modo de visualización o edición -->
-        <div class="detalle-actions">
-          <button class="btn-historial-modal" (click)="verHistorialCambios(solicitudSeleccionada)" *ngIf="solicitudSeleccionada">
-            ⏱️ Ver Historial
-          </button>
-          <button class="btn-toggle-edicion" (click)="toggleModoEdicion()">
-            <span *ngIf="!modoEdicion">✏️ Editar</span>
-            <span *ngIf="modoEdicion">👁️ Ver</span>
-          </button>
-          <span class="modo-indicador" *ngIf="modoEdicion" class="modo-edicion-activo">✏️ Modo Edición</span>
-        </div>
-
-        <div class="detalle-grid">
-          <div class="detalle-item">
-            <label>Código:</label>
-            <span>{{ solicitudSeleccionada.numeroSolicitud || 'N/A' }}</span>
-          </div>
-          <div class="detalle-item">
-            <label>Proyecto:</label>
-            <span>{{ solicitudSeleccionada.objetivo || 'N/A' }}</span>
-          </div>
-          <div class="detalle-item">
-            <label>Solicitante:</label>
-            <span>{{ solicitudSeleccionada.solicitante || 'N/A' }}</span>
-          </div>
-          <div class="detalle-item">
-            <label>Área:</label>
-            <span>{{ solicitudSeleccionada.area || 'N/A' }}</span>
-          </div>
-          <div class="detalle-item">
-            <label>Tipo:</label>
-            <span>{{ solicitudSeleccionada.tipo || 'N/A' }}</span>
-          </div>
-          <div class="detalle-item">
-            <label>Fecha:</label>
-            <span>{{ solicitudSeleccionada.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
-          </div>
-
-          <!-- ESTADO - EDITABLE -->
-          <div class="detalle-item detalle-editable">
-            <label>Estado:</label>
-            <div *ngIf="!modoEdicion" class="estado-display">
-              <span class="estado-badge" [ngClass]="{
-                'estado-pendiente': getEstadoVisual(solicitudSeleccionada.estado) === 'Pendiente',
-                'estado-enviada': getEstadoVisual(solicitudSeleccionada.estado) === 'Enviada',
-                'estado-documentacion': getEstadoVisual(solicitudSeleccionada.estado) === 'En documentación',
-                'estado-funcional': getEstadoVisual(solicitudSeleccionada.estado) === 'En pruebas funcionales',
-                'estado-desarrollo': getEstadoVisual(solicitudSeleccionada.estado) === 'En desarrollo',
-                'estado-aceptacion': getEstadoVisual(solicitudSeleccionada.estado) === 'En pruebas de aceptación',
-                'estado-cerrada': getEstadoVisual(solicitudSeleccionada.estado) === 'Cerrada',
-                'estado-rechazada': getEstadoVisual(solicitudSeleccionada.estado) === 'Rechazada'
-              }">
-                {{ getEstadoVisual(solicitudSeleccionada.estado) }}
-              </span>
-            </div>
-            <div *ngIf="modoEdicion" class="estado-editable">
-              <select class="select-edicion" [(ngModel)]="estadoEditado">
-                <option *ngFor="let estado of estadosList" [value]="estado.nombre">
-                  {{ estado.nombre }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <!-- PRIORIDAD - EDITABLE -->
-          <div class="detalle-item detalle-editable">
-            <label>Prioridad:</label>
-            <div *ngIf="!modoEdicion" class="prioridad-display">
-              <span class="prioridad-badge" [ngClass]="{
-                'prioridad-alta': solicitudSeleccionada.prioridad === 'alta',
-                'prioridad-media': solicitudSeleccionada.prioridad === 'media',
-                'prioridad-baja': solicitudSeleccionada.prioridad === 'baja'
-              }">
-                {{ solicitudSeleccionada.prioridad || 'Media' }}
-              </span>
-            </div>
-            <div *ngIf="modoEdicion" class="prioridad-editable">
-              <select class="select-edicion" [(ngModel)]="prioridadEditada">
-                <option value="baja">Baja</option>
-                <option value="media">Media</option>
-                <option value="alta">Alta</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="detalle-item detalle-full-width">
-            <label>Requerimientos ({{ solicitudSeleccionada.totalRequerimientos || 0 }}):</label>
-            
-            <div class="requerimientos-list" *ngIf="(solicitudSeleccionada.totalRequerimientos || 0) > 0">
-              <h4 *ngIf="solicitudSeleccionada.requerimientosFuncionales?.length">Funcionales</h4>
-              <table class="tabla-req" *ngIf="solicitudSeleccionada.requerimientosFuncionales?.length">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Objetivo</th>
-                    <th>Cargo Impactado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let req of solicitudSeleccionada.requerimientosFuncionales">
-                    <td>{{ req.id }}</td>
-                    <td>{{ req.descripcion }}</td>
-                    <td>{{ req.cargoImpactado || 'N/A' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <h4 *ngIf="solicitudSeleccionada.requerimientosNoFuncionales?.length" style="margin-top: 10px;">No Funcionales</h4>
-              <table class="tabla-req" *ngIf="solicitudSeleccionada.requerimientosNoFuncionales?.length">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Objetivo</th>
-                    <th>Cargo Impactado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let req of solicitudSeleccionada.requerimientosNoFuncionales">
-                    <td>{{ req.id }}</td>
-                    <td>{{ req.descripcion }}</td>
-                    <td>{{ req.cargoImpactado || 'N/A' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              
-              <div *ngIf="!solicitudSeleccionada.requerimientosFuncionales?.length && !solicitudSeleccionada.requerimientosNoFuncionales?.length" class="text-muted">
-                Los requerimientos existen pero tienen un formato no reconocido.
-              </div>
-            </div>
-            <span *ngIf="!solicitudSeleccionada.totalRequerimientos">No hay requerimientos registrados.</span>
-          </div>
-          <div class="detalle-item">
-            <label>Adjuntos:</label>
-            <span>{{ solicitudSeleccionada.tieneImagenes ? '🖼️ Sí tiene imágenes' : '📄 Sin imágenes' }}</span>
-          </div>
-        </div>
-        
-        <div class="detalle-observaciones" *ngIf="solicitudSeleccionada.observaciones">
-          <label>Observaciones:</label>
-          <p>{{ solicitudSeleccionada.observaciones }}</p>
-        </div>
-        
-        <div class="modal-footer">
-          <button class="btn-cerrar" (click)="cerrarModalDetalle()">Cerrar</button>
-          <!-- Botón Guardar Cambios - SOLO visible en modo edición -->
-          <button 
-            *ngIf="modoEdicion" 
-            class="btn-guardar-cambios" 
-            (click)="guardarCambiosDetalle()"
-            [disabled]="guardandoCambios"
-          >
-            <span *ngIf="!guardandoCambios">💾 Guardar Cambios</span>
-            <span *ngIf="guardandoCambios">⏳ Guardando...</span>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- ============================================================ -->
@@ -678,7 +513,7 @@
             </td>
             <td class="acciones-cell">
               <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
-              <button class="btn-accion btn-historial" (click)="verHistorialCambios(solicitud)" title="Ver historial">⏱️</button>
+              <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
             </td>
           </tr>
           <tr *ngIf="!cargandoMisSolicitudes && misSolicitudes.length === 0">
@@ -691,6 +526,168 @@
     </div>
   </div>
 
+</div>
+
+<!-- MODAL DE DETALLE DE SOLICITUD (GLOBAL - accesible desde bandeja y mis solicitudes) -->
+<div class="overlay-modal" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()"></div>
+<div class="modal-detalle" *ngIf="mostrarModalDetalle && solicitudSeleccionada">
+  <div class="modal-detalle-contenido">
+    <button class="btn-cerrar-modal" (click)="cerrarModalDetalle()">✕</button>
+    <h3>📋 Detalle de Solicitud</h3>
+
+    <!-- Modo de visualización o edición -->
+    <div class="detalle-actions">
+      <button class="btn-toggle-edicion" (click)="toggleModoEdicion()">
+        <span *ngIf="!modoEdicion">✏️ Editar</span>
+        <span *ngIf="modoEdicion">👁️ Ver</span>
+      </button>
+      <span class="modo-indicador" *ngIf="modoEdicion" class="modo-edicion-activo">✏️ Modo Edición</span>
+    </div>
+
+    <div class="detalle-grid">
+      <div class="detalle-item">
+        <label>Código:</label>
+        <span>{{ solicitudSeleccionada.numeroSolicitud || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Proyecto:</label>
+        <span>{{ solicitudSeleccionada.objetivo || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Solicitante:</label>
+        <span>{{ solicitudSeleccionada.solicitante || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Área:</label>
+        <span>{{ solicitudSeleccionada.area || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Tipo:</label>
+        <span>{{ solicitudSeleccionada.tipo || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Fecha:</label>
+        <span>{{ solicitudSeleccionada.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
+      </div>
+
+      <!-- ESTADO - EDITABLE -->
+      <div class="detalle-item detalle-editable">
+        <label>Estado:</label>
+        <div *ngIf="!modoEdicion" class="estado-display">
+          <span class="estado-badge" [ngClass]="{
+            'estado-pendiente': getEstadoVisual(solicitudSeleccionada.estado) === 'Pendiente',
+            'estado-enviada': getEstadoVisual(solicitudSeleccionada.estado) === 'Enviada',
+            'estado-documentacion': getEstadoVisual(solicitudSeleccionada.estado) === 'En documentación',
+            'estado-funcional': getEstadoVisual(solicitudSeleccionada.estado) === 'En pruebas funcionales',
+            'estado-desarrollo': getEstadoVisual(solicitudSeleccionada.estado) === 'En desarrollo',
+            'estado-aceptacion': getEstadoVisual(solicitudSeleccionada.estado) === 'En pruebas de aceptación',
+            'estado-cerrada': getEstadoVisual(solicitudSeleccionada.estado) === 'Cerrada',
+            'estado-rechazada': getEstadoVisual(solicitudSeleccionada.estado) === 'Rechazada'
+          }">
+            {{ getEstadoVisual(solicitudSeleccionada.estado) }}
+          </span>
+        </div>
+        <div *ngIf="modoEdicion" class="estado-editable">
+          <select class="select-edicion" [(ngModel)]="estadoEditado">
+            <option *ngFor="let estado of estadosList" [value]="estado.nombre">
+              {{ estado.nombre }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- PRIORIDAD - EDITABLE -->
+      <div class="detalle-item detalle-editable">
+        <label>Prioridad:</label>
+        <div *ngIf="!modoEdicion" class="prioridad-display">
+          <span class="prioridad-badge" [ngClass]="{
+            'prioridad-alta': solicitudSeleccionada.prioridad === 'alta',
+            'prioridad-media': solicitudSeleccionada.prioridad === 'media',
+            'prioridad-baja': solicitudSeleccionada.prioridad === 'baja'
+          }">
+            {{ solicitudSeleccionada.prioridad || 'Media' }}
+          </span>
+        </div>
+        <div *ngIf="modoEdicion" class="prioridad-editable">
+          <select class="select-edicion" [(ngModel)]="prioridadEditada">
+            <option value="baja">Baja</option>
+            <option value="media">Media</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="detalle-item detalle-full-width">
+        <label>Requerimientos ({{ solicitudSeleccionada.totalRequerimientos || 0 }}):</label>
+
+        <div class="requerimientos-list" *ngIf="(solicitudSeleccionada.totalRequerimientos || 0) > 0">
+          <h4 *ngIf="solicitudSeleccionada.requerimientosFuncionales?.length">Funcionales</h4>
+          <table class="tabla-req" *ngIf="solicitudSeleccionada.requerimientosFuncionales?.length">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Objetivo</th>
+                <th>Cargo Impactado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let req of solicitudSeleccionada.requerimientosFuncionales">
+                <td>{{ req.id }}</td>
+                <td>{{ req.descripcion }}</td>
+                <td>{{ req.cargoImpactado || 'N/A' }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4 *ngIf="solicitudSeleccionada.requerimientosNoFuncionales?.length" style="margin-top: 10px;">No Funcionales</h4>
+          <table class="tabla-req" *ngIf="solicitudSeleccionada.requerimientosNoFuncionales?.length">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Objetivo</th>
+                <th>Cargo Impactado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let req of solicitudSeleccionada.requerimientosNoFuncionales">
+                <td>{{ req.id }}</td>
+                <td>{{ req.descripcion }}</td>
+                <td>{{ req.cargoImpactado || 'N/A' }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div *ngIf="!solicitudSeleccionada.requerimientosFuncionales?.length && !solicitudSeleccionada.requerimientosNoFuncionales?.length" class="text-muted">
+            Los requerimientos existen pero tienen un formato no reconocido.
+          </div>
+        </div>
+        <span *ngIf="!solicitudSeleccionada.totalRequerimientos">No hay requerimientos registrados.</span>
+      </div>
+      <div class="detalle-item">
+        <label>Adjuntos:</label>
+        <span>{{ solicitudSeleccionada.tieneImagenes ? '🖼️ Sí tiene imágenes' : '📄 Sin imágenes' }}</span>
+      </div>
+    </div>
+
+    <div class="detalle-observaciones" *ngIf="solicitudSeleccionada.observaciones">
+      <label>Observaciones:</label>
+      <p>{{ solicitudSeleccionada.observaciones }}</p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cerrar" (click)="cerrarModalDetalle()">Cerrar</button>
+      <!-- Botón Guardar Cambios - SOLO visible en modo edición -->
+      <button
+        *ngIf="modoEdicion"
+        class="btn-guardar-cambios"
+        (click)="guardarCambiosDetalle()"
+        [disabled]="guardandoCambios"
+      >
+        <span *ngIf="!guardandoCambios">💾 Guardar Cambios</span>
+        <span *ngIf="guardandoCambios">⏳ Guardando...</span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal Eliminar Requerimiento -->
