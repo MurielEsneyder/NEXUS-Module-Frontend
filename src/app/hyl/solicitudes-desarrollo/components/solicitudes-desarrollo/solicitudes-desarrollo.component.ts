@@ -74,7 +74,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   nuevoEstadoSeleccionadoId: number | null = null;
   observacionCambioEstado = '';
   estadosList: any[] = [];
-  
+
   // VARIABLES PARA EDICIÓN EN MODAL
   modoEdicion = false;
   estadoEditado = '';
@@ -108,13 +108,24 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   private totalPaginas = 0;
 
   // ============================================================
+  // VARIABLES PARA HISTORIAL Y MIS SOLICITUDES
+  // ============================================================
+  historialCambios: any[] = [];
+  cargandoHistorial: boolean = false;
+  mostrarModalHistorial: boolean = false;
+  misSolicitudes: SolicitudDesarrollo[] = [];
+  cargandoMisSolicitudes: boolean = false;
+  totalMisSolicitudesBD: number = 0;
+
+  // ============================================================
   // DATOS DEL COLABORADOR
   // ============================================================
   datosColaborador = {
     nombreCompleto: 'Cargando...',
     correo: 'Cargando...',
     cargo: 'Cargando...',
-    sede: 'Cargando...'
+    sede: 'Cargando...',
+    documento: ''
   };
 
   fechaIngreso = new Date().toISOString().split('T')[0];
@@ -205,7 +216,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     private securityService: SecurityService,
     private http: HttpClient,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   getEstadoVisual(estado?: string): string {
     const valor = (estado || '').toString().trim().toLowerCase();
@@ -269,7 +280,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           nombreCompleto: afilInfo.nombreCompleto || '',
           correo: (afilInfo as any).email || (afilInfo as any).correo || '',
           cargo: (afilInfo as any).cargo || '',
-          sede: (afilInfo as any).sede || ''
+          sede: (afilInfo as any).sede || '',
+          documento: afilInfo.nroIdentificacion || ''
         };
         console.log('✅ Datos desde sessionStorage:', this.datosColaborador);
         this.continuarInicializacion();
@@ -286,7 +298,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           nombreCompleto: token.sub || 'Usuario',
           correo: token.email || token.sub + '@asmetsalud.com',
           cargo: token.cargo || 'Colaborador',
-          sede: token.sede || 'Sede Principal'
+          sede: token.sede || 'Sede Principal',
+          documento: token.numDoc || token.documento || token.nroIdentificacion || ''
         };
         console.log('✅ Datos desde el token:', this.datosColaborador);
         this.continuarInicializacion();
@@ -301,7 +314,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       nombreCompleto: 'Usuario de Prueba',
       correo: 'usuario@asmetsalud.com',
       cargo: 'Colaborador',
-      sede: 'Sede Principal'
+      sede: 'Sede Principal',
+      documento: '123456789' // fallback para pruebas
     };
     this.continuarInicializacion();
   }
@@ -366,9 +380,9 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     this.cargandoSolicitudes = true;
     this.errorCargandoSolicitudes = false;
-    
+
     console.log('📥 Cargando solicitudes...');
-    
+
     // 1. CARGAR DESDE CACHÉ PRIMERO (PARA RESPUESTA INMEDIATA)
     const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
     if (cargadoDesdeCache) {
@@ -376,22 +390,22 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       this.actualizarListasOrdenadas(); // Ordenar los datos cargados desde caché
       this.cargandoSolicitudes = false; // Ocultar indicador de carga si ya hay datos
     }
-    
+
     // 2. OBTENER DATOS FRESCOS DEL BACKEND (EN SEGUNDO PLANO)
     this.solicitudesService.obtenerTodasCompletas().subscribe({
       next: (data: any) => {
         console.log('📦 Datos recibidos del backend:', data?.content?.length || 0, 'solicitudes');
-        
+
         if (data && data.content) {
           // Mapear los datos
           const nuevasSolicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
-          
+
           // Ordenar las nuevas solicitudes por ID descendente
           const nuevasSolicitudesOrdenadas = this.ordenarSolicitudesPorId(nuevasSolicitudes);
-          
+
           // Verificar si hay cambios significativos
           const hayCambios = this.hayCambiosSignificativos(nuevasSolicitudesOrdenadas);
-          
+
           if (hayCambios || !cargadoDesdeCache) {
             // Actualizar la lista completa con datos ordenados
             this.solicitudes = nuevasSolicitudesOrdenadas;
@@ -399,12 +413,12 @@ export class SolicitudesDesarrolloComponent implements OnInit {
             this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
             this.solicitudesCargadas = this.solicitudes.length;
             this.todasCargadas = true;
-            
+
             console.log(`✅ ${this.solicitudes.length} solicitudes cargadas correctamente (ordenadas por ID descendente - más reciente primero)`);
-            
+
             // Guardar en caché para futuras cargas
             this.guardarSolicitudesEnCache();
-            
+
             // SOLO mostrar notificación si hay cambios y no es la primera carga
             if (cargadoDesdeCache && hayCambios) {
               this.mostrarNotificacionSnackbar(`Se actualizaron ${nuevasSolicitudes.length} solicitudes`, 'info');
@@ -430,7 +444,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         console.error('❌ Error al cargar solicitudes:', err);
         this.cargandoSolicitudes = false;
         this.errorCargandoSolicitudes = true;
-        
+
         // Si no hay caché, mostrar mensaje solo en consola
         const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
         if (!cargadoDesdeCache) {
@@ -450,7 +464,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   private hayCambiosSignificativos(nuevasSolicitudes: SolicitudDesarrollo[]): boolean {
     if (!this.solicitudes || this.solicitudes.length === 0) return true;
     if (nuevasSolicitudes.length !== this.solicitudes.length) return true;
-    
+
     // Verificar si cambió el estado o prioridad de alguna solicitud
     for (let i = 0; i < nuevasSolicitudes.length; i++) {
       const nueva = nuevasSolicitudes[i];
@@ -709,7 +723,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     if (this.requerimientoSeleccionadoIndex >= 0 && this.requerimientoSeleccionadoIndex < lista.length) {
       lista[this.requerimientoSeleccionadoIndex] = { ...this.requerimientoSeleccionadoModal };
     }
-    
+
     this.modoEdicionReq = false;
     this.mostrarModalRequerimiento = false;
     this.mostrarNotificacionSnackbar('Requerimiento actualizado exitosamente', 'success');
@@ -742,7 +756,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     this.guardandoCambios = true;
     const solicitudOriginal = this.solicitudes.find(s => s.id === this.solicitudSeleccionada!.id);
-    
+
     if (!solicitudOriginal) {
       this.guardandoCambios = false;
       this.mostrarNotificacionSnackbar('No se encontró la solicitud en la lista', 'error');
@@ -811,7 +825,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     this.modoEdicion = false;
     this.cargarSolicitudes();
     this.mostrarNotificacionSnackbar('Cambios guardados exitosamente', 'success');
-    
+
     if (this.solicitudSeleccionada) {
       this.solicitudSeleccionada.estado = this.estadoEditado;
       this.solicitudSeleccionada.prioridad = this.normalizarPrioridad(this.prioridadEditada);
@@ -969,6 +983,70 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   irAtras(): void {
     window.history.back();
+  }
+
+  // ============================================================
+  // HISTORIAL DE CAMBIOS Y MIS SOLICITUDES
+  // ============================================================
+
+  mostrarMisSolicitudes(): void {
+    this.vistaActual = 'historial';
+    this.cargarMisSolicitudes();
+  }
+
+  cargarMisSolicitudes(): void {
+    this.cargandoMisSolicitudes = true;
+    const doc = this.datosColaborador.documento || '123456789';
+    console.log('🔍 Buscando mis solicitudes para documento:', doc);
+
+    this.solicitudesService.obtenerMisSolicitudes(doc, 0, 100).subscribe({
+      next: (data: any) => {
+        if (data && data.content) {
+          this.misSolicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
+          this.totalMisSolicitudesBD = data.totalElements;
+        } else {
+          this.misSolicitudes = [];
+          this.totalMisSolicitudesBD = 0;
+        }
+        this.cargandoMisSolicitudes = false;
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        console.error('❌ Error al cargar mis solicitudes:', err);
+        this.cargandoMisSolicitudes = false;
+        this.misSolicitudes = [];
+        this.mostrarNotificacionSnackbar('Error al cargar mis solicitudes', 'error');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  verHistorialCambios(solicitud: SolicitudDesarrollo): void {
+    if (!solicitud.id) return;
+    this.solicitudSeleccionada = solicitud;
+    this.cargandoHistorial = true;
+    this.mostrarModalHistorial = true;
+    this.historialCambios = [];
+
+    this.solicitudesService.obtenerHistorialCambios(solicitud.id).subscribe({
+      next: (data) => {
+        this.historialCambios = data;
+        this.cargandoHistorial = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('❌ Error al obtener historial:', err);
+        this.cargandoHistorial = false;
+        this.mostrarNotificacionSnackbar('Error al obtener el historial de cambios', 'error');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  cerrarModalHistorial(): void {
+    this.mostrarModalHistorial = false;
+    this.solicitudSeleccionada = null;
+    this.historialCambios = [];
   }
 
   // ============================================================
@@ -1330,7 +1408,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   guardarSolicitud(): void {
     console.log('🔍 Iniciando guardado de solicitud...');
-    
+
     if (!this.validarPasoGeneral()) {
       this.mostrarErroresGeneral();
       return;
@@ -1367,7 +1445,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     }
 
     const payload = {
-      empleadoDocumento: '123456789',
+      empleadoDocumento: this.datosColaborador.documento || '123456789',
       empleadoNombre: this.datosColaborador.nombreCompleto || 'Usuario',
       empleadoCorreo: this.datosColaborador.correo || 'usuario@asmetsalud.com',
       empleadoCargo: this.datosColaborador.cargo || 'Colaborador',
@@ -1413,7 +1491,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       next: (response: any) => {
         console.log('✅ Solicitud creada exitosamente:', response);
         this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
-        
+
         // --- Enviar notificación por correo con el PDF adjunto ---
         this.enviarNotificacionCorreo(this.numeroSolicitudExito, response.id || 0);
 
@@ -1478,10 +1556,10 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       console.warn('⚠️ No se pudo generar el PDF para el correo.');
       return;
     }
-    
+
     // Convertir PDF a Base64
     const pdfBase64 = doc.output('datauristring');
-    
+
     // 3. Armar Payload
     const payloadCorreo = {
       solicitudId: solicitudId,
@@ -1590,8 +1668,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       yPos = (doc as any).lastAutoTable.finalY + 5;
 
       // 3. IMPACTO DEL REQUERIMIENTO
-      const impactoTexto = solicitud.impacto && solicitud.impacto.trim() !== '' 
-        ? solicitud.impacto 
+      const impactoTexto = solicitud.impacto && solicitud.impacto.trim() !== ''
+        ? solicitud.impacto
         : 'No se especificó impacto.';
 
       autoTable(doc, {
