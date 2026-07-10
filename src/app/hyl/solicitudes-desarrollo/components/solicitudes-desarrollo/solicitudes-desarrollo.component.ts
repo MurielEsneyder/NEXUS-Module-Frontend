@@ -579,7 +579,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     if (item.requerimientos && item.requerimientos.length > 0) {
       tieneImagenes = item.requerimientos.some((req: any) =>
-        req.imagenes && req.imagenes.length > 0
+        (req.imagenes && req.imagenes.length > 0) || (req.archivos && req.archivos.length > 0)
       );
     }
 
@@ -595,7 +595,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           descripcion: req.objetivo || req.detalle || 'Sin descripción',
           detalle: req.detalle || '',
           cargoImpactado: req.cargoImpactado || '',
-          archivos: req.imagenes || []
+          archivos: req.imagenes || req.archivos || []
         };
 
         const tipoReq = req.tipoRequerimiento !== undefined ? req.tipoRequerimiento : req.tipo_requerimiento;
@@ -1635,11 +1635,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       doc.rect(0, 0, 210, 25, 'F');
 
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('ASMET SALUD - REQUERIMIENTO DE DESARROLLO', 10, 16);
+      doc.text('ASMET SALUD - REQUERIMIENTO DE DESARROLLO', 10, 15);
 
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       let fechaStr = 'No registrada';
       if (solicitud.fechaCreacion) {
@@ -1653,7 +1653,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         }
       }
       const headerRight = `Solicitud: ${solicitud.numeroSolicitud || 'N/A'}  |  Fecha: ${fechaStr}`;
-      doc.text(headerRight, 200, 16, { align: 'right' });
+      doc.text(headerRight, 200, 15, { align: 'right' });
 
       let yPos = 30;
 
@@ -1780,6 +1780,56 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           `• Evitar uso de datos reales de carácter personal en pruebas.`
         ]]
       });
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+
+      // 8. ADJUNTOS / IMÁGENES
+      if (solicitud.tieneImagenes) {
+        const todosReqs = [...(solicitud.requerimientosFuncionales || []), ...(solicitud.requerimientosNoFuncionales || [])];
+        let hasImg = false;
+        
+        for (const req of todosReqs) {
+          if (req.archivos && req.archivos.length > 0) {
+            if (!hasImg) {
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(0, 0, 0);
+              doc.text('IMÁGENES ADJUNTAS', 14, yPos);
+              yPos += 10;
+              hasImg = true;
+            }
+
+            for (const imgObj of req.archivos) {
+              try {
+                // imgObj can be a string (base64) or an object with base64 property
+                const base64Str = typeof imgObj === 'string' ? imgObj : (imgObj.base64 || imgObj.url || null);
+                
+                if (base64Str && (base64Str.startsWith('data:image') || base64Str.length > 100)) {
+                  // If image does not fit on current page, add new page
+                  if (yPos > 240) {
+                    doc.addPage();
+                    yPos = 20;
+                  }
+                  
+                  doc.setFontSize(9);
+                  doc.setFont('helvetica', 'normal');
+                  doc.text(`Req ID: ${req.id} - ${typeof imgObj !== 'string' && imgObj.nombre ? imgObj.nombre : 'Adjunto'}`, 14, yPos);
+                  yPos += 5;
+                  
+                  // Extract type if data URL
+                  let imgType = 'JPEG';
+                  if (typeof base64Str === 'string' && base64Str.includes('image/png')) imgType = 'PNG';
+                  
+                  // Add image with a reasonable size (e.g. max 180 width, max 80 height)
+                  doc.addImage(base64Str, imgType, 14, yPos, 100, 70);
+                  yPos += 80;
+                }
+              } catch (e) {
+                console.error('Error procesando imagen para PDF', e);
+              }
+            }
+          }
+        }
+      }
 
       return doc;
     } catch (error) {

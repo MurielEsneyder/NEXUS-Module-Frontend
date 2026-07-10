@@ -663,9 +663,21 @@
         </div>
         <span *ngIf="!solicitudSeleccionada.totalRequerimientos">No hay requerimientos registrados.</span>
       </div>
-      <div class="detalle-item">
+      <div class="detalle-item detalle-full-width">
         <label>Adjuntos:</label>
-        <span>{{ solicitudSeleccionada.tieneImagenes ? '🖼️ Sí tiene imágenes' : '📄 Sin imágenes' }}</span>
+        <span *ngIf="!solicitudSeleccionada.tieneImagenes">📄 Sin imágenes</span>
+        
+        <div class="imagenes-adjuntas" *ngIf="solicitudSeleccionada.tieneImagenes">
+          <ng-container *ngFor="let req of (solicitudSeleccionada.requerimientosFuncionales || []).concat(solicitudSeleccionada.requerimientosNoFuncionales || [])">
+            <div *ngIf="req.archivos && req.archivos.length > 0" class="img-preview-grid" style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 5px; width: 100%;">
+              <p style="width: 100%; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Requerimiento: {{req.id}}</p>
+              <div *ngFor="let arch of req.archivos" class="img-preview-tile" style="margin-right: 10px;">
+                <!-- Soporta el formato cuando viene del API (solo base64 string) o el objeto local -->
+                <img [src]="arch.base64 || arch.url || arch" [alt]="arch.nombre || 'Adjunto'" class="img-preview-thumb" style="max-height: 80px; width: auto; border: 1px solid #ddd; border-radius: 4px;">
+              </div>
+            </div>
+          </ng-container>
+        </div>
       </div>
     </div>
 
