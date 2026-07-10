@@ -1,5 +1,5 @@
 // solicitudes-desarrollo.component.ts
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { SolicitudesDesarrolloService } from '../../services/solicitudes-desarrollo.service';
 import { SecurityService } from '../../../../commons/services/security.service';
 import { HttpClient } from '@angular/common/http';
@@ -53,7 +53,7 @@ export interface SolicitudDesarrollo {
   templateUrl: './solicitudes-desarrollo.component.html',
   styleUrls: ['./solicitudes-desarrollo.component.css']
 })
-export class SolicitudesDesarrolloComponent implements OnInit {
+export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   // ============================================================
   // VARIABLES DE ESTADO
@@ -62,9 +62,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   pasoActivo = 0;
   mostrarModalInf = false;
   mostrarModalEliminar = false;
+  mostrarModalEliminarSolicitud = false;
   mostrarModalExito = false;
   mostrarModalDetalle = false;
   mostrarModalRequerimiento = false;
+  puedeEditarDetalle = true;
   numeroSolicitudExito = '';
   observacionesModal = '';
   impactoTexto = '';
@@ -89,6 +91,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   solicitudActual!: SolicitudDesarrollo;
   solicitudSeleccionada: SolicitudDesarrollo | null = null;
   requerimientoAEliminar: { id: string; index: number; tipo: 'funcional' | 'noFuncional' } | null = null;
+  solicitudAEliminar: SolicitudDesarrollo | null = null;
   requerimientoSeleccionadoModal: RequerimientoItem | null = null;
   requerimientoSeleccionadoTipo: 'funcional' | 'noFuncional' = 'funcional';
   requerimientoSeleccionadoIndex: number = -1;
@@ -265,6 +268,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   ngOnInit(): void {
     this.obtenerDatosColaborador();
+    window.addEventListener('popstate', this.manejarPopState);
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('popstate', this.manejarPopState);
   }
 
   // ============================================================
@@ -577,7 +585,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
     if (item.requerimientos && item.requerimientos.length > 0) {
       tieneImagenes = item.requerimientos.some((req: any) =>
-        req.imagenes && req.imagenes.length > 0
+        (req.imagenes && req.imagenes.length > 0) || (req.archivos && req.archivos.length > 0)
       );
     }
 
@@ -593,7 +601,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           descripcion: req.objetivo || req.detalle || 'Sin descripción',
           detalle: req.detalle || '',
           cargoImpactado: req.cargoImpactado || '',
-          archivos: req.imagenes || []
+          archivos: req.imagenes || req.archivos || []
         };
 
         const tipoReq = req.tipoRequerimiento !== undefined ? req.tipoRequerimiento : req.tipo_requerimiento;
@@ -678,9 +686,16 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   // ACCIONES DE BANDEJA
   // ============================================================
+  private manejarPopState = (): void => {
+    if (this.vistaActual !== 'principal') {
+      this.volverPrincipal();
+    }
+  };
+
   verDetalle(solicitud: SolicitudDesarrollo): void {
     console.log('👁️ Ver detalle de:', solicitud);
     this.solicitudSeleccionada = { ...solicitud };
+    this.puedeEditarDetalle = this.vistaActual === 'bandeja';
     this.modoEdicion = false;
     this.estadoEditado = this.solicitudSeleccionada.estado;
     this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
@@ -738,6 +753,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // MODO EDICIÓN EN MODAL
   // ============================================================
   toggleModoEdicion(): void {
+    if (!this.puedeEditarDetalle) {
+      this.modoEdicion = false;
+      return;
+    }
+
     this.modoEdicion = !this.modoEdicion;
     if (this.modoEdicion && this.solicitudSeleccionada) {
       this.estadoEditado = this.solicitudSeleccionada.estado;
@@ -749,8 +769,8 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // GUARDAR CAMBIOS DEL MODAL
   // ============================================================
   guardarCambiosDetalle(): void {
-    if (!this.solicitudSeleccionada || !this.solicitudSeleccionada.id) {
-      console.warn('⚠️ No hay solicitud seleccionada para guardar cambios');
+    if (!this.puedeEditarDetalle || !this.solicitudSeleccionada || !this.solicitudSeleccionada.id) {
+      console.warn('⚠️ No hay permiso para guardar cambios en esta vista');
       return;
     }
 
@@ -836,17 +856,36 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ELIMINAR SOLICITUD
   // ============================================================
   eliminarSolicitud(solicitud: SolicitudDesarrollo): void {
-    if (confirm(`¿Está seguro que desea eliminar la solicitud ${solicitud.numeroSolicitud}?`)) {
-      if (solicitud.id) {
-        this.solicitudesService.eliminar(solicitud.id).subscribe({
-          next: () => {
-            console.log('✅ Solicitud eliminada');
-            this.cargarSolicitudes();
-          },
-          error: (err) => console.error('❌ Error al eliminar:', err)
-        });
+    this.solicitudAEliminar = solicitud;
+    this.mostrarModalEliminarSolicitud = true;
+  }
+
+  cancelarEliminarSolicitud(): void {
+    this.mostrarModalEliminarSolicitud = false;
+    this.solicitudAEliminar = null;
+  }
+
+  confirmarEliminarSolicitud(): void {
+    if (!this.solicitudAEliminar || !this.solicitudAEliminar.id) return;
+    
+    this.solicitudesService.eliminar(this.solicitudAEliminar.id).subscribe({
+      next: () => {
+        console.log('✅ Solicitud eliminada');
+        this.cargarSolicitudes();
+        if (this.vistaActual === 'historial') {
+          this.cargarMisSolicitudes();
+        }
+        this.mostrarModalEliminarSolicitud = false;
+        this.solicitudAEliminar = null;
+        this.mostrarNotificacionSnackbar('Solicitud eliminada exitosamente', 'success');
+      },
+      error: (err) => {
+        console.error('❌ Error al eliminar:', err);
+        this.mostrarNotificacionSnackbar('Error al eliminar la solicitud', 'error');
+        this.mostrarModalEliminarSolicitud = false;
+        this.solicitudAEliminar = null;
       }
-    }
+    });
   }
 
   // ============================================================
@@ -944,6 +983,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   mostrarNuevaSolicitud(): void {
     this.solicitudActual = this.inicializarNuevaSolicitud();
     this.vistaActual = 'wizard';
+    this.puedeEditarDetalle = false;
     this.pasoActivo = 0;
     this.impactoTexto = '';
     this.errorImpacto = false;
@@ -969,20 +1009,32 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   mostrarBandeja(): void {
     this.vistaActual = 'bandeja';
+    this.puedeEditarDetalle = true;
     // Ordenar descendente al mostrar la bandeja (más reciente primero)
     if (this.solicitudes.length > 0) {
       this.solicitudes = this.ordenarSolicitudesPorId([...this.solicitudes]);
       this.solicitudesFiltradas = this.ordenarSolicitudesPorId([...this.solicitudesFiltradas]);
     }
     this.cargarSolicitudes();
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ vista: this.vistaActual }, '', window.location.href);
+    }
   }
 
   volverPrincipal(): void {
     this.vistaActual = 'principal';
+    this.puedeEditarDetalle = true;
+    this.pasoActivo = 0;
+    this.mostrarModalDetalle = false;
+    this.mostrarModalRequerimiento = false;
+    this.mostrarModalEliminar = false;
+    this.mostrarModalEliminarSolicitud = false;
+    this.mostrarModalExito = false;
+    this.mostrarModalCambioEstado = false;
   }
 
   irAtras(): void {
-    window.history.back();
+    this.volverPrincipal();
   }
 
   // ============================================================
@@ -991,7 +1043,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
 
   mostrarMisSolicitudes(): void {
     this.vistaActual = 'historial';
+    this.puedeEditarDetalle = false;
     this.cargarMisSolicitudes();
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ vista: this.vistaActual }, '', window.location.href);
+    }
   }
 
   cargarMisSolicitudes(): void {
@@ -1614,11 +1670,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
       doc.rect(0, 0, 210, 25, 'F');
 
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('ASMET SALUD - REQUERIMIENTO DE DESARROLLO', 10, 16);
+      doc.text('ASMET SALUD - REQUERIMIENTO DE DESARROLLO', 10, 15);
 
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       let fechaStr = 'No registrada';
       if (solicitud.fechaCreacion) {
@@ -1632,7 +1688,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
         }
       }
       const headerRight = `Solicitud: ${solicitud.numeroSolicitud || 'N/A'}  |  Fecha: ${fechaStr}`;
-      doc.text(headerRight, 200, 16, { align: 'right' });
+      doc.text(headerRight, 200, 15, { align: 'right' });
 
       let yPos = 30;
 
@@ -1759,6 +1815,56 @@ export class SolicitudesDesarrolloComponent implements OnInit {
           `• Evitar uso de datos reales de carácter personal en pruebas.`
         ]]
       });
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+
+      // 8. ADJUNTOS / IMÁGENES
+      if (solicitud.tieneImagenes) {
+        const todosReqs = [...(solicitud.requerimientosFuncionales || []), ...(solicitud.requerimientosNoFuncionales || [])];
+        let hasImg = false;
+        
+        for (const req of todosReqs) {
+          if (req.archivos && req.archivos.length > 0) {
+            if (!hasImg) {
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(0, 0, 0);
+              doc.text('IMÁGENES ADJUNTAS', 14, yPos);
+              yPos += 10;
+              hasImg = true;
+            }
+
+            for (const imgObj of req.archivos) {
+              try {
+                // imgObj can be a string (base64) or an object with base64 property
+                const base64Str = typeof imgObj === 'string' ? imgObj : (imgObj.base64 || imgObj.url || null);
+                
+                if (base64Str && (base64Str.startsWith('data:image') || base64Str.length > 100)) {
+                  // If image does not fit on current page, add new page
+                  if (yPos > 240) {
+                    doc.addPage();
+                    yPos = 20;
+                  }
+                  
+                  doc.setFontSize(9);
+                  doc.setFont('helvetica', 'normal');
+                  doc.text(`Req ID: ${req.id} - ${typeof imgObj !== 'string' && imgObj.nombre ? imgObj.nombre : 'Adjunto'}`, 14, yPos);
+                  yPos += 5;
+                  
+                  // Extract type if data URL
+                  let imgType = 'JPEG';
+                  if (typeof base64Str === 'string' && base64Str.includes('image/png')) imgType = 'PNG';
+                  
+                  // Add image with a reasonable size (e.g. max 180 width, max 80 height)
+                  doc.addImage(base64Str, imgType, 14, yPos, 100, 70);
+                  yPos += 80;
+                }
+              } catch (e) {
+                console.error('Error procesando imagen para PDF', e);
+              }
+            }
+          }
+        }
+      }
 
       return doc;
     } catch (error) {
