@@ -23,6 +23,10 @@
           <mat-icon>add_circle_outline</mat-icon>
           Nueva Solicitud
         </button>
+        <button mat-raised-button class="btn-principal btn-home" (click)="mostrarMisSolicitudes()">
+          <mat-icon>history</mat-icon>
+          Mis Solicitudes
+        </button>
         <button mat-raised-button class="btn-principal btn-home" (click)="mostrarBandeja()">
           <mat-icon>inbox</mat-icon>
           Bandeja de Solicitudes
@@ -122,6 +126,7 @@
             </td>
             <td class="acciones-cell">
               <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
+              <button class="btn-accion btn-historial" (click)="verHistorialCambios(solicitud)" title="Ver historial">⏱️</button>
               <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
             </td>
           </tr>
@@ -144,6 +149,9 @@
         
         <!-- Modo de visualización o edición -->
         <div class="detalle-actions">
+          <button class="btn-historial-modal" (click)="verHistorialCambios(solicitudSeleccionada)" *ngIf="solicitudSeleccionada">
+            ⏱️ Ver Historial
+          </button>
           <button class="btn-toggle-edicion" (click)="toggleModoEdicion()">
             <span *ngIf="!modoEdicion">✏️ Editar</span>
             <span *ngIf="modoEdicion">👁️ Ver</span>
@@ -586,6 +594,103 @@
     </mat-card>
   </div>
 
+  <!-- ============================================================ -->
+  <!-- VISTA: MIS SOLICITUDES -->
+  <!-- ============================================================ -->
+  <div *ngIf="vistaActual === 'historial'" class="bandeja-section">
+    <div class="bandeja-header">
+      <div class="bandeja-header-left">
+        <button class="btn-volver-bandeja" (click)="volverPrincipal()" title="Volver al inicio">
+          <mat-icon>arrow_back</mat-icon>
+          <span>Volver</span>
+        </button>
+        <div class="bandeja-titulo">
+          <h2>🕒 Mis Solicitudes</h2>
+          <span class="total-solicitudes">{{ totalMisSolicitudesBD }} solicitudes</span>
+        </div>
+      </div>
+      <button class="btn-nueva" (click)="mostrarNuevaSolicitud()">
+        <mat-icon>add</mat-icon> Nueva Solicitud
+      </button>
+    </div>
+
+    <!-- TABLA DE MIS SOLICITUDES -->
+    <div class="tabla-bandeja-wrapper">
+      <table class="tabla-bandeja">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Código</th>
+            <th>Proyecto</th>
+            <th>Tipo</th>
+            <th>Área</th>
+            <th class="text-center">Req.</th>
+            <th>Estado</th>
+            <th class="text-center">Prioridad</th>
+            <th class="text-center">Adjuntos</th>
+            <th class="acciones-header">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="cargandoMisSolicitudes">
+            <td colspan="10" class="text-center cargando-datos">
+              <p>⏳ Cargando mis solicitudes...</p>
+            </td>
+          </tr>
+          <tr *ngFor="let solicitud of misSolicitudes" class="fila-solicitud">
+            <td>{{ solicitud.fechaCreacion | date:'dd/MM/yyyy' }}</td>
+            <td><strong>{{ solicitud.numeroSolicitud }}</strong></td>
+            <td title="{{ solicitud.objetivo }}">{{ solicitud.objetivo | slice:0:25 }}{{ solicitud.objetivo.length > 25 ? '...' : '' }}</td>
+            <td>
+              <span class="badge-tipo" [class.badge-proyecto]="solicitud.tipo === 'Proyecto'" [class.badge-mejora]="solicitud.tipo === 'Mejora'">
+                {{ solicitud.tipo || 'N/A' }}
+              </span>
+            </td>
+            <td>{{ solicitud.area }}</td>
+            <td class="text-center">{{ solicitud.totalRequerimientos || 0 }}</td>
+            <td>
+              <span class="estado-badge" [ngClass]="{
+                'estado-pendiente': getEstadoVisual(solicitud.estado) === 'Pendiente',
+                'estado-enviada': getEstadoVisual(solicitud.estado) === 'Enviada',
+                'estado-documentacion': getEstadoVisual(solicitud.estado) === 'En documentación',
+                'estado-funcional': getEstadoVisual(solicitud.estado) === 'En pruebas funcionales',
+                'estado-desarrollo': getEstadoVisual(solicitud.estado) === 'En desarrollo',
+                'estado-aceptacion': getEstadoVisual(solicitud.estado) === 'En pruebas de aceptación',
+                'estado-cerrada': getEstadoVisual(solicitud.estado) === 'Cerrada',
+                'estado-rechazada': getEstadoVisual(solicitud.estado) === 'Rechazada'
+              }">
+                {{ getEstadoVisual(solicitud.estado) }}
+              </span>
+            </td>
+            <td class="text-center">
+              <span class="prioridad-badge" [ngClass]="{
+                'prioridad-alta': solicitud.prioridad === 'alta',
+                'prioridad-media': solicitud.prioridad === 'media',
+                'prioridad-baja': solicitud.prioridad === 'baja'
+              }">
+                {{ solicitud.prioridad || 'Media' }}
+              </span>
+            </td>
+            <td class="text-center">
+              <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
+                📄 PDF
+              </button>
+            </td>
+            <td class="acciones-cell">
+              <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
+              <button class="btn-accion btn-historial" (click)="verHistorialCambios(solicitud)" title="Ver historial">⏱️</button>
+            </td>
+          </tr>
+          <tr *ngIf="!cargandoMisSolicitudes && misSolicitudes.length === 0">
+            <td colspan="10" class="text-center sin-datos">
+              <p>📭 No tienes solicitudes registradas</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <!-- Modal Eliminar Requerimiento -->
@@ -699,4 +804,53 @@
       <button class="btn-guardar-cambios" (click)="guardarCambiosRequerimiento()">💾 Guardar Cambios</button>
     </div>
   </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: HISTORIAL DE CAMBIOS (TIMELINE) -->
+  <!-- ============================================================ -->
+  <div class="overlay-modal" *ngIf="mostrarModalHistorial" (click)="cerrarModalHistorial()"></div>
+  <div class="modal-historial modal-detalle" *ngIf="mostrarModalHistorial">
+    <div class="modal-detalle-contenido">
+      <button class="btn-cerrar-modal" (click)="cerrarModalHistorial()">✕</button>
+      <h3>⏱️ Historial de Cambios: {{ solicitudSeleccionada?.numeroSolicitud }}</h3>
+
+      <div *ngIf="cargandoHistorial" class="loading-state">
+        <p>⏳ Cargando historial...</p>
+      </div>
+
+      <div *ngIf="!cargandoHistorial && historialCambios.length === 0" class="empty-state">
+        <p>No hay registro de cambios para esta solicitud.</p>
+      </div>
+
+      <div class="timeline-container" *ngIf="!cargandoHistorial && historialCambios.length > 0">
+        <div class="timeline">
+          <div class="timeline-item" *ngFor="let cambio of historialCambios; let first = first">
+            <div class="timeline-dot" [class.latest]="first"></div>
+            <div class="timeline-content">
+              <div class="timeline-header">
+                <span class="timeline-date">{{ cambio.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span class="timeline-user">👤 {{ cambio.usuarioRegistro }}</span>
+              </div>
+              <div class="timeline-body">
+                <div class="estado-change">
+                  <span class="estado-previo" *ngIf="cambio.estadoAnterior">{{ cambio.estadoAnterior.nombre }}</span>
+                  <mat-icon *ngIf="cambio.estadoAnterior" class="arrow-icon">arrow_forward</mat-icon>
+                  <span class="estado-nuevo" [style.backgroundColor]="cambio.estadoNuevo?.color || '#3bafb6'">
+                    {{ cambio.estadoNuevo?.nombre }}
+                  </span>
+                </div>
+                <p class="timeline-observacion" *ngIf="cambio.observacion">
+                  <strong>Observación:</strong> {{ cambio.observacion }}
+                </p>
+                <div class="timeline-fase" *ngIf="cambio.fase">
+                  Fase: {{ cambio.fase }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>

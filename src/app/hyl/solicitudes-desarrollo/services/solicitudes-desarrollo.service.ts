@@ -185,6 +185,24 @@ export class SolicitudesDesarrolloService {
    */
   enviarNotificacionCorreo(payload: any): Observable<any> {
     const correoUrl = 'http://localhost:8090/api/v1/notificaciones/enviar-correo-solicitud';
-    return this.http.post(correoUrl, payload);
+    return this.http.post(correoUrl, payload, { responseType: 'text' });
+  }
+
+  // ============================================================
+  // HISTORIAL DE CAMBIOS Y MIS SOLICITUDES
+  // ============================================================
+
+  /**
+   * Obtiene el historial de cambios (auditoría) de una solicitud
+   */
+  obtenerHistorialCambios(solicitudId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/${solicitudId}/historial`);
+  }
+
+  /**
+   * Obtiene las solicitudes de un empleado específico (paginado)
+   */
+  obtenerMisSolicitudes(documento: string, page: number = 0, size: number = 20): Observable<any> {
+    return this.http.get(`${this.apiUrl}/mis-solicitudes/${documento}?page=${page}&size=${size}`);
   }
 }
