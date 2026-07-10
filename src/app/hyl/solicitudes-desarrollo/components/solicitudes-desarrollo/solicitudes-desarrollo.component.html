@@ -703,6 +703,19 @@
   </div>
 </div>
 
+<!-- Modal Eliminar Solicitud -->
+<div class="overlay-modal overlay-alerta" *ngIf="mostrarModalEliminarSolicitud" (click)="cancelarEliminarSolicitud()"></div>
+<div class="modal-alerta" *ngIf="mostrarModalEliminarSolicitud && solicitudAEliminar">
+  <div class="modal-alerta-contenido">
+    <h3>Confirmar eliminación</h3>
+    <p>¿Está seguro que desea eliminar la solicitud <strong>{{ solicitudAEliminar.numeroSolicitud }}</strong>?</p>
+    <div class="modal-alerta-botones">
+      <button class="btn-alerta-no" (click)="cancelarEliminarSolicitud()">No</button>
+      <button class="btn-alerta-si" (click)="confirmarEliminarSolicitud()">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Éxito -->
 <div class="overlay-modal" *ngIf="mostrarModalExito" (click)="cerrarModalExito()"></div>
 <div class="modal-exito" *ngIf="mostrarModalExito">

@@ -62,6 +62,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   pasoActivo = 0;
   mostrarModalInf = false;
   mostrarModalEliminar = false;
+  mostrarModalEliminarSolicitud = false;
   mostrarModalExito = false;
   mostrarModalDetalle = false;
   mostrarModalRequerimiento = false;
@@ -89,6 +90,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   solicitudActual!: SolicitudDesarrollo;
   solicitudSeleccionada: SolicitudDesarrollo | null = null;
   requerimientoAEliminar: { id: string; index: number; tipo: 'funcional' | 'noFuncional' } | null = null;
+  solicitudAEliminar: SolicitudDesarrollo | null = null;
   requerimientoSeleccionadoModal: RequerimientoItem | null = null;
   requerimientoSeleccionadoTipo: 'funcional' | 'noFuncional' = 'funcional';
   requerimientoSeleccionadoIndex: number = -1;
@@ -836,17 +838,36 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ELIMINAR SOLICITUD
   // ============================================================
   eliminarSolicitud(solicitud: SolicitudDesarrollo): void {
-    if (confirm(`¿Está seguro que desea eliminar la solicitud ${solicitud.numeroSolicitud}?`)) {
-      if (solicitud.id) {
-        this.solicitudesService.eliminar(solicitud.id).subscribe({
-          next: () => {
-            console.log('✅ Solicitud eliminada');
-            this.cargarSolicitudes();
-          },
-          error: (err) => console.error('❌ Error al eliminar:', err)
-        });
+    this.solicitudAEliminar = solicitud;
+    this.mostrarModalEliminarSolicitud = true;
+  }
+
+  cancelarEliminarSolicitud(): void {
+    this.mostrarModalEliminarSolicitud = false;
+    this.solicitudAEliminar = null;
+  }
+
+  confirmarEliminarSolicitud(): void {
+    if (!this.solicitudAEliminar || !this.solicitudAEliminar.id) return;
+    
+    this.solicitudesService.eliminar(this.solicitudAEliminar.id).subscribe({
+      next: () => {
+        console.log('✅ Solicitud eliminada');
+        this.cargarSolicitudes();
+        if (this.vistaActual === 'historial') {
+          this.cargarMisSolicitudes();
+        }
+        this.mostrarModalEliminarSolicitud = false;
+        this.solicitudAEliminar = null;
+        this.mostrarNotificacionSnackbar('Solicitud eliminada exitosamente', 'success');
+      },
+      error: (err) => {
+        console.error('❌ Error al eliminar:', err);
+        this.mostrarNotificacionSnackbar('Error al eliminar la solicitud', 'error');
+        this.mostrarModalEliminarSolicitud = false;
+        this.solicitudAEliminar = null;
       }
-    }
+    });
   }
 
   // ============================================================
