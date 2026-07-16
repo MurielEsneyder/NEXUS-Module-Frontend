@@ -1,7 +1,7 @@
 -- ============================================================
 -- MÓDULO: Solicitudes de Desarrollo
 -- BASE DE DATOS: PostgreSQL
--- VERSIÓN: 2.1 - Campos de texto a VARCHAR(2000)
+-- VERSIÓN: 2.2 - ESTRUCTURA COMPLETA Y CORREGIDA
 -- ============================================================
 
 -- ============================================================
@@ -48,7 +48,7 @@ ON CONFLICT (codigo) DO NOTHING;
 CREATE TABLE IF NOT EXISTS sd_requisito_seguridad (
     id          BIGSERIAL    PRIMARY KEY,
     codigo      VARCHAR(20)  NOT NULL UNIQUE,
-    descripcion VARCHAR(2000) NOT NULL,  -- Cambiado a VARCHAR(2000)
+    descripcion VARCHAR(2000) NOT NULL,
     activo      BOOLEAN      NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
@@ -77,15 +77,15 @@ CREATE TABLE IF NOT EXISTS sd_solicitud (
     empleado_correo       VARCHAR(150) NOT NULL,
     empleado_cargo        VARCHAR(150) NOT NULL,
     empleado_sede         VARCHAR(100) NOT NULL,
-    solicitud_proceso     VARCHAR(2000) NOT NULL,  -- Cambiado a VARCHAR(2000)
+    solicitud_proceso     VARCHAR(2000) NOT NULL,
     proceso_id            BIGINT       NOT NULL,
     area_id               BIGINT       NOT NULL,
     macroproceso_id       BIGINT       NOT NULL,
     tipo_solicitud_id     BIGINT       NOT NULL REFERENCES sd_tipo_solicitud(id),
     estado_id             BIGINT       NOT NULL REFERENCES sd_estado_solicitud(id) DEFAULT 1,
     prioridad             VARCHAR(20)  NOT NULL DEFAULT 'media',
-    observaciones         VARCHAR(2000),  -- Cambiado a VARCHAR(2000)
-    impacto               VARCHAR(2000) NOT NULL,  -- Cambiado a VARCHAR(2000)
+    observaciones         VARCHAR(2000),
+    impacto               VARCHAR(2000) NOT NULL,
     pdf_nombre            VARCHAR(255),
     pdf_contenido         BYTEA,
     usuario_registro      VARCHAR(100) NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS sd_solicitud (
     updated_at            TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
--- Índices
+-- Índices de sd_solicitud
 CREATE INDEX IF NOT EXISTS idx_sd_sol_codigo             ON sd_solicitud(codigo);
 CREATE INDEX IF NOT EXISTS idx_sd_sol_empleado_documento ON sd_solicitud(empleado_documento);
 CREATE INDEX IF NOT EXISTS idx_sd_sol_proceso_id         ON sd_solicitud(proceso_id);
@@ -106,7 +106,7 @@ CREATE INDEX IF NOT EXISTS idx_sd_sol_usuario_registro   ON sd_solicitud(usuario
 
 
 -- ============================================================
--- 3. TABLA: REQUERIMIENTO (CON cargo_impactado)
+-- 3. TABLA: REQUERIMIENTO
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS sd_requerimiento (
@@ -115,8 +115,8 @@ CREATE TABLE IF NOT EXISTS sd_requerimiento (
     numero_orden       INTEGER      NOT NULL,
     codigo             VARCHAR(10)  NOT NULL,
     tipo_requerimiento SMALLINT     NOT NULL,
-    objetivo           VARCHAR(2000) NOT NULL,  -- Cambiado a VARCHAR(2000)
-    detalle            VARCHAR(2000) NOT NULL,  -- Cambiado a VARCHAR(2000)
+    objetivo           VARCHAR(2000) NOT NULL,
+    detalle            VARCHAR(2000) NOT NULL,
     cargo_impactado    VARCHAR(100),
     fecha_ingreso      DATE         NOT NULL DEFAULT CURRENT_DATE,
     estado_id          BIGINT       REFERENCES sd_estado_solicitud(id) DEFAULT 1,
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS sd_requerimiento (
     CONSTRAINT chk_req_codigo CHECK (codigo ~ '^(RF|RNF)_[0-9]+$')
 );
 
--- Índices
+-- Índices de sd_requerimiento
 CREATE INDEX IF NOT EXISTS idx_sd_req_solicitud ON sd_requerimiento(solicitud_id);
 CREATE INDEX IF NOT EXISTS idx_sd_req_tipo      ON sd_requerimiento(tipo_requerimiento);
 CREATE INDEX IF NOT EXISTS idx_sd_req_orden     ON sd_requerimiento(solicitud_id, tipo_requerimiento, numero_orden);
@@ -143,7 +143,7 @@ CREATE INDEX IF NOT EXISTS idx_sd_req_estado    ON sd_requerimiento(estado_id);
 
 CREATE TABLE IF NOT EXISTS sd_requerimiento_cargo (
     requerimiento_id BIGINT NOT NULL REFERENCES sd_requerimiento(id) ON DELETE CASCADE,
-    cargo_id         BIGINT NOT NULL,  -- ID en Oracle
+    cargo_id         BIGINT NOT NULL,
     PRIMARY KEY (requerimiento_id, cargo_id)
 );
 
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS sd_auditoria (
     solicitud_id       BIGINT       NOT NULL REFERENCES sd_solicitud(id) ON DELETE CASCADE,
     estado_anterior_id BIGINT       REFERENCES sd_estado_solicitud(id),
     estado_nuevo_id    BIGINT       NOT NULL REFERENCES sd_estado_solicitud(id),
-    observacion        VARCHAR(2000),  -- Cambiado a VARCHAR(2000)
+    observacion        VARCHAR(2000),
     fase               INTEGER      NOT NULL DEFAULT 1,
     usuario_registro   VARCHAR(100) NOT NULL,
     created_at         TIMESTAMP    NOT NULL DEFAULT NOW()
@@ -218,7 +218,7 @@ CREATE TABLE IF NOT EXISTS sd_notificacion (
     destinatario     VARCHAR(150) NOT NULL,
     tipo             VARCHAR(20)  NOT NULL,
     asunto           VARCHAR(200) NOT NULL,
-    contenido        VARCHAR(2000) NOT NULL,  -- Cambiado a VARCHAR(2000)
+    contenido        VARCHAR(2000) NOT NULL,
     enviado          BOOLEAN      NOT NULL DEFAULT FALSE,
     fecha_envio      TIMESTAMP,
     usuario_registro VARCHAR(100) NOT NULL,
@@ -243,11 +243,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_update_solicitud_updated_at ON sd_solicitud;
 CREATE TRIGGER trg_update_solicitud_updated_at
     BEFORE UPDATE ON sd_solicitud
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS trg_update_requerimiento_updated_at ON sd_requerimiento;
 CREATE TRIGGER trg_update_requerimiento_updated_at
     BEFORE UPDATE ON sd_requerimiento
     FOR EACH ROW
@@ -258,7 +260,9 @@ CREATE TRIGGER trg_update_requerimiento_updated_at
 -- 10. VISTA DE RESUMEN
 -- ============================================================
 
-CREATE OR REPLACE VIEW sd_vista_resumen_solicitudes AS
+DROP VIEW IF EXISTS sd_vista_resumen_solicitudes;
+
+CREATE VIEW sd_vista_resumen_solicitudes AS
 SELECT
     s.id,
     s.codigo,
@@ -300,19 +304,177 @@ ORDER BY
 
 
 -- ============================================================
--- 11. VERIFICACIÓN
+-- 11. VERIFICACIÓN FINAL DE ESTRUCTURA
 -- ============================================================
+
+SELECT '=== VERIFICACIÓN DE ESTRUCTURA ===' as info;
 
 SELECT
     table_name,
-    (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = t.table_name) AS column_count
+    (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = t.table_name) AS column_count,
+    CASE 
+        WHEN table_name = 'sd_solicitud' AND EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'sd_solicitud' AND column_name = 'estado_id'
+        ) THEN '✅ estado_id OK'
+        WHEN table_name = 'sd_solicitud' THEN '❌ FALTA estado_id'
+        ELSE '✅'
+    END as solicitud_estado,
+    CASE 
+        WHEN table_name = 'sd_requerimiento' AND EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'sd_requerimiento' AND column_name = 'estado_id'
+        ) THEN '✅ estado_id OK'
+        WHEN table_name = 'sd_requerimiento' THEN '❌ FALTA estado_id'
+        ELSE '✅'
+    END as requerimiento_estado,
+    CASE 
+        WHEN table_name = 'sd_auditoria' AND EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'sd_auditoria' AND column_name = 'estado_anterior_id'
+        ) AND EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'sd_auditoria' AND column_name = 'estado_nuevo_id'
+        ) THEN '✅ estructura OK'
+        WHEN table_name = 'sd_auditoria' THEN '❌ FALTA columnas'
+        ELSE '✅'
+    END as auditoria_estado
 FROM
     information_schema.tables t
 WHERE
     table_schema = 'public'
     AND table_name LIKE 'sd_%'
+    AND table_name NOT LIKE 'sd_vista%'
 ORDER BY
     table_name;
+
+-- Mostrar estructura detallada de las tablas principales
+SELECT '=== ESTRUCTURA sd_solicitud ===' as info;
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns 
+WHERE table_name = 'sd_solicitud' 
+ORDER BY ordinal_position;
+
+SELECT '=== ESTRUCTURA sd_requerimiento ===' as info;
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns 
+WHERE table_name = 'sd_requerimiento' 
+ORDER BY ordinal_position;
+
+SELECT '=== ESTRUCTURA sd_auditoria ===' as info;
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns 
+WHERE table_name = 'sd_auditoria' 
+ORDER BY ordinal_position;
+
+
+-- ============================================================
+-- 12. DATOS DE PRUEBA (OPCIONAL)
+-- ============================================================
+
+-- Insertar una solicitud de prueba
+DO $$
+DECLARE
+    v_solicitud_id BIGINT;
+BEGIN
+    -- Insertar solicitud
+    INSERT INTO sd_solicitud (
+        codigo,
+        fecha_creacion,
+        empleado_documento,
+        empleado_nombre,
+        empleado_correo,
+        empleado_cargo,
+        empleado_sede,
+        solicitud_proceso,
+        proceso_id,
+        area_id,
+        macroproceso_id,
+        tipo_solicitud_id,
+        estado_id,
+        prioridad,
+        impacto,
+        usuario_registro
+    ) VALUES (
+        'SOL-2026-001',
+        CURRENT_DATE,
+        '12345678',
+        'Juan Pérez',
+        'juan.perez@empresa.com',
+        'Desarrollador Senior',
+        'Sede Principal',
+        'Solicitud de desarrollo de sistema de gestión',
+        1,
+        1,
+        1,
+        1,
+        1,
+        'alta',
+        'Alto impacto en la productividad del equipo',
+        'admin'
+    ) RETURNING id INTO v_solicitud_id;
+
+    -- Insertar requerimiento funcional
+    INSERT INTO sd_requerimiento (
+        solicitud_id,
+        numero_orden,
+        codigo,
+        tipo_requerimiento,
+        objetivo,
+        detalle,
+        cargo_impactado,
+        estado_id,
+        usuario_registro
+    ) VALUES (
+        v_solicitud_id,
+        1,
+        'RF_001',
+        0,
+        'Gestión de usuarios',
+        'Permitir crear, editar y eliminar usuarios del sistema',
+        'Administrador',
+        1,
+        'admin'
+    );
+
+    -- Insertar requerimiento no funcional
+    INSERT INTO sd_requerimiento (
+        solicitud_id,
+        numero_orden,
+        codigo,
+        tipo_requerimiento,
+        objetivo,
+        detalle,
+        cargo_impactado,
+        estado_id,
+        usuario_registro
+    ) VALUES (
+        v_solicitud_id,
+        1,
+        'RNF_001',
+        1,
+        'Seguridad',
+        'Implementar autenticación con JWT y roles',
+        'Desarrollador',
+        1,
+        'admin'
+    );
+
+    RAISE NOTICE '✅ Datos de prueba insertados correctamente. Solicitud ID: %', v_solicitud_id;
+END $$;
+
+
+-- ============================================================
+-- 13. RESUMEN FINAL
+-- ============================================================
+
+SELECT '=== RESUMEN FINAL ===' as info;
+SELECT 
+    COUNT(*) as total_solicitudes,
+    (SELECT COUNT(*) FROM sd_requerimiento) as total_requerimientos
+FROM sd_solicitud;
+
+SELECT * FROM sd_vista_resumen_solicitudes;
 
 
 -- ============================================================
@@ -320,63 +482,12 @@ ORDER BY
 --   1. sd_tipo_solicitud
 --   2. sd_estado_solicitud
 --   3. sd_requisito_seguridad
---   4. sd_solicitud
---   5. sd_requerimiento (con cargo_impactado)
+--   4. sd_solicitud (✅ con estado_id)
+--   5. sd_requerimiento (✅ con estado_id)
 --   6. sd_requerimiento_cargo
 --   7. sd_requerimiento_imagen
 --   8. sd_solicitud_requisito_seguridad
---   9. sd_auditoria
+--   9. sd_auditoria (✅ con estado_anterior_id y estado_nuevo_id)
 --  10. sd_notificacion
 --  11. sd_vista_resumen_solicitudes (vista)
 -- ============================================================
-
--- ============================================================
--- 12. MIGRACIÓN: columna prioridad (bases de datos existentes)
--- Ejecutar solo si la tabla ya existía sin este campo.
--- ============================================================
-ALTER TABLE sd_solicitud
-    ADD COLUMN IF NOT EXISTS prioridad VARCHAR(20) NOT NULL DEFAULT 'media';
-
-ALTER TABLE sd_solicitud
-    ADD COLUMN IF NOT EXISTS empleado_sede VARCHAR(100);
-
--- Recrear la vista para incluir prioridad y empleado_sede
-CREATE OR REPLACE VIEW sd_vista_resumen_solicitudes AS
-SELECT
-    s.id,
-    s.codigo,
-    s.fecha_creacion,
-    s.empleado_documento,
-    s.empleado_nombre,
-    s.empleado_correo,
-    s.empleado_cargo,
-    s.empleado_sede,
-    s.solicitud_proceso,
-    s.prioridad,
-    s.impacto,
-    s.observaciones,
-    s.estado_id,
-    e.codigo AS estado_codigo,
-    e.nombre AS estado_nombre,
-    e.color AS estado_color,
-    e.fase AS estado_fase,
-    s.tipo_solicitud_id,
-    t.codigo AS tipo_codigo,
-    t.nombre AS tipo_nombre,
-    s.proceso_id,
-    s.area_id,
-    s.macroproceso_id,
-    s.usuario_registro,
-    s.created_at,
-    s.updated_at,
-    (SELECT COUNT(*) FROM sd_requerimiento r WHERE r.solicitud_id = s.id) AS total_requerimientos,
-    (SELECT COUNT(*) FROM sd_requerimiento r WHERE r.solicitud_id = s.id AND r.tipo_requerimiento = 0) AS req_funcionales,
-    (SELECT COUNT(*) FROM sd_requerimiento r WHERE r.solicitud_id = s.id AND r.tipo_requerimiento = 1) AS req_no_funcionales
-FROM
-    sd_solicitud s
-    LEFT JOIN sd_estado_solicitud e ON s.estado_id = e.id
-    LEFT JOIN sd_tipo_solicitud t ON s.tipo_solicitud_id = t.id
-WHERE
-    s.estado_id NOT IN (7, 8)
-ORDER BY
-    s.fecha_creacion DESC;
