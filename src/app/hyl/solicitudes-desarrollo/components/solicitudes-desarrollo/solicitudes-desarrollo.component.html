@@ -61,7 +61,7 @@
       <input type="text" placeholder="🔍 Buscar por proyecto..." class="input-busqueda" #searchInput (input)="filtrarSolicitudes(searchInput.value)">
       <select class="select-filtro" #estadoFilter (change)="filtrarPorEstado(estadoFilter.value)">
         <option value="">Todos los estados</option>
-        <option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</option>
+        <option *ngFor="let estado of estadosDisponibles" [value]="estado.nombre">{{ estado.nombre }}</option>
       </select>
     </div>
 
@@ -242,7 +242,7 @@
               <label class="campo-label campo-requerido">TIPO DE SOLICITUD</label>
               <select class="select-wizard" [(ngModel)]="formGeneral.tipoSolicitud">
                 <option value="">-- Seleccione --</option>
-                <option *ngFor="let t of tiposSolicitud" [value]="t">{{ t }}</option>
+                <option *ngFor="let t of tiposSolicitud" [value]="t.nombre">{{ t.nombre }}</option>
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.tipoSolicitud">Requerido</span>
             </div>

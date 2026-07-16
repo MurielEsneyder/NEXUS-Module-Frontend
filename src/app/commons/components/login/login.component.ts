@@ -83,7 +83,7 @@ export class LoginComponent implements OnInit {
         const username = this.loginForm.value.login_numeroDocumento;
 
         // Intentar obtener datos desde el backend
-        this.http.get('http://localhost:8090/api/v1/colaborador/actual').subscribe({
+        this.http.get('http://localhost:8085/colaborador/actual').subscribe({
             next: (data: any) => {
                 console.log('📡 Datos del colaborador obtenidos:', data);
                 console.log('📋 Nombre completo desde backend:', data.nombreCompleto);

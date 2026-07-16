@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class SolicitudesDesarrolloService {
-  private apiUrl = 'http://localhost:8090/api/v1/solicitudes';
+  private apiUrl = 'http://localhost:8085/solicitudes';
 
   constructor(private http: HttpClient) {}
 
@@ -184,8 +184,13 @@ export class SolicitudesDesarrolloService {
    * Envía la solicitud y el PDF al backend para enviar el correo.
    */
   enviarNotificacionCorreo(payload: any): Observable<any> {
-    const correoUrl = 'http://localhost:8090/api/v1/notificaciones/enviar-correo-solicitud';
-    return this.http.post(correoUrl, payload, { responseType: 'text' });
+    // Nota: Si el endpoint en sv2-commons no tiene esta ruta exacta, deberás ajustarla.
+    // En sv2-commons el controlador es /api/correo/enviar-correo
+    const correoUrl = 'http://localhost:8082/api/correo/enviar-correo';
+    
+    // Necesitamos agregar el header "Accept-Version: v1" que requiere sv2-commons
+    const headers = new HttpHeaders().set('Accept-Version', 'v1');
+    return this.http.post(correoUrl, payload, { headers, responseType: 'text' });
   }
 
   // ============================================================
