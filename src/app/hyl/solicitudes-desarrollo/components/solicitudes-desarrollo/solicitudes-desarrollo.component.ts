@@ -157,15 +157,18 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   // ============================================================
   // LISTAS DE OPCIONES (CATÁLOGOS)
+  // Los que tienen endpoint se cargan del backend; los demás son estáticos
   // ============================================================
-  procesosSolicitante = [
+
+  // Estáticos (sin endpoint en el backend)
+  procesosSolicitante: string[] = [
     'Desarrollo Tecnológico',
     'Gestión Documental',
     'Contabilidad',
     'Talento Humano'
   ];
 
-  areas = [
+  areas: string[] = [
     'Transformación Digital',
     'Servicios de salud financiera',
     'Gestión Documental',
@@ -173,15 +176,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     'Desarrollo Organizacional'
   ];
 
-  vicepresidencias = [
+  vicepresidencias: string[] = [
     'Vicepresidencia de Salud',
     'Vicepresidencia Administrativa',
     'Vicepresidencia Financiera'
   ];
 
-  tiposSolicitud = ['Proyecto', 'Mejora'];
-
-  cargosArray = [
+  cargosArray: string[] = [
     'Profesional jurídico',
     'Profesional funcional',
     'Profesional BIG',
@@ -189,27 +190,14 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     'Líder técnico'
   ];
 
-  estadosDisponibles: string[] = [
-    'Borrador',
-    'Enviada',
-    'En documentación',
-    'En pruebas funcionales',
-    'En desarrollo',
-    'En pruebas de aceptación',
-    'Cerrada',
-    'Rechazada'
-  ];
+  // Dinámicos (se cargan del backend, con fallback si el backend no responde)
+  tiposSolicitud: any[] = [];
+  estadosDisponibles: any[] = [];
 
   // ============================================================
   // MAPA DE ÁREAS
   // ============================================================
-  private areaMap: { [key: number]: string } = {
-    1: 'Transformación Digital',
-    2: 'Servicios de salud financiera',
-    3: 'Gestión Documental',
-    4: 'Talento Humano',
-    5: 'Desarrollo Organizacional'
-  };
+  private areaMap: { [key: number]: string } = {};
 
   // ============================================================
   // CONSTRUCTOR
@@ -334,8 +322,64 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   private continuarInicializacion(): void {
     console.log('✅ Datos finales del colaborador:', this.datosColaborador);
     this.solicitudActual = this.inicializarNuevaSolicitud();
-    this.cargarEstados();
+    this.cargarCatalogos();
     this.cargarSolicitudes();
+  }
+
+  // ============================================================
+  // CARGAR CATÁLOGOS DESDE EL BACKEND
+  // ============================================================
+  private cargarCatalogos(): void {
+    // Cargar Tipos de Solicitud desde el backend
+    this.solicitudesService.obtenerTipos().subscribe({
+      next: (tipos: any[]) => {
+        this.tiposSolicitud = (tipos && tipos.length > 0) ? tipos : this.getFallbackTipos();
+        console.log('✅ Tipos cargados:', this.tiposSolicitud);
+      },
+      error: (err: any) => {
+        console.warn('⚠️ Backend no disponible para tipos. Usando fallback.', err.status);
+        this.tiposSolicitud = this.getFallbackTipos();
+      }
+    });
+
+    // Cargar Estados desde el backend
+    this.solicitudesService.obtenerEstados().subscribe({
+      next: (estados: any[]) => {
+        if (estados && estados.length > 0) {
+          this.estadosDisponibles = estados;
+          this.estadosList = estados;
+        } else {
+          this.estadosDisponibles = this.getFallbackEstadosList();
+          this.estadosList = this.getFallbackEstadosList();
+        }
+        console.log('✅ Estados cargados:', this.estadosDisponibles);
+      },
+      error: (err: any) => {
+        console.warn('⚠️ Backend no disponible para estados. Usando fallback.', err.status);
+        this.estadosDisponibles = this.getFallbackEstadosList();
+        this.estadosList = this.getFallbackEstadosList();
+      }
+    });
+  }
+
+  private getFallbackTipos(): any[] {
+    return [
+      { id: 1, codigo: 'PROYECTO', nombre: 'Proyecto' },
+      { id: 2, codigo: 'MEJORA', nombre: 'Mejora' }
+    ];
+  }
+
+  private getFallbackEstadosList(): any[] {
+    return [
+      { id: 1, codigo: 'BORRADOR', nombre: 'Borrador' },
+      { id: 2, codigo: 'ENVIADA', nombre: 'Enviada' },
+      { id: 3, codigo: 'EN_DOCUMENTACION', nombre: 'En documentación' },
+      { id: 4, codigo: 'EN_PRUEBAS_FUNCIONALES', nombre: 'En pruebas funcionales' },
+      { id: 5, codigo: 'EN_DESARROLLO', nombre: 'En desarrollo' },
+      { id: 6, codigo: 'EN_PRUEBAS_ACEPTACION', nombre: 'En pruebas de aceptación' },
+      { id: 7, codigo: 'CERRADA', nombre: 'Cerrada' },
+      { id: 8, codigo: 'RECHAZADA', nombre: 'Rechazada' }
+    ];
   }
 
   // ============================================================
@@ -1169,10 +1213,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   private validarPasoGeneral(): boolean {
     this.erroresGeneral = {
-      proceso: !this.formGeneral.proceso || this.formGeneral.proceso === '',
-      area: !this.formGeneral.area || this.formGeneral.area === '',
-      vicepresidencia: !this.formGeneral.vicepresidencia || this.formGeneral.vicepresidencia === '',
-      tipoSolicitud: !this.formGeneral.tipoSolicitud || this.formGeneral.tipoSolicitud === '',
+      // Solo validar si el array tiene opciones (vinieron datos del backend)
+      proceso: this.procesosSolicitante.length > 0 && (!this.formGeneral.proceso || this.formGeneral.proceso === ''),
+      area: this.areas.length > 0 && (!this.formGeneral.area || this.formGeneral.area === ''),
+      vicepresidencia: this.vicepresidencias.length > 0 && (!this.formGeneral.vicepresidencia || this.formGeneral.vicepresidencia === ''),
+      tipoSolicitud: this.tiposSolicitud.length > 0 && (!this.formGeneral.tipoSolicitud || this.formGeneral.tipoSolicitud === ''),
       solicitudProceso: !this.formGeneral.solicitudProceso || this.formGeneral.solicitudProceso.trim() === '',
       prioridad: !this.formGeneral.prioridad || this.formGeneral.prioridad === ''
     };
@@ -1489,16 +1534,15 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Resolver IDs desde los catálogos cargados del backend
+    // Si los catálogos no tienen datos (arrays vacíos), usar default 1
     const procesoId = this.mapearProcesoId(this.formGeneral.proceso);
     const areaId = this.mapearAreaId(this.formGeneral.area);
     const macroprocesoId = this.mapearMacroprocesoId(this.formGeneral.vicepresidencia);
-    const tipoSolicitudId = this.formGeneral.tipoSolicitud === 'Proyecto' ? 1 : 2;
 
-    if (procesoId <= 0 || areaId <= 0 || macroprocesoId <= 0) {
-      console.error('❌ IDs inválidos:', { procesoId, areaId, macroprocesoId });
-      alert('Por favor selecciona valores válidos para proceso, área y vicepresidencia.');
-      return;
-    }
+    // Para el tipo: buscar el objeto en el array cargado del backend
+    const tipoObj = this.tiposSolicitud.find((t: any) => t.nombre === this.formGeneral.tipoSolicitud);
+    const tipoSolicitudId = tipoObj ? tipoObj.id : 1;
 
     const payload = {
       empleadoDocumento: this.datosColaborador.documento || '123456789',
