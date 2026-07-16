@@ -19,15 +19,15 @@
         Transformación Digital
       </p>
       <div class="botones-principales">
-        <button mat-raised-button class="btn-principal btn-home" (click)="mostrarNuevaSolicitud()">
+        <button *ngIf="esColaborador || esAdministrador" mat-raised-button class="btn-principal btn-home" (click)="mostrarNuevaSolicitud()">
           <mat-icon>add_circle_outline</mat-icon>
           Nueva Solicitud
         </button>
-        <button mat-raised-button class="btn-principal btn-home" (click)="mostrarMisSolicitudes()">
+        <button *ngIf="esColaborador || esAdministrador" mat-raised-button class="btn-principal btn-home" (click)="mostrarMisSolicitudes()">
           <mat-icon>history</mat-icon>
           Mis Solicitudes
         </button>
-        <button mat-raised-button class="btn-principal btn-home" (click)="mostrarBandeja()">
+        <button *ngIf="esAdministrador" mat-raised-button class="btn-principal btn-home" (click)="mostrarBandeja()">
           <mat-icon>inbox</mat-icon>
           Bandeja de Solicitudes
         </button>

@@ -52,6 +52,27 @@ export class LoginComponent implements OnInit {
                     this.security.setLocalAuthKey(data['token']);
                     this.security.setUserOnSession(this.loginForm.value.login_numeroDocumento, "admin");
 
+
+                    //PARA VER LOS ROLES DEL USUARIO EN EL LOGIN
+
+                    const token = this.security.getLocalToken();
+                    let roles: string[] = [];
+                    if (token?.roles) {
+                        try {
+                            roles = typeof token.roles === 'string' ? JSON.parse(token.roles) : token.roles;
+                        } catch {
+                            roles = Array.isArray(token.roles) ? token.roles : [token.roles];
+                        }
+                    } else if (token?.aud) {
+                        try {
+                            roles = typeof token.aud === 'string' ? JSON.parse(token.aud) : token.aud;
+                        } catch {
+                            roles = Array.isArray(token.aud) ? token.aud : [token.aud];
+                        }
+                    }
+
+                    console.log('Roles asignados del usuario:', roles);
+
                     // ============================================================
                     // OBTENER Y GUARDAR DATOS DEL COLABORADOR
                     // ============================================================
