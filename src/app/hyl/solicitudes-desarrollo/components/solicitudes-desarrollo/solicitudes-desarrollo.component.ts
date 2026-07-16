@@ -56,8 +56,11 @@ export interface SolicitudDesarrollo {
 export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   // ============================================================
-  // VARIABLES DE ESTADO
+  // VARIABLES DE ESTADO Y ROLES
   // ============================================================
+  esColaborador = false;
+  esAdministrador = false;
+
   vistaActual: string = 'principal';
   pasoActivo = 0;
   mostrarModalInf = false;
@@ -255,8 +258,16 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // NG ON INIT
   // ============================================================
   ngOnInit(): void {
+    this.verificarRoles();
     this.obtenerDatosColaborador();
     window.addEventListener('popstate', this.manejarPopState);
+  }
+
+  private verificarRoles(): void {
+    // Verificamos si el token tiene los roles requeridos
+    this.esAdministrador = this.securityService.isAuthorizedPath(['si_administrador_nivel_1']);
+    this.esColaborador = this.securityService.isAuthorizedPath(['si_colaborador_solicitud_nivel_0']);
+    console.log('Roles detectados -> Administrador:', this.esAdministrador, 'Colaborador:', this.esColaborador);
   }
 
   ngOnDestroy(): void {

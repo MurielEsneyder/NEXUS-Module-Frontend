@@ -46,34 +46,11 @@ private getMenu(): void {
       this.commonService.clearMessages();
 
       try {
-
         let menuData = data['menu'];
-
         console.log('MENU DATA:', menuData);
-
-        const indexContratacion = menuData.findIndex(
-          (m: Menu) => m.title?.trim() === 'Contratacion' || m.title?.trim() === 'Contratación'
-        );
-
-        const nuevoItem: Menu = {
-          title: 'Solicitudes de Desarrollo',
-          url: '/hyl/solicitudes-desarrollo',
-          icon: 'assignment',
-          level: indexContratacion !== -1 ? menuData[indexContratacion].level : 1,
-          disabled: false,
-          open: false,
-          children: [],
-          roles: []
-        };
-
-        if (indexContratacion !== -1) {
-          menuData.splice(indexContratacion + 1, 0, nuevoItem);
-          console.log('Solicitudes de Desarrollo agregado después de Contratación');
-        } else {
-          menuData.push(nuevoItem);
-          console.log('Solicitudes de Desarrollo agregado al final del menú');
-        }
-
+        
+        // El menú ahora se asigna directamente desde la base de datos (Oracle).
+        // Las opciones deben configurarse en las tablas que usa F_SPARTA_GET_MENU.
         this.menus = menuData;
 
       } catch (error) {
