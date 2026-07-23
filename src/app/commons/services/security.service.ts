@@ -119,7 +119,7 @@ export class SecurityService {
 
   public getLocalAuthKey(): string {
     const x = localStorage.getItem('authKey') || '';
-    return atob(x);
+    return atob(x).trim();
   }
 
   public getLocalToken(): tokenData | any {
