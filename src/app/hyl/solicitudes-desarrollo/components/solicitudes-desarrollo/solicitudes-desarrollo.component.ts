@@ -58,7 +58,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   // VARIABLES DE ESTADO Y ROLES
   // ============================================================
-  esColaborador = false;
+  esColaborador = false;    
   esAdministrador = false;
 
   vistaActual: string = 'principal';
@@ -255,7 +255,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================
-  // NG ON INIT
+  // ROLES
   // ============================================================
   ngOnInit(): void {
     this.verificarRoles();

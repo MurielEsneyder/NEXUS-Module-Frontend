@@ -20,7 +20,7 @@ const routes: Routes = [{
         ),
     },
     {
-      path: "solicitudes-desarrollo",
+      path: "nexus",
       loadChildren: () =>
         import("./solicitudes-desarrollo/solicitudes-desarrollo.module").then(
           (m) => m.SolicitudesDesarrolloModule
