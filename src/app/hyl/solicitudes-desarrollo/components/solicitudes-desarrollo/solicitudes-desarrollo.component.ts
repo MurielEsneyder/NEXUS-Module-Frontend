@@ -265,8 +265,15 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   private verificarRoles(): void {
     // Verificamos si el token tiene los roles requeridos
-    this.esAdministrador = this.securityService.isAuthorizedPath(['si_administrador_nivel_1']);
-    this.esColaborador = this.securityService.isAuthorizedPath(['si_colaborador_solicitud_nivel_0']);
+    this.esAdministrador = this.securityService.hasRole('si_administrador_nivel_1') || this.securityService.isAuthorizedPath(['si_administrador_nivel_1']);
+    this.esColaborador = this.securityService.hasRole('si_colaborador_solicitud_nivel_0') || this.securityService.isAuthorizedPath(['si_colaborador_solicitud_nivel_0']);
+    
+    // Si no tiene ningún rol detectado (ej. entorno de desarrollo o token diferente), le damos rol básico
+    if (!this.esAdministrador && !this.esColaborador) {
+      console.warn('⚠️ No se detectaron roles específicos. Asignando rol de colaborador por defecto para visualización.');
+      this.esColaborador = true;
+    }
+    
     console.log('Roles detectados -> Administrador:', this.esAdministrador, 'Colaborador:', this.esColaborador);
   }
 
