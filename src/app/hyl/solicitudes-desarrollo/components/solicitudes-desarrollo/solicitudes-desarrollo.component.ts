@@ -1939,6 +1939,32 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     }
   }
 
+  descargarPdfBackend(id?: number): void {
+    if (!id) return;
+    this.solicitudesService.descargarPdf(id).subscribe(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Solicitud_${id}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }, err => {
+      console.error('Error al descargar PDF:', err);
+      this.mostrarNotificacionSnackbar('Error al descargar el PDF desde el servidor', 'error');
+    });
+  }
+
+  verPdfBackend(id?: number): void {
+    if (!id) return;
+    this.solicitudesService.verPdf(id).subscribe(blob => {
+      const fileURL = URL.createObjectURL(blob);
+      window.open(fileURL, '_blank');
+    }, err => {
+      console.error('Error al ver PDF:', err);
+      this.mostrarNotificacionSnackbar('Error al visualizar el PDF desde el servidor', 'error');
+    });
+  }
+
   esCandadoAbierto(solicitud: SolicitudDesarrollo): boolean {
     return solicitud.estado === 'En documentación' || solicitud.estado === 'Pendiente';
   }

@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class SolicitudesDesarrolloService {
-  private apiUrl = 'http://localhost:8085/solicitudes';
+  private apiUrl = 'http://localhost:8085/api/solicitudes';
 
   constructor(private http: HttpClient) {}
 
@@ -27,7 +27,7 @@ export class SolicitudesDesarrolloService {
 
   // Obtener por ID
   obtenerPorId(id: number): Observable<any> {
-    return this.http.get(`${this.apiUrl}/${id}`);
+    return this.http.get(`${this.apiUrl}/${id}/detalle`);
   }
 
   // Obtener por código
@@ -81,6 +81,20 @@ export class SolicitudesDesarrolloService {
   // Contar por estado
   contarPorEstado(estadoId: number): Observable<number> {
     return this.http.get<number>(`${this.apiUrl}/contar/estado/${estadoId}`);
+  }
+
+  // ============================================================
+  // PDF (Nuevos métodos)
+  // ============================================================
+
+  // Descargar PDF
+  descargarPdf(id: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/pdf`, { responseType: 'blob' });
+  }
+
+  // Ver PDF
+  verPdf(id: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/pdf/ver`, { responseType: 'blob' });
   }
 
   // ============================================================

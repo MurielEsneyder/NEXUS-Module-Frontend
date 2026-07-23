@@ -119,14 +119,18 @@
                 {{ solicitud.prioridad || 'Media' }}
               </span>
             </td>
-            <td class="text-center">
-              <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
-                📄 PDF
+            <td class="text-center" style="display: flex; gap: 5px; justify-content: center;">
+              <button class="btn-pdf-adjunto" (click)="descargarPdfBackend(solicitud.id)" title="Descargar PDF">
+                ⬇️ PDF
+              </button>
+              <button class="btn-pdf-adjunto" (click)="verPdfBackend(solicitud.id)" title="Ver PDF">
+                👁️ PDF
               </button>
             </td>
             <td class="acciones-cell">
               <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
-              <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
+              <button *ngIf="esAdministrador" class="btn-accion btn-estado" (click)="cambiarEstadoSolicitud(solicitud)" title="Cambiar Estado">🔄</button>
+              <button *ngIf="esAdministrador" class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
             </td>
           </tr>
           <tr *ngIf="solicitudesFiltradas.length === 0">
@@ -506,14 +510,18 @@
                 {{ solicitud.prioridad || 'Media' }}
               </span>
             </td>
-            <td class="text-center">
-              <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
-                📄 PDF
+            <td class="text-center" style="display: flex; gap: 5px; justify-content: center;">
+              <button class="btn-pdf-adjunto" (click)="descargarPdfBackend(solicitud.id)" title="Descargar PDF">
+                ⬇️ PDF
+              </button>
+              <button class="btn-pdf-adjunto" (click)="verPdfBackend(solicitud.id)" title="Ver PDF">
+                👁️ PDF
               </button>
             </td>
             <td class="acciones-cell">
               <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
-              <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
+              <button *ngIf="esAdministrador" class="btn-accion btn-estado" (click)="cambiarEstadoSolicitud(solicitud)" title="Cambiar Estado">🔄</button>
+              <button *ngIf="esAdministrador" class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
             </td>
           </tr>
           <tr *ngIf="!cargandoMisSolicitudes && misSolicitudes.length === 0">
