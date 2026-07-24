@@ -420,8 +420,10 @@
             </ul>
           </div>
           <div class="acciones-paso">
-            <button class="btn-atras" (click)="irPaso(4)">Atras</button>
-            <button class="btn-guardar-final" (click)="guardarSolicitud()">Guardar</button>
+            <button class="btn-atras" (click)="irPaso(4)" [disabled]="guardando">Atras</button>
+            <button class="btn-guardar-final" (click)="guardarSolicitud()" [disabled]="guardando">
+              {{ guardando ? 'Guardando...' : 'Guardar' }}
+            </button>
           </div>
         </div>
 

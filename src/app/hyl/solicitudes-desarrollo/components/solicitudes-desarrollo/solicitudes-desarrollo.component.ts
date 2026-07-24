@@ -109,6 +109,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   solicitudesCargadas: number = 0;
   errorCargandoSolicitudes: boolean = false;
   todasCargadas: boolean = false;
+  guardando: boolean = false;
   private PAGE_SIZE = 20;
   private paginaActual = 0;
   private totalPaginas = 0;
@@ -202,7 +203,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   // MAPA DE ÁREAS
   // ============================================================
-  private areaMap: { [key: number]: string } = {};
+  private areaMap: { [key: number]: string } = {
+    1: 'Transformación Digital',
+    2: 'Servicios de salud financiera',
+    3: 'Gestión Documental',
+    4: 'Talento Humano',
+    5: 'Desarrollo Organizacional'
+  };
 
   // ============================================================
   // CONSTRUCTOR
@@ -1612,9 +1619,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     };
 
     console.log('📤 Enviando solicitud:', payload);
+    this.guardando = true;
 
     this.solicitudesService.crearSolicitud(payload).subscribe({
       next: (response: any) => {
+        this.guardando = false;
         console.log('✅ Solicitud creada exitosamente:', response);
         this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
 
@@ -1625,6 +1634,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.cargarSolicitudes();
       },
       error: (err: any) => {
+        this.guardando = false;
         console.error('❌ Error al crear solicitud:', err);
         let errorMsg = 'Error al guardar la solicitud.';
         if (err.error) {
