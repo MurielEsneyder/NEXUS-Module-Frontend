@@ -21,6 +21,10 @@ export interface AfilInfo {
     sessionDateTime: number,
     sessionIP: string,
     nombreCompleto: string,
+    cargo?: string,
+    sede?: string,
+    idPersona?: number,
+    codUser?: string,
   };
   
   export interface DepartamentoList {

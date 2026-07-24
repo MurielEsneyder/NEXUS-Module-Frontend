@@ -131,7 +131,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     correo: 'Cargando...',
     cargo: 'Cargando...',
     sede: 'Cargando...',
-    documento: ''
+    documento: '',
+    idPersona: null as number | null,
+    codUser: ''
   };
 
   fechaIngreso = new Date().toISOString().split('T')[0];
@@ -295,7 +297,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           correo: (afilInfo as any).email || (afilInfo as any).correo || '',
           cargo: (afilInfo as any).cargo || '',
           sede: (afilInfo as any).sede || '',
-          documento: afilInfo.nroIdentificacion || ''
+          documento: afilInfo.nroIdentificacion || '',
+          idPersona: afilInfo.idPersona || null,
+          codUser: afilInfo.codUser || ''
         };
         console.log('✅ Datos desde sessionStorage:', this.datosColaborador);
         this.continuarInicializacion();
@@ -313,7 +317,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           correo: token.email || token.sub + '@asmetsalud.com',
           cargo: token.cargo || 'Colaborador',
           sede: token.sede || 'Sede Principal',
-          documento: token.numDoc || token.documento || token.nroIdentificacion || ''
+          documento: token.numDoc || token.documento || token.nroIdentificacion || '',
+          idPersona: token.idPersona || null,
+          codUser: token.codUser || ''
         };
         console.log('✅ Datos desde el token:', this.datosColaborador);
         this.continuarInicializacion();
@@ -329,7 +335,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       correo: 'usuario@asmetsalud.com',
       cargo: 'Colaborador',
       sede: 'Sede Principal',
-      documento: '123456789' // fallback para pruebas
+      documento: '123456789', // fallback para pruebas
+      idPersona: null,
+      codUser: ''
     };
     this.continuarInicializacion();
   }

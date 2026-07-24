@@ -104,7 +104,7 @@ export class LoginComponent implements OnInit {
         const username = this.loginForm.value.login_numeroDocumento;
 
         // Intentar obtener datos desde el backend
-        this.http.get('http://localhost:8085/colaborador/actual').subscribe({
+        this.http.get('http://localhost:8085/api/colaborador/actual').subscribe({
             next: (data: any) => {
                 console.log('📡 Datos del colaborador obtenidos:', data);
                 console.log('📋 Nombre completo desde backend:', data.nombreCompleto);
@@ -134,7 +134,11 @@ export class LoginComponent implements OnInit {
                     public: data.public !== undefined ? data.public : false,
                     sessionDateTime: Date.now(),
                     sessionIP: data.sessionIP || '127.0.0.1',
-                    nombreCompleto: data.nombreCompleto || data.nombre || username
+                    nombreCompleto: data.nombreCompleto || data.nombre || username,
+                    cargo: data.cargo || '',
+                    sede: data.sede || '',
+                    idPersona: data.idPersona ? Number(data.idPersona) : undefined,
+                    codUser: data.codUser || ''
                 };
 
                 console.log('📋 AfilInfo.nombreCompleto antes de guardar:', afilInfo.nombreCompleto);
@@ -173,7 +177,9 @@ export class LoginComponent implements OnInit {
                     public: false,
                     sessionDateTime: Date.now(),
                     sessionIP: '127.0.0.1',
-                    nombreCompleto: username
+                    nombreCompleto: username,
+                    idPersona: undefined,
+                    codUser: ''
                 };
 
                 this.security.setAfilInfo(afilInfo);

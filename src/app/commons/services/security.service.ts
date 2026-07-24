@@ -42,6 +42,8 @@ export interface ColaboradorData {
   correo?: string;
   cargo?: string;
   sede?: string;
+  idPersona?: number;
+  codUser?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -204,7 +206,9 @@ export class SecurityService {
       nombreCompleto: token?.sub || 'Usuario',
       email: token?.email || token?.sub + '@asmetsalud.com' || 'usuario@asmetsalud.com',
       cargo: token?.cargo || 'Colaborador',
-      sede: token?.sede || 'Sede Principal'
+      sede: token?.sede || 'Sede Principal',
+      idPersona: token?.idPersona,
+      codUser: token?.codUser
     };
   }
 
