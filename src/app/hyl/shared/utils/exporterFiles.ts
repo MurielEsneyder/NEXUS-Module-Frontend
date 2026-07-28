@@ -15,7 +15,7 @@ export class ExporterFiles{
 
   constructor() { }
 
-  tamanioArchivo: number;
+  tamanioArchivo!: number;
 
   exportToExcel(json: any[], excelFileName: string): void{
     this.tamanioArchivo = json.length;

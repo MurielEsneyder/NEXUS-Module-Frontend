@@ -1,221 +1,183 @@
-import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, InjectionToken, Inject, PLATFORM_ID, OnInit } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../../environments/environment';
 import { HttpHeaders, HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { AfilInfo } from './constants';
 import { localStorageMock } from './local-storage.mock';
-
 export interface tokenData {
-  jti: string;
-  iat: number;
-  sub: string;
-  iss: string;
-  aud: string;
-  exp: number;
-  localTime: number;
-  key: string;
-  origin: any;
-  cargo?: string;
-  sede?: string;
-  email?: string;
-}
+  jti: string, iat: number, sub: string; iss: string; aud: string; exp: number; localTime: number, key: string, origin: any
+};
 
 export interface ldapUsrData {
-  username: string;
-  info: { name: string; email: string; position: string };
-}
+  username: string, info: { name: string, email: string, position: string },
+};
 
 export interface usrSession {
-  status: boolean;
-  username: string;
-  context: any;
-}
-
-export interface ColaboradorData {
-  nombreCompleto?: string;
-  nombre1?: string;
-  nombre2?: string;
-  apellido1?: string;
-  apellido2?: string;
-  email?: string;
-  correo?: string;
-  cargo?: string;
-  sede?: string;
+  status: boolean,
+  username: string,
+  context: any
 }
 
 @Injectable({ providedIn: 'root' })
 export class SecurityService {
 
   private authKey: any;
+
   private usrOnSession: usrSession = { status: false, username: '', context: null };
   public userSession: BehaviorSubject<usrSession> = new BehaviorSubject<usrSession>(this.usrOnSession);
   private localStorage: Storage;
+  constructor(private http: HttpClient, @Inject(PLATFORM_ID) private platformId: Object) {
 
-  constructor(
-    private http: HttpClient,
-    @Inject(PLATFORM_ID) private platformId: Object
-  ) {
+
     if (isPlatformBrowser(this.platformId)) {
       this.localStorage = window.localStorage;
       try {
+
         if (this.getLocalToken() == null) {
-          this.setLocalAuthKey('Public');
-        } else {
-          const tkn: tokenData = this.getLocalToken();
+          this.setLocalAuthKey("Public");
+        }
+        else {
+          let tkn: tokenData = this.getLocalToken();
+          // let sub = JSON.parse(tkn.sub);
           this.setUserOnSession(tkn.sub, tkn.origin);
         }
-      } catch {
-        this.setLocalAuthKey('Public');
       }
+      catch { this.setLocalAuthKey("Public"); }
+
     } else {
+
       this.localStorage = localStorageMock as unknown as Storage;
     }
+
   }
 
-  // ============================================================
-  // MÉTODOS EXISTENTES
-  // ============================================================
+
+
   public requestAuth(pass: string): Observable<Object> {
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    return this.http.post(environment.auth, {}, { headers });
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    let options = { headers: headers };
+    return this.http.post(environment.auth, {}, options);
   }
+
+
 
   public getUserOnSession(): usrSession {
     return this.usrOnSession;
   }
 
+  /**
+   * Registra una sesión de usuario cuando se ha superado login
+   * @param username Nombre de usuario
+   * @param context Contexto de seguridad
+   */
   public setUserOnSession(username: string, context: string): void {
     try {
-      const sysTime = new Date().getTime() / 1000;
-      if (sysTime < this.getLocalToken().exp) {
+      let sysTime = (new Date().getTime()) / 1000;
+
+      if ((sysTime < this.getLocalToken().exp)) {
         this.usrOnSession.status = true;
         this.usrOnSession.username = username;
         this.usrOnSession.context = context;
         this.userSession.next(this.usrOnSession);
-      } else {
-        throw 'invalid token';
       }
-    } catch (Err) {
+      else {
+        throw "invalid token";
+      }
+    }
+    catch (Err) {
       this.usrOnSession.status = false;
       this.usrOnSession.username = '';
       this.usrOnSession.context = null;
       this.userSession.next(this.usrOnSession);
     }
+
   }
+
 
   public destroySession(): void {
     localStorage.removeItem('authTokenKey');
-    this.setLocalAuthKey('Public');
+    this.setLocalAuthKey("Public");
     this.usrOnSession = { status: false, username: '', context: null };
     this.userSession.next(this.usrOnSession);
     sessionStorage.clear();
   }
 
-  public setLocalAuthKey(mode: string, key: string = ''): void {
-    this.authKey = mode + ' ' + key;
-    localStorage.setItem('authKey', btoa(this.authKey));
+  /**
+   * Guarda con marca de método de autenticación y token en localStorage
+   * @param mode método de autenticación de la sesión
+   * @param key token
+   */
+  public setLocalAuthKey(mode: string, key: string = ""): void {
+    this.authKey = mode + " " + key;
+    localStorage.setItem("authKey", btoa(this.authKey));
   }
 
+
   public getLocalAuthKey(): string {
-    const x = localStorage.getItem('authKey') || '';
+    let x = localStorage.getItem("authKey") || '';
     return atob(x);
   }
 
+
   public getLocalToken(): tokenData | any {
     try {
-      const components: string[] = this.getLocalAuthKey().split('.');
-      const tokenInfo: tokenData = JSON.parse(atob(components[1]));
+      let components: string[] = this.getLocalAuthKey().split('.');
+      let tokenInfo: tokenData = JSON.parse(atob(components[1]));
+
       return tokenInfo;
-    } catch (Err) {
+    }
+    catch (Err) {
       return null;
     }
   }
 
-  public isAuthorizedPath(expectedRoles: string[]): boolean {
-    const token = this.getLocalToken();
-    if (token == null) return false;
+  /**
+   * Verifica si el usuario tiene permisos de acceso a una ruta
+   * @param expectedRoles Roles esperados
+   * @param expectTokenType Tipo de token esperado
+   */
+  isAuthorizedPath(expectedRoles: string[]): boolean {
+    //
+    let token = this.getLocalToken();
+    if (token == null) {
+      return false;
+    }
+
     if (token.origin === environment.origin) {
       if (expectedRoles != null) {
         for (let i = 0; i < expectedRoles.length; i++) {
           try {
-            const aud: string[] = JSON.parse(token.roles);
-            if (aud.find((role) => role === expectedRoles[i])) return true;
-          } catch {}
+            let aud: string[] = JSON.parse(token.roles);
+            if (aud.find(role => role === expectedRoles[i])) {
+              return true;
+            }
+          }
+          catch { }
         }
         return false;
-      } else {
+      }
+      else {
         return true;
       }
-    } else {
+    }
+    else {
       return false;
     }
   }
 
-  // ============================================================
-  // 🔥 AFIL INFO CON CORRECCIÓN DE NOMBRE COMPLETO
-  // ============================================================
   public setAfilInfo(info: AfilInfo): void {
-    // ============================================================
-    // SI YA TIENE NOMBRE COMPLETO, MANTENERLO
-    // ============================================================
-    if (info.nombreCompleto && info.nombreCompleto.trim() !== '') {
-      sessionStorage.setItem("usrAfilInfo", btoa(JSON.stringify(info)));
-      return;
-    }
-
-    // Si no tiene nombre completo, construirlo desde los componentes
     info.nombreCompleto = info.nombre1 + ' ' + info.nombre2 + ' ' + info.apellido1 + ' ' + info.apellido2;
-    info.nombreCompleto = info.nombreCompleto.replace('undefined', '').replace("  ", " ").trim();
+    info.nombreCompleto = info.nombreCompleto.replace('undefined', '').replace("  ", " ");
     sessionStorage.setItem("usrAfilInfo", btoa(JSON.stringify(info)));
   }
 
   public getAfilInfo(): AfilInfo {
-    const y = sessionStorage.getItem("usrAfilInfo") || '';
+    let y = sessionStorage.getItem("usrAfilInfo") || '';
     return JSON.parse(atob(y));
   }
 
-  // ============================================================
-  // NUEVOS MÉTODOS PARA OBTENER DATOS DEL COLABORADOR
-  // ============================================================
-  public getNombreCompleto(): string {
-    const token = this.getLocalToken();
-    return token?.sub || 'Usuario';
-  }
-
-  public getEmail(): string {
-    const token = this.getLocalToken();
-    return token?.email || token?.sub + '@asmetsalud.com' || 'usuario@asmetsalud.com';
-  }
-
-  public getCargo(): string {
-    const token = this.getLocalToken();
-    return token?.cargo || 'Colaborador';
-  }
-
-  public getSede(): string {
-    const token = this.getLocalToken();
-    return token?.sede || 'Sede Principal';
-  }
-
-  public getDatosColaborador(): ColaboradorData {
-    const token = this.getLocalToken();
-    return {
-      nombreCompleto: token?.sub || 'Usuario',
-      email: token?.email || token?.sub + '@asmetsalud.com' || 'usuario@asmetsalud.com',
-      cargo: token?.cargo || 'Colaborador',
-      sede: token?.sede || 'Sede Principal'
-    };
-  }
-
-  public hasRole(role: string): boolean {
-    const token = this.getLocalToken();
-    if (!token) return false;
-    const roles = token.aud || token.roles || [];
-    return roles.includes(role);
-  }
-
-  public hasAnyRole(roles: string[]): boolean {
-    return roles.some(role => this.hasRole(role));
-  }
 }

@@ -6,13 +6,30 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class SolicitudesDesarrolloService {
-  private apiUrl = 'http://localhost:8090/api/v1/solicitudes';
+  private apiUrl = 'http://localhost:8085/api/solicitudes';
 
   constructor(private http: HttpClient) {}
 
   // Obtener todas las solicitudes (paginado)
   obtenerTodas(): Observable<any> {
     return this.http.get(this.apiUrl);
+  }
+
+  // Catálogos
+  obtenerAreas(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/areas`);
+  }
+
+  obtenerProcesos(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/procesos`);
+  }
+
+  obtenerVicepresidencias(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/vicepresidencias`);
+  }
+
+  obtenerCargos(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/cargos`);
   }
 
   // Crear una nueva solicitud

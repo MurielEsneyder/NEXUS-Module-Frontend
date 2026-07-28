@@ -325,8 +325,8 @@
             <div class="selector-grupo">
               <label class="campo-label campo-requerido">PROCESO SOLICITANTE</label>
               <select class="select-wizard" [(ngModel)]="formGeneral.proceso">
-                <option value="">-- Seleccione --</option>
-                <option *ngFor="let p of procesosSolicitante" [value]="p">{{ p }}</option>
+                <option value="" disabled selected>-- Seleccione --</option>
+                <option *ngFor="let proceso of procesosSolicitante" [value]="proceso.id">{{ proceso.nombre }}</option>
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.proceso">Requerido</span>
             </div>
@@ -334,8 +334,8 @@
             <div class="selector-grupo">
               <label class="campo-label campo-requerido">ÁREA</label>
               <select class="select-wizard" [(ngModel)]="formGeneral.area">
-                <option value="">-- Seleccione --</option>
-                <option *ngFor="let a of areas" [value]="a">{{ a }}</option>
+                <option value="" disabled selected>-- Seleccione --</option>
+                <option *ngFor="let area of areas" [value]="area.id">{{ area.nombre }}</option>
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.area">Requerido</span>
             </div>
@@ -343,8 +343,8 @@
             <div class="selector-grupo">
               <label class="campo-label campo-requerido">VICEPRESIDENCIA</label>
               <select class="select-wizard" [(ngModel)]="formGeneral.vicepresidencia">
-                <option value="">-- Seleccione --</option>
-                <option *ngFor="let v of vicepresidencias" [value]="v">{{ v }}</option>
+                <option value="" disabled selected>-- Seleccione --</option>
+                <option *ngFor="let vp of vicepresidencias" [value]="vp.id">{{ vp.nombre }}</option>
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.vicepresidencia">Requerido</span>
             </div>
@@ -354,8 +354,8 @@
             <div class="selector-grupo">
               <label class="campo-label campo-requerido">TIPO DE SOLICITUD</label>
               <select class="select-wizard" [(ngModel)]="formGeneral.tipoSolicitud">
-                <option value="">-- Seleccione --</option>
-                <option *ngFor="let t of tiposSolicitud" [value]="t">{{ t }}</option>
+                <option value="" disabled selected>-- Seleccione --</option>
+                <option *ngFor="let tipo of tiposSolicitud" [value]="tipo.id">{{ tipo.nombre }}</option>
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.tipoSolicitud">Requerido</span>
             </div>
@@ -411,7 +411,7 @@
                 <label class="campo-label">Cargos Impactados</label>
                 <select class="select-wizard" #rfCargo>
                   <option value="">CARGOS</option>
-                  <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
+                  <option *ngFor="let c of cargosArray" [value]="c.nombre">{{ c.nombre }}</option>
                 </select>
               </div>
               <div class="form-grupo">
@@ -468,7 +468,7 @@
                 <label class="campo-label">Cargos Impactados</label>
                 <select class="select-wizard" #rnfCargo>
                   <option value="">CARGOS</option>
-                  <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
+                  <option *ngFor="let c of cargosArray" [value]="c.nombre">{{ c.nombre }}</option>
                 </select>
               </div>
               <div class="form-grupo">

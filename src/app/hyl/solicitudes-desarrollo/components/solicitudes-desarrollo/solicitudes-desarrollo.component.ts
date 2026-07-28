@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { SolicitudesDesarrolloService } from '../../services/solicitudes-desarrollo.service';
-import { SecurityService } from '../../../../commons/services/security.service';
+import { NexusSecurityService } from '../../../shared/services/nexus-security.service';
 import { HttpClient } from '@angular/common/http';
 import jsPDF from 'jspdf';
 // @ts-ignore - jspdf-autotable no tiene tipos
@@ -86,11 +86,14 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   // DATOS DEL COLABORADOR
   // ============================================================
-  datosColaborador = {
+  datosColaborador: any = {
     nombreCompleto: 'Cargando...',
     correo: 'Cargando...',
     cargo: 'Cargando...',
-    sede: 'Cargando...'
+    sede: 'Cargando...',
+    documento: '',
+    idPersona: null,
+    codUser: ''
   };
 
   fechaIngreso = new Date().toISOString().split('T')[0];
@@ -120,36 +123,11 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   // LISTAS DE OPCIONES (CATÁLOGOS)
   // ============================================================
-  procesosSolicitante = [
-    'Desarrollo Tecnológico',
-    'Gestión Documental',
-    'Contabilidad',
-    'Talento Humano'
-  ];
-
-  areas = [
-    'Transformación Digital',
-    'Servicios de salud financiera',
-    'Gestión Documental',
-    'Talento Humano',
-    'Desarrollo Organizacional'
-  ];
-
-  vicepresidencias = [
-    'Vicepresidencia de Salud',
-    'Vicepresidencia Administrativa',
-    'Vicepresidencia Financiera'
-  ];
-
-  tiposSolicitud = ['Proyecto', 'Mejora'];
-
-  cargosArray = [
-    'Profesional jurídico',
-    'Profesional funcional',
-    'Profesional BIG',
-    'Profesional de desarrollo',
-    'Líder técnico'
-  ];
+  procesosSolicitante: any[] = [];
+  areas: any[] = [];
+  vicepresidencias: any[] = [];
+  tiposSolicitud: any[] = [];
+  cargosArray: any[] = [];
 
   estadosDisponibles: string[] = [
     'Borrador',
@@ -178,7 +156,7 @@ export class SolicitudesDesarrolloComponent implements OnInit {
   // ============================================================
   constructor(
     private solicitudesService: SolicitudesDesarrolloService,
-    private securityService: SecurityService,
+    private securityService: NexusSecurityService,
     private http: HttpClient
   ) {}
 
@@ -196,13 +174,39 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     console.log('🔍 Iniciando obtención de datos del colaborador...');
 
     try {
-      const afilInfo = this.securityService.getAfilInfo();
-      if (afilInfo && afilInfo.nombreCompleto && afilInfo.nombreCompleto !== 'undefined') {
+      const afilInfo: any = this.securityService.getAfilInfo();
+      if (afilInfo) {
+        
+        let nombreAjustado = afilInfo.nombreCompleto ? afilInfo.nombreCompleto.trim() : '';
+        
+        if (!nombreAjustado || nombreAjustado.toLowerCase() === (afilInfo.username || '').toLowerCase() || nombreAjustado === 'undefined') {
+            const tokenAux = this.securityService.getLocalToken();
+            if (tokenAux && tokenAux.sub && tokenAux.sub.toLowerCase() !== (afilInfo.username || '').toLowerCase()) {
+                nombreAjustado = tokenAux.sub;
+            } else {
+                nombreAjustado = [afilInfo.nombre1, afilInfo.nombre2, afilInfo.apellido1, afilInfo.apellido2]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim();
+            }
+            if (!nombreAjustado || nombreAjustado.trim() === '') {
+                nombreAjustado = afilInfo.nombre || afilInfo.username || 'Usuario';
+            }
+        }
+
+        let correoAjustado = afilInfo.email || afilInfo.correo || '';
+        if (correoAjustado) {
+            correoAjustado = correoAjustado.split('@')[0] + '@asmetsalud.com';
+        }
+
         this.datosColaborador = {
-          nombreCompleto: afilInfo.nombreCompleto || '',
-          correo: (afilInfo as any).email || (afilInfo as any).correo || '',
-          cargo: (afilInfo as any).cargo || '',
-          sede: (afilInfo as any).sede || ''
+          nombreCompleto: nombreAjustado,
+          correo: correoAjustado,
+          cargo: afilInfo.cargo || '',
+          sede: afilInfo.sede || '',
+          documento: afilInfo.nroIdentificacion || '',
+          idPersona: afilInfo.idPersona || null,
+          codUser: afilInfo.codUser || ''
         };
         console.log('✅ Datos desde sessionStorage:', this.datosColaborador);
         this.continuarInicializacion();
@@ -215,9 +219,13 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     try {
       const token = this.securityService.getLocalToken();
       if (token && token.sub) {
+        let correoToken = token.email || token.sub;
+        if (correoToken) {
+           correoToken = correoToken.split('@')[0] + '@asmetsalud.com';
+        }
         this.datosColaborador = {
           nombreCompleto: token.sub || 'Usuario',
-          correo: token.email || token.sub + '@asmetsalud.com',
+          correo: correoToken,
           cargo: token.cargo || 'Colaborador',
           sede: token.sede || 'Sede Principal'
         };
@@ -246,8 +254,100 @@ export class SolicitudesDesarrolloComponent implements OnInit {
     console.log('✅ Datos finales del colaborador:', this.datosColaborador);
     this.solicitudActual = this.inicializarNuevaSolicitud();
     this.cargarEstados();
+    this.cargarCatalogos();
     this.cargarSolicitudes();
   }
+
+  // ============================================================
+  // CARGAR CATALOGOS CON FALLBACK
+  // ============================================================
+  private cargarCatalogos(): void {
+    // Tipos de Solicitud (Quemado temporalmente porque no hay endpoint en el plan original)
+    this.tiposSolicitud = [{id: 1, nombre: 'Proyecto'}, {id: 2, nombre: 'Mejora'}];
+
+    // Cargar Áreas
+    this.solicitudesService.obtenerAreas().subscribe({
+      next: (data) => {
+        this.areas = (data && data.length > 0) ? data : this.getFallbackAreas();
+      },
+      error: (err) => {
+        console.warn('⚠️ Backend no disponible para áreas. Usando fallback.', err);
+        this.areas = this.getFallbackAreas();
+      }
+    });
+
+    // Cargar Procesos
+    this.solicitudesService.obtenerProcesos().subscribe({
+      next: (data) => {
+        this.procesosSolicitante = (data && data.length > 0) ? data : this.getFallbackProcesos();
+      },
+      error: (err) => {
+        console.warn('⚠️ Backend no disponible para procesos. Usando fallback.', err);
+        this.procesosSolicitante = this.getFallbackProcesos();
+      }
+    });
+
+    // Cargar Vicepresidencias
+    this.solicitudesService.obtenerVicepresidencias().subscribe({
+      next: (data) => {
+        this.vicepresidencias = (data && data.length > 0) ? data : this.getFallbackVicepresidencias();
+      },
+      error: (err) => {
+        console.warn('⚠️ Backend no disponible para vicepresidencias. Usando fallback.', err);
+        this.vicepresidencias = this.getFallbackVicepresidencias();
+      }
+    });
+
+    // Cargar Cargos
+    this.solicitudesService.obtenerCargos().subscribe({
+      next: (data) => {
+        this.cargosArray = (data && data.length > 0) ? data : this.getFallbackCargos();
+      },
+      error: (err) => {
+        console.warn('⚠️ Backend no disponible para cargos. Usando fallback.', err);
+        this.cargosArray = this.getFallbackCargos();
+      }
+    });
+  }
+
+  // Fallbacks helpers
+  private getFallbackAreas(): any[] {
+    return [
+      { id: 1, nombre: 'Transformación Digital' },
+      { id: 2, nombre: 'Servicios de salud financiera' },
+      { id: 3, nombre: 'Gestión Documental' },
+      { id: 4, nombre: 'Talento Humano' },
+      { id: 5, nombre: 'Desarrollo Organizacional' }
+    ];
+  }
+
+  private getFallbackProcesos(): any[] {
+    return [
+      { id: 1, nombre: 'Desarrollo Tecnológico' },
+      { id: 2, nombre: 'Gestión Documental' },
+      { id: 3, nombre: 'Contabilidad' },
+      { id: 4, nombre: 'Talento Humano' }
+    ];
+  }
+
+  private getFallbackVicepresidencias(): any[] {
+    return [
+      { id: 1, nombre: 'Vicepresidencia de Salud' },
+      { id: 2, nombre: 'Vicepresidencia Administrativa' },
+      { id: 3, nombre: 'Vicepresidencia Financiera' }
+    ];
+  }
+
+  private getFallbackCargos(): any[] {
+    return [
+      { id: 1, nombre: 'Profesional jurídico' },
+      { id: 2, nombre: 'Profesional funcional' },
+      { id: 3, nombre: 'Profesional BIG' },
+      { id: 4, nombre: 'Profesional de desarrollo' },
+      { id: 5, nombre: 'Líder técnico' }
+    ];
+  }
+
 
   // ============================================================
   // INICIALIZAR NUEVA SOLICITUD
