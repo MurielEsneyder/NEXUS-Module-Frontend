@@ -1,6 +1,8 @@
 
 import { Injectable } from '@angular/core';
+// @ts-ignore
 import * as FileSaver from 'file-saver';
+// @ts-ignore
 import * as XLSX from 'xlsx';
 
 const EXCEL_TYPE =
@@ -15,7 +17,7 @@ export class ExporterFiles{
 
   constructor() { }
 
-  tamanioArchivo: number;
+  tamanioArchivo!: number;
 
   exportToExcel(json: any[], excelFileName: string): void{
     this.tamanioArchivo = json.length;

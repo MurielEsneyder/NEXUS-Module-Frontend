@@ -275,36 +275,29 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   private obtenerDatosColaborador(): void {
     console.log('🔍 Iniciando obtención de datos del colaborador...');
+    let dataLocalLista = false;
 
     try {
       const afilInfo: any = this.securityService.getAfilInfo();
       if (afilInfo) {
         
-        // 1. Extraer el nombre correcto (ignorando espacios en blanco o el mismo username)
         let nombreAjustado = afilInfo.nombreCompleto ? afilInfo.nombreCompleto.trim() : '';
         
         if (!nombreAjustado || nombreAjustado.toLowerCase() === (afilInfo.username || '').toLowerCase() || nombreAjustado === 'undefined') {
-            
-            // Intento 1: Sacarlo del token JWT que normalmente tiene el nombre completo real en 'sub'
             const tokenAux = this.securityService.getLocalToken();
             if (tokenAux && tokenAux.sub && tokenAux.sub.toLowerCase() !== (afilInfo.username || '').toLowerCase()) {
                 nombreAjustado = tokenAux.sub;
-            } 
-            // Intento 2: Concatenar los campos de nombre si existen
-            else {
+            } else {
                 nombreAjustado = [afilInfo.nombre1, afilInfo.nombre2, afilInfo.apellido1, afilInfo.apellido2]
                   .filter(Boolean)
                   .join(' ')
                   .trim();
             }
-              
-            // Intento 3: Fallback final
             if (!nombreAjustado || nombreAjustado.trim() === '') {
                 nombreAjustado = afilInfo.nombre || afilInfo.username || 'Usuario';
             }
         }
 
-        // 2. Extraer el correo y forzar @asmetsalud.com
         let correoAjustado = afilInfo.email || afilInfo.correo || '';
         if (correoAjustado) {
             correoAjustado = correoAjustado.split('@')[0] + '@asmetsalud.com';
@@ -320,50 +313,78 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           codUser: afilInfo.codUser || ''
         };
         console.log('✅ Datos desde sessionStorage:', this.datosColaborador);
-        this.continuarInicializacion();
-        return;
+        dataLocalLista = true;
       }
     } catch (e) {
       console.warn('⚠️ Error en getAfilInfo():', e);
     }
 
-    try {
-      const token = this.securityService.getLocalToken();
-      if (token && token.sub) {
-        
-        let correoToken = token.email || token.sub;
-        if (correoToken) {
-           correoToken = correoToken.split('@')[0] + '@asmetsalud.com';
+    if (!dataLocalLista) {
+      try {
+        const token = this.securityService.getLocalToken();
+        console.log('🔍 DEBUG - Token extraido:', token);
+        if (token && token.sub) {
+          let correoToken = token.email || token.sub;
+          if (correoToken) {
+             correoToken = correoToken.split('@')[0] + '@asmetsalud.com';
+          }
+          this.datosColaborador = {
+            nombreCompleto: token.sub || 'Usuario',
+            correo: correoToken,
+            cargo: token.cargo || 'Colaborador',
+            sede: token.sede || 'Sede Principal',
+            documento: '',
+            idPersona: null,
+            codUser: ''
+          };
+          console.log('✅ Datos desde el token:', this.datosColaborador);
+          dataLocalLista = true;
         }
-
-        this.datosColaborador = {
-          nombreCompleto: token.sub || 'Usuario',
-          correo: correoToken,
-          cargo: token.cargo || 'Colaborador',
-          sede: token.sede || 'Sede Principal',
-          documento: token.numDoc || token.documento || token.nroIdentificacion || '',
-          idPersona: token.idPersona || null,
-          codUser: token.codUser || ''
-        };
-        console.log('✅ Datos desde el token:', this.datosColaborador);
-        this.continuarInicializacion();
-        return;
+      } catch (e) {
+        console.warn('⚠️ Error al leer el token:', e);
       }
-    } catch (e) {
-      console.warn('⚠️ Error al leer el token:', e);
     }
 
-    console.warn('⚠️ No se pudieron obtener datos, usando fallback');
-    this.datosColaborador = {
-      nombreCompleto: 'Usuario de Prueba',
-      correo: 'usuario@asmetsalud.com',
-      cargo: 'Colaborador',
-      sede: 'Sede Principal',
-      documento: '123456789', // fallback para pruebas
-      idPersona: null,
-      codUser: ''
-    };
-    this.continuarInicializacion();
+    if (!dataLocalLista) {
+      console.warn('⚠️ No se pudieron obtener datos, usando fallback');
+      this.datosColaborador = {
+        nombreCompleto: 'Usuario de Prueba',
+        correo: 'usuario@asmetsalud.com',
+        cargo: 'Colaborador',
+        sede: 'Sede Principal',
+        documento: '',
+        idPersona: null,
+        codUser: ''
+      };
+    }
+
+    // Doble validación: Si el nombre sigue siendo el username, intentamos forzar la consulta al backend
+    const usernameActual = (this.datosColaborador.correo || '').split('@')[0];
+    console.log('🔍 DEBUG - Comparando nombre:', this.datosColaborador.nombreCompleto, 'con username:', usernameActual);
+    
+    if (this.datosColaborador.nombreCompleto.toLowerCase() === usernameActual.toLowerCase() || this.datosColaborador.nombreCompleto === 'Usuario de Prueba' || this.datosColaborador.nombreCompleto === 'Usuario') {
+      console.log('🔄 Nombre incompleto detectado. Forzando obtención directa desde el backend (http://localhost:8085/api/colaborador/actual)...');
+      this.solicitudesService.obtenerColaboradorActual().subscribe({
+        next: (res: any) => {
+          console.log('🔍 DEBUG - Respuesta del backend al buscar colaborador:', res);
+          if (res && res.nombreCompleto) {
+            this.datosColaborador.nombreCompleto = res.nombreCompleto;
+            if (res.cargo) this.datosColaborador.cargo = res.cargo;
+            if (res.sede) this.datosColaborador.sede = res.sede;
+            console.log('✅ Nombre real corregido desde backend:', this.datosColaborador.nombreCompleto);
+          } else {
+            console.warn('⚠️ Backend respondió, pero no trae nombreCompleto.', res);
+          }
+          this.continuarInicializacion();
+        },
+        error: (err) => {
+          console.error('❌ ERROR AL OBTENER COLABORADOR DEL BACKEND:', err);
+          this.continuarInicializacion();
+        }
+      });
+    } else {
+      this.continuarInicializacion();
+    }
   }
 
   // ============================================================

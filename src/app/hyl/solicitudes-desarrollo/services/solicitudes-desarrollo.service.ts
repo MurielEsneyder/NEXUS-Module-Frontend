@@ -33,6 +33,11 @@ export class SolicitudesDesarrolloService {
     return this.http.get<Cargo[]>(`${this.apiUrl}/cargos`);
   }
 
+  // Obtener colaborador real (para evitar nombre de usuario corto)
+  obtenerColaboradorActual(): Observable<any> {
+    return this.http.get('http://localhost:8085/api/colaborador/actual');
+  }
+
   // Obtener todas las solicitudes (paginado)
   obtenerTodas(): Observable<any> {
     return this.http.get(this.apiUrl);
