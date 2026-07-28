@@ -277,13 +277,44 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     console.log('🔍 Iniciando obtención de datos del colaborador...');
 
     try {
-      const afilInfo = this.securityService.getAfilInfo();
-      if (afilInfo && afilInfo.nombreCompleto && afilInfo.nombreCompleto !== 'undefined') {
+      const afilInfo: any = this.securityService.getAfilInfo();
+      if (afilInfo) {
+        
+        // 1. Extraer el nombre correcto (ignorando espacios en blanco o el mismo username)
+        let nombreAjustado = afilInfo.nombreCompleto ? afilInfo.nombreCompleto.trim() : '';
+        
+        if (!nombreAjustado || nombreAjustado.toLowerCase() === (afilInfo.username || '').toLowerCase() || nombreAjustado === 'undefined') {
+            
+            // Intento 1: Sacarlo del token JWT que normalmente tiene el nombre completo real en 'sub'
+            const tokenAux = this.securityService.getLocalToken();
+            if (tokenAux && tokenAux.sub && tokenAux.sub.toLowerCase() !== (afilInfo.username || '').toLowerCase()) {
+                nombreAjustado = tokenAux.sub;
+            } 
+            // Intento 2: Concatenar los campos de nombre si existen
+            else {
+                nombreAjustado = [afilInfo.nombre1, afilInfo.nombre2, afilInfo.apellido1, afilInfo.apellido2]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim();
+            }
+              
+            // Intento 3: Fallback final
+            if (!nombreAjustado || nombreAjustado.trim() === '') {
+                nombreAjustado = afilInfo.nombre || afilInfo.username || 'Usuario';
+            }
+        }
+
+        // 2. Extraer el correo y forzar @asmetsalud.com
+        let correoAjustado = afilInfo.email || afilInfo.correo || '';
+        if (correoAjustado) {
+            correoAjustado = correoAjustado.split('@')[0] + '@asmetsalud.com';
+        }
+
         this.datosColaborador = {
-          nombreCompleto: afilInfo.nombreCompleto || '',
-          correo: (afilInfo as any).email || (afilInfo as any).correo || '',
-          cargo: (afilInfo as any).cargo || '',
-          sede: (afilInfo as any).sede || '',
+          nombreCompleto: nombreAjustado,
+          correo: correoAjustado,
+          cargo: afilInfo.cargo || '',
+          sede: afilInfo.sede || '',
           documento: afilInfo.nroIdentificacion || '',
           idPersona: afilInfo.idPersona || null,
           codUser: afilInfo.codUser || ''
@@ -299,9 +330,15 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     try {
       const token = this.securityService.getLocalToken();
       if (token && token.sub) {
+        
+        let correoToken = token.email || token.sub;
+        if (correoToken) {
+           correoToken = correoToken.split('@')[0] + '@asmetsalud.com';
+        }
+
         this.datosColaborador = {
           nombreCompleto: token.sub || 'Usuario',
-          correo: token.email || token.sub + '@asmetsalud.com',
+          correo: correoToken,
           cargo: token.cargo || 'Colaborador',
           sede: token.sede || 'Sede Principal',
           documento: token.numDoc || token.documento || token.nroIdentificacion || '',
