@@ -2,7 +2,7 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { SolicitudesDesarrolloRoutingModule } from './solicitudes-desarrollo-routing.module';
-import { SolicitudesDesarrolloComponent } from './components/solicitudes-desarrollo/solicitudes-desarrollo.component';
+import { SolicitudesDesarrolloComponent } from './pages/solicitudes-desarrollo/solicitudes-desarrollo.component';
 
 // Angular Material Imports
 import { MatStepperModule } from '@angular/material/stepper';

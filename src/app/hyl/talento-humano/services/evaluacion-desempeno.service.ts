@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DataService } from '../../../commons/services/data.service';
-import { PorcentajeCuestionario } from '../interfaces/telento-humano';
+import { PorcentajeCuestionario } from '../models/telento-humano';
 
 @Injectable({
   providedIn: 'root'

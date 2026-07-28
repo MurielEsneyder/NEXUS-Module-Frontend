@@ -1,11 +1,12 @@
 // solicitudes-desarrollo.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { SolicitudesDesarrolloService } from '../../services/solicitudes-desarrollo.service';
-import { SecurityService } from '../../../../commons/services/security.service';
+import { NexusSecurityService } from '../../../shared/services/nexus-security.service';
 import { HttpClient } from '@angular/common/http';
 import jsPDF from 'jspdf';
 // @ts-ignore - jspdf-autotable no tiene tipos
 import autoTable from 'jspdf-autotable';
+import { Area, Proceso, Vicepresidencia, Cargo } from '../../models/solicitudes-desarrollo.models';
 
 // ============================================================
 // INTERFACES
@@ -166,35 +167,14 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // Los que tienen endpoint se cargan del backend; los demás son estáticos
   // ============================================================
 
-  // Estáticos (sin endpoint en el backend)
-  procesosSolicitante: string[] = [
-    'Desarrollo Tecnológico',
-    'Gestión Documental',
-    'Contabilidad',
-    'Talento Humano'
-  ];
+  // Estáticos (sin endpoint en el backend) - ACTUALIZADO: Ya no son estáticos
+  procesosSolicitante: Proceso[] = [];
 
-  areas: string[] = [
-    'Transformación Digital',
-    'Servicios de salud financiera',
-    'Gestión Documental',
-    'Talento Humano',
-    'Desarrollo Organizacional'
-  ];
+  areas: Area[] = [];
 
-  vicepresidencias: string[] = [
-    'Vicepresidencia de Salud',
-    'Vicepresidencia Administrativa',
-    'Vicepresidencia Financiera'
-  ];
+  vicepresidencias: Vicepresidencia[] = [];
 
-  cargosArray: string[] = [
-    'Profesional jurídico',
-    'Profesional funcional',
-    'Profesional BIG',
-    'Profesional de desarrollo',
-    'Líder técnico'
-  ];
+  cargosArray: Cargo[] = [];
 
   // Dinámicos (se cargan del backend, con fallback si el backend no responde)
   tiposSolicitud: any[] = [];
@@ -216,7 +196,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   constructor(
     private solicitudesService: SolicitudesDesarrolloService,
-    private securityService: SecurityService,
+    private securityService: NexusSecurityService,
     private http: HttpClient,
     private cdr: ChangeDetectorRef
   ) { }
@@ -375,6 +355,50 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       }
     });
 
+    // Cargar Áreas
+    this.solicitudesService.obtenerAreas().subscribe({
+      next: (data) => {
+        this.areas = (data && data.length > 0) ? data : this.getFallbackAreas();
+      },
+      error: (err) => {
+        console.warn('⚠️ Backend no disponible para áreas. Usando fallback.', err.status);
+        this.areas = this.getFallbackAreas();
+      }
+    });
+
+    // Cargar Procesos
+    this.solicitudesService.obtenerProcesos().subscribe({
+      next: (data) => {
+        this.procesosSolicitante = (data && data.length > 0) ? data : this.getFallbackProcesos();
+      },
+      error: (err) => {
+        console.warn('⚠️ Backend no disponible para procesos. Usando fallback.', err.status);
+        this.procesosSolicitante = this.getFallbackProcesos();
+      }
+    });
+
+    // Cargar Vicepresidencias
+    this.solicitudesService.obtenerVicepresidencias().subscribe({
+      next: (data) => {
+        this.vicepresidencias = (data && data.length > 0) ? data : this.getFallbackVicepresidencias();
+      },
+      error: (err) => {
+        console.warn('⚠️ Backend no disponible para vicepresidencias. Usando fallback.', err.status);
+        this.vicepresidencias = this.getFallbackVicepresidencias();
+      }
+    });
+
+    // Cargar Cargos
+    this.solicitudesService.obtenerCargos().subscribe({
+      next: (data) => {
+        this.cargosArray = (data && data.length > 0) ? data : this.getFallbackCargos();
+      },
+      error: (err) => {
+        console.warn('⚠️ Backend no disponible para cargos. Usando fallback.', err.status);
+        this.cargosArray = this.getFallbackCargos();
+      }
+    });
+
     // Cargar Estados desde el backend
     this.solicitudesService.obtenerEstados().subscribe({
       next: (estados: any[]) => {
@@ -412,6 +436,43 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       { id: 6, codigo: 'EN_PRUEBAS_ACEPTACION', nombre: 'En pruebas de aceptación' },
       { id: 7, codigo: 'CERRADA', nombre: 'Cerrada' },
       { id: 8, codigo: 'RECHAZADA', nombre: 'Rechazada' }
+    ];
+  }
+
+  private getFallbackAreas(): Area[] {
+    return [
+      { id: 1, nombre: 'Transformación Digital' },
+      { id: 2, nombre: 'Servicios de salud financiera' },
+      { id: 3, nombre: 'Gestión Documental' },
+      { id: 4, nombre: 'Talento Humano' },
+      { id: 5, nombre: 'Desarrollo Organizacional' }
+    ];
+  }
+
+  private getFallbackProcesos(): Proceso[] {
+    return [
+      { id: 1, nombre: 'Desarrollo Tecnológico' },
+      { id: 2, nombre: 'Gestión Documental' },
+      { id: 3, nombre: 'Contabilidad' },
+      { id: 4, nombre: 'Talento Humano' }
+    ];
+  }
+
+  private getFallbackVicepresidencias(): Vicepresidencia[] {
+    return [
+      { id: 1, nombre: 'Vicepresidencia de Salud' },
+      { id: 2, nombre: 'Vicepresidencia Administrativa' },
+      { id: 3, nombre: 'Vicepresidencia Financiera' }
+    ];
+  }
+
+  private getFallbackCargos(): Cargo[] {
+    return [
+      { id: 1, nombre: 'Profesional jurídico' },
+      { id: 2, nombre: 'Profesional funcional' },
+      { id: 3, nombre: 'Profesional BIG' },
+      { id: 4, nombre: 'Profesional de desarrollo' },
+      { id: 5, nombre: 'Líder técnico' }
     ];
   }
 

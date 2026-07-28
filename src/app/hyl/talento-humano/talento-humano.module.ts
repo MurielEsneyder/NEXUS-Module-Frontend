@@ -14,7 +14,7 @@ import {MatRadioModule} from '@angular/material/radio';
 import { MatDialogModule } from '@angular/material/dialog';
 import {MatStepperModule} from '@angular/material/stepper';
 import { TalentoHumanoRoutingModule } from './talento-humano-routing.module';
-import { EvaluacionDesempenoComponent } from './components/evaluacion-desempeno/evaluacion-desempeno.component';
+import { EvaluacionDesempenoComponent } from './pages/evaluacion-desempeno/evaluacion-desempeno.component';
 import { MatCardModule } from '@angular/material/card';
 
 

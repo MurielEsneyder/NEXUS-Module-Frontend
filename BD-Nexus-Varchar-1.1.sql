@@ -62,7 +62,70 @@ INSERT INTO sd_requisito_seguridad (codigo, descripcion) VALUES
 ('SEG-01', 'Asegurar que los métodos que llevan a cabo controles de seguridad sean declarados como privados o finales, prohibiendo la extensión de los mismos.'),
 ('DAT-01', 'Evitar el uso de datos reales de carácter personal en las pruebas anteriores a la implantación o modificación de un sistema.')
 ON CONFLICT (codigo) DO NOTHING;
+-- 1.4 Áreas
+CREATE TABLE IF NOT EXISTS sd_area (
+    id          BIGSERIAL    PRIMARY KEY,
+    codigo      VARCHAR(20)  UNIQUE,
+    nombre      VARCHAR(100) NOT NULL,
+    activo      BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
 
+INSERT INTO sd_area (nombre) VALUES
+('Transformación Digital'),
+('Servicios de salud financiera'),
+('Gestión Documental'),
+('Talento Humano'),
+('Desarrollo Organizacional')
+ON CONFLICT DO NOTHING;
+
+-- 1.5 Procesos
+CREATE TABLE IF NOT EXISTS sd_proceso (
+    id          BIGSERIAL    PRIMARY KEY,
+    codigo      VARCHAR(20)  UNIQUE,
+    nombre      VARCHAR(100) NOT NULL,
+    activo      BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO sd_proceso (nombre) VALUES
+('Desarrollo Tecnológico'),
+('Gestión Documental'),
+('Contabilidad'),
+('Talento Humano')
+ON CONFLICT DO NOTHING;
+
+-- 1.6 Macroprocesos (Vicepresidencias)
+CREATE TABLE IF NOT EXISTS sd_macroproceso (
+    id          BIGSERIAL    PRIMARY KEY,
+    codigo      VARCHAR(20)  UNIQUE,
+    nombre      VARCHAR(100) NOT NULL,
+    activo      BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO sd_macroproceso (nombre) VALUES
+('Vicepresidencia de Salud'),
+('Vicepresidencia Administrativa'),
+('Vicepresidencia Financiera')
+ON CONFLICT DO NOTHING;
+
+-- 1.7 Cargos (Para listar en UI)
+CREATE TABLE IF NOT EXISTS sd_cargo (
+    id          BIGSERIAL    PRIMARY KEY,
+    codigo      VARCHAR(20)  UNIQUE,
+    nombre      VARCHAR(100) NOT NULL,
+    activo      BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO sd_cargo (nombre) VALUES
+('Profesional jurídico'),
+('Profesional funcional'),
+('Profesional BIG'),
+('Profesional de desarrollo'),
+('Líder técnico')
+ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- 2. TABLA PRINCIPAL: SOLICITUD
@@ -78,9 +141,9 @@ CREATE TABLE IF NOT EXISTS sd_solicitud (
     empleado_cargo        VARCHAR(150) NOT NULL,
     empleado_sede         VARCHAR(100) NOT NULL,
     solicitud_proceso     VARCHAR(2000) NOT NULL,
-    proceso_id            BIGINT       NOT NULL,
-    area_id               BIGINT       NOT NULL,
-    macroproceso_id       BIGINT       NOT NULL,
+    proceso_id            BIGINT       NOT NULL REFERENCES sd_proceso(id),
+    area_id               BIGINT       NOT NULL REFERENCES sd_area(id),
+    macroproceso_id       BIGINT       NOT NULL REFERENCES sd_macroproceso(id),
     tipo_solicitud_id     BIGINT       NOT NULL REFERENCES sd_tipo_solicitud(id),
     estado_id             BIGINT       NOT NULL REFERENCES sd_estado_solicitud(id) DEFAULT 1,
     prioridad             VARCHAR(20)  NOT NULL DEFAULT 'media',
@@ -285,8 +348,11 @@ SELECT
     t.codigo AS tipo_codigo,
     t.nombre AS tipo_nombre,
     s.proceso_id,
+    p.nombre AS proceso_nombre,
     s.area_id,
+    a.nombre AS area_nombre,
     s.macroproceso_id,
+    m.nombre AS macroproceso_nombre,
     s.usuario_registro,
     s.created_at,
     s.updated_at,
@@ -297,6 +363,9 @@ FROM
     sd_solicitud s
     LEFT JOIN sd_estado_solicitud e ON s.estado_id = e.id
     LEFT JOIN sd_tipo_solicitud t ON s.tipo_solicitud_id = t.id
+    LEFT JOIN sd_proceso p ON s.proceso_id = p.id
+    LEFT JOIN sd_area a ON s.area_id = a.id
+    LEFT JOIN sd_macroproceso m ON s.macroproceso_id = m.id
 WHERE
     s.estado_id NOT IN (7, 8)
 ORDER BY

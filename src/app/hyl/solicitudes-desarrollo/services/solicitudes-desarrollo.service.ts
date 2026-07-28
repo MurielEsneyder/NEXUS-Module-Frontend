@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Area, Proceso, Vicepresidencia, Cargo } from '../models/solicitudes-desarrollo.models';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +15,23 @@ export class SolicitudesDesarrolloService {
   // ============================================================
   // MÉTODOS EXISTENTES
   // ============================================================
+
+  // Catálogos desde Backend
+  obtenerAreas(): Observable<Area[]> {
+    return this.http.get<Area[]>(`${this.apiUrl}/areas`);
+  }
+
+  obtenerProcesos(): Observable<Proceso[]> {
+    return this.http.get<Proceso[]>(`${this.apiUrl}/procesos`);
+  }
+
+  obtenerVicepresidencias(): Observable<Vicepresidencia[]> {
+    return this.http.get<Vicepresidencia[]>(`${this.apiUrl}/vicepresidencias`);
+  }
+
+  obtenerCargos(): Observable<Cargo[]> {
+    return this.http.get<Cargo[]>(`${this.apiUrl}/cargos`);
+  }
 
   // Obtener todas las solicitudes (paginado)
   obtenerTodas(): Observable<any> {

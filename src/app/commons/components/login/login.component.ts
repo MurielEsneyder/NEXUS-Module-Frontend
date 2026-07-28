@@ -112,7 +112,7 @@ export class LoginComponent implements OnInit {
                 // ============================================================
                 // CREAR OBJETO AfilInfo COMPLETO
                 // ============================================================
-                const afilInfo: AfilInfo = {
+                const afilInfo: any = {
                     idAfiliado: data.idAfiliado || 0,
                     nroIdentificacion: data.nroIdentificacion || data.documento || username,
                     codigoDocumento: data.codigoDocumento || 1,
@@ -155,7 +155,7 @@ export class LoginComponent implements OnInit {
                 console.warn('⚠️ No se pudo obtener datos del colaborador:', err);
                 
                 // Fallback: guardar datos básicos desde el username
-                const afilInfo: AfilInfo = {
+                const afilInfo: any = {
                     idAfiliado: 0,
                     nroIdentificacion: username,
                     codigoDocumento: 1,

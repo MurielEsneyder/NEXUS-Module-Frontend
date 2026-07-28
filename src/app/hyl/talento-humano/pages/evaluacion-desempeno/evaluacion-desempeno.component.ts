@@ -7,9 +7,9 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatStepper } from '@angular/material/stepper';
 import { Router } from '@angular/router';
 import { EvaluacionDesempenoService } from '../../services/evaluacion-desempeno.service';
-import { SecurityService } from 'src/commons/services/security.service';
+import { NexusSecurityService } from '../../../shared/services/nexus-security.service';
 import { CommonService } from 'src/commons/services/common.service';
-import { PersonalElement, Cuestionario, ItemsCuestionario, Pregunta, OpcinesEvaluador, PorcentajeCuestionario } from '../../interfaces/telento-humano';
+import { PersonalElement, Cuestionario, ItemsCuestionario, Pregunta, OpcinesEvaluador, PorcentajeCuestionario } from '../../models/telento-humano';
 
 @Component({
   selector: 'app-evaluacion-desempeno',
@@ -73,7 +73,7 @@ export class EvaluacionDesempenoComponent implements OnInit, AfterViewInit {
   control: any = {};
 
 
-  constructor(private evaluacionService: EvaluacionDesempenoService, public dialog: MatDialog, private Security: SecurityService, private commonService: CommonService, private cdRef: ChangeDetectorRef, private router: Router,) {
+  constructor(private evaluacionService: EvaluacionDesempenoService, public dialog: MatDialog, private Security: NexusSecurityService, private commonService: CommonService, private cdRef: ChangeDetectorRef, private router: Router,) {
 
   }
 

@@ -213,7 +213,7 @@
               <label class="campo-label campo-requerido">PROCESO SOLICITANTE</label>
               <select class="select-wizard" [(ngModel)]="formGeneral.proceso">
                 <option value="">-- Seleccione --</option>
-                <option *ngFor="let p of procesosSolicitante" [value]="p">{{ p }}</option>
+                <option *ngFor="let p of procesosSolicitante" [value]="p.nombre">{{ p.nombre }}</option>
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.proceso">Requerido</span>
             </div>
@@ -222,7 +222,7 @@
               <label class="campo-label campo-requerido">ÁREA</label>
               <select class="select-wizard" [(ngModel)]="formGeneral.area">
                 <option value="">-- Seleccione --</option>
-                <option *ngFor="let a of areas" [value]="a">{{ a }}</option>
+                <option *ngFor="let a of areas" [value]="a.nombre">{{ a.nombre }}</option>
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.area">Requerido</span>
             </div>
@@ -231,7 +231,7 @@
               <label class="campo-label campo-requerido">VICEPRESIDENCIA</label>
               <select class="select-wizard" [(ngModel)]="formGeneral.vicepresidencia">
                 <option value="">-- Seleccione --</option>
-                <option *ngFor="let v of vicepresidencias" [value]="v">{{ v }}</option>
+                <option *ngFor="let v of vicepresidencias" [value]="v.nombre">{{ v.nombre }}</option>
               </select>
               <span class="error-campo" *ngIf="erroresGeneral.vicepresidencia">Requerido</span>
             </div>
@@ -287,7 +287,7 @@
                 <label class="campo-label campo-requerido">Cargos Impactados</label>
                 <select class="select-wizard" #rfCargo required>
                   <option value="">CARGOS</option>
-                  <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
+                  <option *ngFor="let c of cargosArray" [value]="c.nombre">{{ c.nombre }}</option>
                 </select>
               </div>
               <div class="form-grupo">
@@ -354,7 +354,7 @@
                 <label class="campo-label campo-requerido">Cargos Impactados</label>
                 <select class="select-wizard" #rnfCargo required>
                   <option value="">CARGOS</option>
-                  <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
+                  <option *ngFor="let c of cargosArray" [value]="c.nombre">{{ c.nombre }}</option>
                 </select>
               </div>
               <div class="form-grupo">
@@ -781,7 +781,7 @@
         <span *ngIf="!modoEdicionReq">{{ requerimientoSeleccionadoModal.cargoImpactado || 'N/A' }}</span>
         <select *ngIf="modoEdicionReq" class="select-wizard" [(ngModel)]="requerimientoSeleccionadoModal.cargoImpactado">
           <option value="">CARGOS</option>
-          <option *ngFor="let c of cargosArray" [value]="c">{{ c }}</option>
+          <option *ngFor="let c of cargosArray" [value]="c.nombre">{{ c.nombre }}</option>
         </select>
       </div>
     </div>
