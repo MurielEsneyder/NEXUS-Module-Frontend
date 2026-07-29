@@ -1269,13 +1269,44 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   cargarMisSolicitudes(): void {
     this.cargandoMisSolicitudes = true;
-    const doc = this.datosColaborador.documento || '123456789';
-    console.log('🔍 Buscando mis solicitudes para documento:', doc);
+    const doc = this.datosColaborador.documento || '';
+    const correo = this.datosColaborador.correo || '';
 
+    // Si no tenemos documento, usamos el correo como identificador
+    if (!doc && correo) {
+      console.log('🔍 Buscando mis solicitudes por correo:', correo);
+      this.solicitudesService.obtenerMisSolicitudesPorCorreo(correo, 0, 100).subscribe({
+        next: (data: any) => {
+          if (data && data.content) {
+            this.misSolicitudes = this.ordenarSolicitudesPorId(
+              data.content.map((item: any) => this.mapearSolicitud(item))
+            );
+            this.totalMisSolicitudesBD = data.totalElements;
+          } else {
+            this.misSolicitudes = [];
+            this.totalMisSolicitudesBD = 0;
+          }
+          this.cargandoMisSolicitudes = false;
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => {
+          console.error('❌ Error al cargar mis solicitudes por correo:', err);
+          this.cargandoMisSolicitudes = false;
+          this.misSolicitudes = [];
+          this.mostrarNotificacionSnackbar('Error al cargar mis solicitudes', 'error');
+          this.cdr.detectChanges();
+        }
+      });
+      return;
+    }
+
+    console.log('🔍 Buscando mis solicitudes para documento:', doc);
     this.solicitudesService.obtenerMisSolicitudes(doc, 0, 100).subscribe({
       next: (data: any) => {
         if (data && data.content) {
-          this.misSolicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
+          this.misSolicitudes = this.ordenarSolicitudesPorId(
+            data.content.map((item: any) => this.mapearSolicitud(item))
+          );
           this.totalMisSolicitudesBD = data.totalElements;
         } else {
           this.misSolicitudes = [];

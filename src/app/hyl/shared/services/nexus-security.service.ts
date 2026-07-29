@@ -68,7 +68,14 @@ export class NexusSecurityService {
   }
 
   public getAfilInfo(): any {
-    return this.securityService.getAfilInfo();
+    try {
+      const raw = sessionStorage.getItem('usrAfilInfo');
+      if (!raw || raw.trim() === '') return null;
+      return this.securityService.getAfilInfo();
+    } catch (e) {
+      console.warn('⚠️ NexusSecurityService.getAfilInfo(): sesión no disponible o corrupta.', e);
+      return null;
+    }
   }
 
   public getLocalToken(): any {

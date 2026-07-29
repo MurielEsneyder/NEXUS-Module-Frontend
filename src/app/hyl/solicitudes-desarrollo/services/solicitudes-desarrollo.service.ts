@@ -249,7 +249,11 @@ export class SolicitudesDesarrolloService {
   /**
    * Obtiene las solicitudes de un empleado específico (paginado)
    */
-  obtenerMisSolicitudes(documento: string, page: number = 0, size: number = 20): Observable<any> {
+  obtenerMisSolicitudes(documento: string, page: number = 0, size: number = 100): Observable<any> {
     return this.http.get(`${this.apiUrl}/mis-solicitudes/${documento}?page=${page}&size=${size}`);
+  }
+
+  obtenerMisSolicitudesPorCorreo(correo: string, page: number = 0, size: number = 100): Observable<any> {
+    return this.http.get(`${this.apiUrl}/mis-solicitudes/correo/${encodeURIComponent(correo)}?page=${page}&size=${size}`);
   }
 }
