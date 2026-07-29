@@ -221,7 +221,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       return 'En documentación';
     }
 
-    if (valor.includes('funcional') || valor === 'en pruebas') {
+    if (valor === 'en pruebas') {
+      return 'En Pruebas';
+    }
+
+    if (valor.includes('funcional')) {
       return 'En pruebas funcionales';
     }
 
