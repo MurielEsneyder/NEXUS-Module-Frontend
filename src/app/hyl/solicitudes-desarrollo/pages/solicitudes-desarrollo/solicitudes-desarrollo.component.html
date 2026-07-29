@@ -613,9 +613,9 @@
         </div>
         <div *ngIf="puedeEditarDetalle && modoEdicion" class="prioridad-editable">
           <select class="select-edicion" [(ngModel)]="prioridadEditada">
-            <option value="baja">Baja</option>
-            <option value="media">Media</option>
-            <option value="alta">Alta</option>
+            <option *ngFor="let p of prioridadesList" [value]="p.nombre.toLowerCase()">
+              {{ p.nombre }}
+            </option>
           </select>
         </div>
       </div>

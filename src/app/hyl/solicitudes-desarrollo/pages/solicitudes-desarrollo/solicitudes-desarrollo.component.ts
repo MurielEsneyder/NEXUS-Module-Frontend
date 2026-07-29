@@ -80,6 +80,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   nuevoEstadoSeleccionadoId: number | null = null;
   observacionCambioEstado = '';
   estadosList: any[] = [];
+  prioridadesList: any[] = [];
 
   // VARIABLES PARA EDICIÓN EN MODAL
   modoEdicion = false;
@@ -220,7 +221,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       return 'En documentación';
     }
 
-    if (valor.includes('funcional')) {
+    if (valor.includes('funcional') || valor === 'en pruebas') {
       return 'En pruebas funcionales';
     }
 
@@ -232,8 +233,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       return 'En pruebas de aceptación';
     }
 
-    if (valor.includes('cerr')) {
-      return 'Cerrada';
+    if (valor.includes('cerr') || valor === 'realizada') {
+      return 'Realizada';
     }
 
     if (valor.includes('rech')) {
@@ -475,6 +476,26 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.estadosList = this.getFallbackEstadosList();
       }
     });
+
+    // Cargar Prioridades desde el backend
+    this.solicitudesService.obtenerPrioridades().subscribe({
+      next: (prioridades: any[]) => {
+        this.prioridadesList = (prioridades && prioridades.length > 0) ? prioridades : this.getFallbackPrioridadesList();
+        console.log('✅ Prioridades cargadas:', this.prioridadesList);
+      },
+      error: (err: any) => {
+        console.warn('⚠️ Backend no disponible para prioridades. Usando fallback.', err.status);
+        this.prioridadesList = this.getFallbackPrioridadesList();
+      }
+    });
+  }
+
+  private getFallbackPrioridadesList(): any[] {
+    return [
+      { id: 64, nombre: 'BAJA' },
+      { id: 65, nombre: 'MEDIA' },
+      { id: 66, nombre: 'ALTA' }
+    ];
   }
 
   private getFallbackTipos(): any[] {
@@ -826,7 +847,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       objetivo: item.solicitudProceso || 'Sin nombre',
       solicitante: item.empleadoNombre || 'Desconocido',
       area: areaNombre,
-      estado: item.estado?.nombre || 'Pendiente',
+      estado: (item.estado?.nombre || 'Pendiente').toUpperCase(),
       tipo: item.tipoSolicitud?.nombre || 'N/A',
       fechaCreacion: new Date(item.fechaCreacion),
       prioridad: this.extraerPrioridad(item),

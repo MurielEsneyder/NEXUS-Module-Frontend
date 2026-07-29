@@ -73,6 +73,11 @@ export class SolicitudesDesarrolloService {
     return this.http.get<any[]>(`${this.apiUrl}/tipos`);
   }
 
+  // Obtener todas las prioridades
+  obtenerPrioridades(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/prioridades`);
+  }
+
   // Actualizar solicitud
   actualizar(id: number, solicitud: any): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}`, solicitud);
