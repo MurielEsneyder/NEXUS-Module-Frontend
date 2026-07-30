@@ -24,6 +24,7 @@ import { MatProgressBar } from '@angular/material/progress-bar';
 import { LoadingComponent } from './commons/components/loading/loading.component';
 import { SnackbarComponent } from './commons/components/snackBar/snackBar.component';
 import { MatInputModule } from '@angular/material/input';
+import { LoggingInterceptor } from './hyl/shared/interceptors/logging.interceptor';
 import { AuthInterceptor } from './commons/services/auth.interceptor';
 
 @NgModule({
@@ -58,7 +59,7 @@ import { AuthInterceptor } from './commons/services/auth.interceptor';
     BnNgIdleService,
     GuardService,
     { provide: LocationStrategy, useClass: HashLocationStrategy },
-    provideHttpClient(withInterceptors([AuthInterceptor, SpinnerInterceptor])),
+    provideHttpClient(withInterceptors([AuthInterceptor, LoggingInterceptor, SpinnerInterceptor])),
     CurrencyPipe,
     // provideHttpClient()
 
