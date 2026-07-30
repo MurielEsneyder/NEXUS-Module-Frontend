@@ -1029,6 +1029,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           },
           error: (err) => {
             console.error('❌ Error al actualizar estado:', err);
+            if (err.error) {
+              console.error('❌ Detalle del backend:', err.error);
+            }
             this.guardandoCambios = false;
             this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
           }

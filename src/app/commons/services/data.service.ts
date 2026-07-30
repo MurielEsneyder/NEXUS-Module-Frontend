@@ -68,23 +68,37 @@ export class DataService {
     return this.http.post(url, body, options);
   }
 
-  public requestPut(body: any, wordKey: string, params: Object | any = null): Observable<Object> {
+  public requestPostText(body: any,ruta:string, version: string='', params: Object | any = null): Observable<Object> {
+    let options = this.requestOptions(params, version);
+    options.responseType = 'text';
 
-    let options = this.requestOptions(params, wordKey);
-
-    return this.http.put(environment.services, body, options);
+    let url=`${environment.services}/${ruta}`;
+    return this.http.post(url, body, options);
   }
 
-  public requestDelete(params: any, wordKey: string): Observable<Object> {
+  public requestPut(body: any, ruta: string, wordKey: string='', params: Object | any = null): Observable<Object> {
     let options = this.requestOptions(params, wordKey);
-    return this.http.delete(environment.services, options);
+    let url=`${environment.services}/${ruta}`;
+    return this.http.put(url, body, options);
   }
 
-  public requestGetBlob(params: any, wordKey: string): Observable<Object> {
+  public requestPatch(body: any, ruta: string, version: string='', params: Object | any = null): Observable<Object> {
+    let options = this.requestOptions(params, version);
+    let url=`${environment.services}/${ruta}`;
+    return this.http.patch(url, body, options);
+  }
+
+  public requestDelete(params: any, ruta: string, wordKey: string=''): Observable<Object> {
+    let options = this.requestOptions(params, wordKey);
+    let url=`${environment.services}/${ruta}`;
+    return this.http.delete(url, options);
+  }
+
+  public requestGetBlob(params: any, ruta: string, wordKey: string=''): Observable<Object> {
     let options = this.requestOptionsBlob(params, wordKey);
     options.responseType = 'blob';
-
-    return this.http.get(environment.services, options)
+    let url=`${environment.services}/${ruta}`;
+    return this.http.get(url, options)
   }
 
 }

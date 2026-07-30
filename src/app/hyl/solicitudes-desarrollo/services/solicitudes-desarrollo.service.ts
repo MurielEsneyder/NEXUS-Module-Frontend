@@ -1,138 +1,115 @@
-// solicitudes-desarrollo.service.ts
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Area, Proceso, Vicepresidencia, Cargo } from '../models/solicitudes-desarrollo.models';
+import { DataService } from '../../../commons/services/data.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SolicitudesDesarrolloService {
-  private apiUrl = 'http://localhost:8085/api/solicitudes';
-
-  constructor(private http: HttpClient) {}
+  constructor(private dataService: DataService) {}
 
   // ============================================================
   // MÉTODOS EXISTENTES
   // ============================================================
 
-  // Catálogos desde Backend
   obtenerAreas(): Observable<Area[]> {
-    return this.http.get<Area[]>(`${this.apiUrl}/areas`);
+    return this.dataService.requestGet({}, 'solicitudes/areas', 'v1') as Observable<Area[]>;
   }
 
   obtenerProcesos(): Observable<Proceso[]> {
-    return this.http.get<Proceso[]>(`${this.apiUrl}/procesos`);
+    return this.dataService.requestGet({}, 'solicitudes/procesos', 'v1') as Observable<Proceso[]>;
   }
 
   obtenerVicepresidencias(): Observable<Vicepresidencia[]> {
-    return this.http.get<Vicepresidencia[]>(`${this.apiUrl}/vicepresidencias`);
+    return this.dataService.requestGet({}, 'solicitudes/vicepresidencias', 'v1') as Observable<Vicepresidencia[]>;
   }
 
   obtenerCargos(): Observable<Cargo[]> {
-    return this.http.get<Cargo[]>(`${this.apiUrl}/cargos`);
+    return this.dataService.requestGet({}, 'solicitudes/cargos', 'v1') as Observable<Cargo[]>;
   }
 
-  // Obtener colaborador real (para evitar nombre de usuario corto)
   obtenerColaboradorActual(): Observable<any> {
-    return this.http.get('http://localhost:8085/api/colaborador/actual');
+    console.log("datos de colaborador");
+    return this.dataService.requestGet({}, 'colaborador/actual', 'v1');
   }
 
-  // Obtener todas las solicitudes (paginado)
   obtenerTodas(): Observable<any> {
-    return this.http.get(this.apiUrl);
+    return this.dataService.requestGet({}, 'solicitudes', 'v1');
   }
 
-  // Crear una nueva solicitud
   crearSolicitud(solicitud: any): Observable<any> {
-    return this.http.post(this.apiUrl, solicitud);
+    return this.dataService.requestPost(solicitud, 'solicitudes', 'v1');
   }
 
-  // Obtener por ID
   obtenerPorId(id: number): Observable<any> {
-    return this.http.get(`${this.apiUrl}/${id}/detalle`);
+    return this.dataService.requestGet({}, `solicitudes/${id}/detalle`, 'v1');
   }
 
-  // Obtener por código
   obtenerPorCodigo(codigo: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/codigo/${codigo}`);
+    return this.dataService.requestGet({}, `solicitudes/codigo/${codigo}`, 'v1');
   }
 
-  // Obtener por empleado
   obtenerPorEmpleado(documento: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/empleado/${documento}`);
+    return this.dataService.requestGet({}, `solicitudes/empleado/${documento}`, 'v1');
   }
 
-  // Obtener todos los estados
   obtenerEstados(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/estados`);
+    return this.dataService.requestGet({}, 'solicitudes/estados', 'v1') as Observable<any[]>;
   }
 
-  // Obtener todos los tipos
   obtenerTipos(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/tipos`);
+    return this.dataService.requestGet({}, 'solicitudes/tipos', 'v1') as Observable<any[]>;
   }
 
-  // Obtener todas las prioridades
   obtenerPrioridades(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/prioridades`);
+    return this.dataService.requestGet({}, 'solicitudes/prioridades', 'v1') as Observable<any[]>;
   }
 
-  // Actualizar solicitud
   actualizar(id: number, solicitud: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}`, solicitud);
+    return this.dataService.requestPut(solicitud, `solicitudes/${id}`, 'v1');
   }
 
-  // Cambiar estado
   cambiarEstado(id: number, nuevoEstadoId: number, observacion?: string): Observable<any> {
     const params = new URLSearchParams();
     params.set('nuevoEstadoId', nuevoEstadoId.toString());
     if (observacion) {
       params.set('observacion', observacion);
     }
-    return this.http.patch(`${this.apiUrl}/${id}/estado?${params.toString()}`, {});
+    return this.dataService.requestPost({}, `solicitudes/${id}/estado?${params.toString()}`, 'v1');
   }
 
-  // Actualizar prioridad
   actualizarPrioridad(id: number, prioridad: string): Observable<any> {
     console.log(`📤 Actualizando prioridad: ID=${id}, Prioridad=${prioridad}`);
     const params = new URLSearchParams();
     params.set('prioridad', prioridad);
-    return this.http.patch(`${this.apiUrl}/${id}/prioridad?${params.toString()}`, {});
+    return this.dataService.requestPost({}, `solicitudes/${id}/prioridad?${params.toString()}`, 'v1');
   }
 
-  // Eliminar
   eliminar(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+    return this.dataService.requestDelete({}, `solicitudes/${id}`, 'v1') as unknown as Observable<void>;
   }
 
-  // Contar por estado
   contarPorEstado(estadoId: number): Observable<number> {
-    return this.http.get<number>(`${this.apiUrl}/contar/estado/${estadoId}`);
+    return this.dataService.requestGet({}, `solicitudes/contar/estado/${estadoId}`, 'v1') as Observable<number>;
   }
 
   // ============================================================
   // PDF (Nuevos métodos)
   // ============================================================
 
-  // Descargar PDF
   descargarPdf(id: number): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/${id}/pdf`, { responseType: 'blob' });
+    return this.dataService.requestGetBlob({}, `solicitudes/${id}/pdf`, 'v1') as Observable<Blob>;
   }
 
-  // Ver PDF
   verPdf(id: number): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/${id}/pdf/ver`, { responseType: 'blob' });
+    return this.dataService.requestGetBlob({}, `solicitudes/${id}/pdf/ver`, 'v1') as Observable<Blob>;
   }
 
   // ============================================================
   // NUEVOS MÉTODOS PARA CARGAR TODAS LAS SOLICITUDES
   // ============================================================
 
-  /**
-   * Obtiene TODAS las solicitudes (todas las páginas)
-   * @returns Observable con todas las solicitudes
-   */
   obtenerTodasCompletas(): Observable<any> {
     return new Observable(observer => {
       let todasLasSolicitudes: any[] = [];
@@ -143,27 +120,20 @@ export class SolicitudesDesarrolloService {
       console.log('🔄 Iniciando carga de todas las páginas...');
       
       const cargarPagina = () => {
-        // Usar el método obtenerTodas() que ya tienes
-        // Pero necesitamos pasar parámetros de paginación
-        // Si tu backend no soporta parámetros, usaremos la URL con query params
-        const url = `${this.apiUrl}?page=${paginaActual}&size=${tamanioPagina}`;
+        const ruta = `solicitudes?page=${paginaActual}&size=${tamanioPagina}`;
         
-        this.http.get(url).subscribe({
+        this.dataService.requestGet({}, ruta, 'v1').subscribe({
           next: (data: any) => {
             console.log(`📄 Página ${paginaActual + 1} cargada:`, data);
             
             if (data && data.content && data.content.length > 0) {
-              // Agregar los elementos de esta página
               todasLasSolicitudes = [...todasLasSolicitudes, ...data.content];
               paginaActual++;
               totalPages = data.totalPages || 1;
               
-              // Verificar si hay más páginas
               if (paginaActual < totalPages) {
-                // Cargar siguiente página con un pequeño delay
                 setTimeout(() => cargarPagina(), 150);
               } else {
-                // Todas las páginas cargadas
                 console.log(`✅ Total cargado: ${todasLasSolicitudes.length} solicitudes`);
                 observer.next({ 
                   content: todasLasSolicitudes, 
@@ -174,7 +144,6 @@ export class SolicitudesDesarrolloService {
                 observer.complete();
               }
             } else {
-              // No hay más datos
               console.log(`✅ No hay más páginas. Total: ${todasLasSolicitudes.length}`);
               observer.next({ 
                 content: todasLasSolicitudes, 
@@ -192,68 +161,43 @@ export class SolicitudesDesarrolloService {
         });
       };
       
-      // Iniciar carga desde la primera página
       cargarPagina();
     });
   }
 
-  /**
-   * Obtiene todas las solicitudes en una sola llamada (si el backend lo soporta)
-   */
   obtenerTodasSinPaginacion(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/todas`);
+    return this.dataService.requestGet({}, 'solicitudes/todas', 'v1');
   }
 
-  /**
-   * Obtiene el total de solicitudes
-   */
   obtenerTotalSolicitudes(): Observable<number> {
-    return this.http.get<number>(`${this.apiUrl}/total`);
+    return this.dataService.requestGet({}, 'solicitudes/total', 'v1') as Observable<number>;
   }
 
-  /**
-   * Obtiene todas las solicitudes con un tamaño de página grande
-   */
   obtenerTodasConTamanio(tamanio: number = 1000): Observable<any> {
-    return this.http.get(`${this.apiUrl}?page=0&size=${tamanio}`);
+    return this.dataService.requestGet({}, `solicitudes?page=0&size=${tamanio}`, 'v1');
   }
 
   // ============================================================
   // ENVÍO DE CORREOS
   // ============================================================
 
-  /**
-   * Envía la solicitud y el PDF al backend para enviar el correo.
-   */
   enviarNotificacionCorreo(payload: any): Observable<any> {
-    // Nota: Si el endpoint en sv2-commons no tiene esta ruta exacta, deberás ajustarla.
-    // En sv2-commons el controlador es /api/correo/enviar-correo
-    const correoUrl = 'http://localhost:8082/api/correo/enviar-correo';
-    
-    // Necesitamos agregar el header "Accept-Version: v1" que requiere sv2-commons
-    const headers = new HttpHeaders().set('Accept-Version', 'v1');
-    return this.http.post(correoUrl, payload, { headers, responseType: 'text' });
+    return this.dataService.requestPostText(payload, 'correo/enviar-correo', 'v1');
   }
 
   // ============================================================
   // HISTORIAL DE CAMBIOS Y MIS SOLICITUDES
   // ============================================================
 
-  /**
-   * Obtiene el historial de cambios (auditoría) de una solicitud
-   */
   obtenerHistorialCambios(solicitudId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/${solicitudId}/historial`);
+    return this.dataService.requestGet({}, `solicitudes/${solicitudId}/historial`, 'v1') as Observable<any[]>;
   }
 
-  /**
-   * Obtiene las solicitudes de un empleado específico (paginado)
-   */
   obtenerMisSolicitudes(documento: string, page: number = 0, size: number = 100): Observable<any> {
-    return this.http.get(`${this.apiUrl}/mis-solicitudes/${documento}?page=${page}&size=${size}`);
+    return this.dataService.requestGet({}, `solicitudes/mis-solicitudes/${documento}?page=${page}&size=${size}`, 'v1');
   }
 
   obtenerMisSolicitudesPorCorreo(correo: string, page: number = 0, size: number = 100): Observable<any> {
-    return this.http.get(`${this.apiUrl}/mis-solicitudes/correo/${encodeURIComponent(correo)}?page=${page}&size=${size}`);
+    return this.dataService.requestGet({}, `solicitudes/mis-solicitudes/correo/${encodeURIComponent(correo)}?page=${page}&size=${size}`, 'v1');
   }
 }
