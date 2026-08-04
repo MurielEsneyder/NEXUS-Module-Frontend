@@ -1805,9 +1805,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         console.log('✅ Solicitud creada exitosamente:', response);
         this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
 
-        // --- Enviar notificación por correo con el PDF adjunto ---
-        this.enviarNotificacionCorreo(this.numeroSolicitudExito, response.id || 0);
-
         this.mostrarModalExito = true;
         this.cargarSolicitudes();
       },
@@ -1840,57 +1837,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.volverPrincipal();
   }
 
-  // ============================================================
-  // ENVÍO DE NOTIFICACIÓN POR CORREO
-  // ============================================================
-  private enviarNotificacionCorreo(numeroSolicitud: string, solicitudId: number): void {
-    // 1. Armamos un objeto solicitud con los datos actuales para generar el PDF
-    const solicitudParaPdf: SolicitudDesarrollo = {
-      ...this.solicitudActual,
-      numeroSolicitud: numeroSolicitud,
-      solicitante: this.datosColaborador.nombreCompleto,
-      correo: this.datosColaborador.correo,
-      cargo: this.datosColaborador.cargo,
-      sede: this.datosColaborador.sede,
-      objetivo: this.formGeneral.solicitudProceso || this.solicitudActual.objetivo,
-      tipo: this.formGeneral.tipoSolicitud,
-      proceso: this.formGeneral.proceso,
-      area: this.formGeneral.area,
-      vicepresidencia: this.formGeneral.vicepresidencia,
-      prioridad: this.formGeneral.prioridad as 'alta' | 'media' | 'baja',
-      estado: 'Enviada',
-      impacto: this.impactoTexto,
-      observaciones: this.formGeneral.observacion,
-      fechaCreacion: new Date()
-    };
 
-    // 2. Generar PDF
-    const doc = this.generarDocumentoPDF(solicitudParaPdf);
-    if (!doc) {
-      console.warn('⚠️ No se pudo generar el PDF para el correo.');
-      return;
-    }
-
-    // Convertir PDF a Base64
-    const pdfBase64 = doc.output('datauristring');
-
-    // 3. Armar Payload
-    const payloadCorreo = {
-      solicitudId: solicitudId,
-      numeroSolicitud: numeroSolicitud,
-      correoDestinatario: 'aprendiz1.desarrollo@asmetsalud.com',
-      nombreSolicitante: this.datosColaborador.nombreCompleto,
-      modalidad: this.formGeneral.tipoSolicitud || 'No especificada',
-      pdfBase64: pdfBase64
-    };
-
-    // 4. Enviar al backend
-    console.log('📤 Enviando notificación por correo...');
-    this.solicitudesService.enviarNotificacionCorreo(payloadCorreo).subscribe({
-      next: (res) => console.log('✅ Correo enviado exitosamente', res),
-      error: (err) => console.error('❌ Error al enviar correo:', err)
-    });
-  }
 
   // ============================================================
   // BANDEJA (MODALES)
