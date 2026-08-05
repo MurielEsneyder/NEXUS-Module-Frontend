@@ -185,6 +185,16 @@ export class SolicitudesDesarrolloService {
     return this.dataService.requestPostText(payload, 'correo/enviar-correo', 'v1');
   }
 
+  /**
+   * Envía la notificación por correo con el PDF adjunto.
+   * Ruta mapeada en BD #265: /api/solicitudes/{id}/enviar-notificacion
+   * @param id       ID de la solicitud
+   * @param payload  Objeto con los datos del correo (destinatario, asunto, cuerpo, pdfBase64, nombrePdf)
+   */
+  enviarNotificacion(id: number, payload: any): Observable<any> {
+    return this.dataService.requestPostText(payload, `solicitudes/${id}/enviar-notificacion`, 'v1');
+  }
+
   // ============================================================
   // HISTORIAL DE CAMBIOS Y MIS SOLICITUDES
   // ============================================================

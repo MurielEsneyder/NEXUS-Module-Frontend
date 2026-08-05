@@ -1805,6 +1805,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         console.log('✅ Solicitud creada exitosamente:', response);
         this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
 
+        // Enviar correo con PDF adjunto usando la ruta #265 /api/solicitudes/{id}/enviar-notificacion
+        if (response && response.id) {
+          this.enviarNotificacionConPdf(response);
+        }
+
         this.mostrarModalExito = true;
         this.cargarSolicitudes();
       },
@@ -1828,6 +1833,19 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.numeroSolicitudExito = `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
         this.mostrarModalExito = true;
         this.cargarSolicitudes();
+      }
+    });
+  }
+
+  enviarNotificacionConPdf(response: any): void {
+    if (!response || !response.id) return;
+    console.log('📧 Solicitando al backend enviar notificación de correo con PDF para solicitud ID:', response.id);
+    this.solicitudesService.enviarNotificacion(response.id, {}).subscribe({
+      next: (res) => {
+        console.log('✅ Respuesta de notificación de correo:', res);
+      },
+      error: (err) => {
+        console.error('❌ Error al solicitar el envío de correo de la solicitud:', err);
       }
     });
   }
