@@ -221,15 +221,10 @@ CREATE INDEX IF NOT EXISTS idx_sd_reqc_c   ON sd_requerimiento_cargo(cargo_id);
 CREATE TABLE IF NOT EXISTS sd_requerimiento_imagen (
     id               BIGSERIAL    PRIMARY KEY,
     requerimiento_id BIGINT       NOT NULL REFERENCES sd_requerimiento(id) ON DELETE CASCADE,
-    nombre_archivo   VARCHAR(255) NOT NULL,
-    tipo_contenido   VARCHAR(100) NOT NULL,
-    contenido        BYTEA        NOT NULL,
+    url_imagen       TEXT         NOT NULL,
+    orden            INTEGER      NOT NULL DEFAULT 1,
     usuario_registro VARCHAR(100) NOT NULL,
-    created_at       TIMESTAMP    NOT NULL DEFAULT NOW(),
-    
-    CONSTRAINT chk_tipo_contenido CHECK (tipo_contenido IN (
-        'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'
-    ))
+    created_at       TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_sd_reqi_req ON sd_requerimiento_imagen(requerimiento_id);

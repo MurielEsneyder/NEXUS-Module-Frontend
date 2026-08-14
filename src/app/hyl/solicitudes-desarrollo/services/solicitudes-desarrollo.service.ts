@@ -30,7 +30,6 @@ export class SolicitudesDesarrolloService {
   }
 
   obtenerColaboradorActual(): Observable<any> {
-    console.log("datos de colaborador");
     return this.dataService.requestGet({}, 'colaborador/actual', 'v1');
   }
 
@@ -80,7 +79,7 @@ export class SolicitudesDesarrolloService {
   }
 
   actualizarPrioridad(id: number, prioridad: string): Observable<any> {
-    console.log(`📤 Actualizando prioridad: ID=${id}, Prioridad=${prioridad}`);
+    console.log(`POST /api/solicitudes/${id}/prioridad - Actualizando prioridad a: ${prioridad}`);
     const params = new URLSearchParams();
     params.set('prioridad', prioridad);
     return this.dataService.requestPost({}, `solicitudes/${id}/prioridad?${params.toString()}`, 'v1');
@@ -117,14 +116,14 @@ export class SolicitudesDesarrolloService {
       const tamanioPagina = 1000;
       let totalPages = 1;
       
-      console.log('🔄 Iniciando carga de todas las páginas...');
+      console.log('GET /api/solicitudes (paginado) - Iniciando carga de todas las páginas...');
       
       const cargarPagina = () => {
         const ruta = `solicitudes?page=${paginaActual}&size=${tamanioPagina}`;
         
         this.dataService.requestGet({}, ruta, 'v1').subscribe({
           next: (data: any) => {
-            console.log(`📄 Página ${paginaActual + 1} cargada:`, data);
+            console.log(`GET /api/solicitudes?page=${paginaActual} - ${data?.content?.length || 0} registros recibidos`);
             
             if (data && data.content && data.content.length > 0) {
               todasLasSolicitudes = [...todasLasSolicitudes, ...data.content];
@@ -134,7 +133,7 @@ export class SolicitudesDesarrolloService {
               if (paginaActual < totalPages) {
                 setTimeout(() => cargarPagina(), 150);
               } else {
-                console.log(`✅ Total cargado: ${todasLasSolicitudes.length} solicitudes`);
+                console.log(`GET /api/solicitudes (paginado) - Carga completa: ${todasLasSolicitudes.length} solicitudes`);
                 observer.next({ 
                   content: todasLasSolicitudes, 
                   totalElements: todasLasSolicitudes.length,
@@ -144,7 +143,7 @@ export class SolicitudesDesarrolloService {
                 observer.complete();
               }
             } else {
-              console.log(`✅ No hay más páginas. Total: ${todasLasSolicitudes.length}`);
+              console.log(`GET /api/solicitudes (paginado) - Sin más paginas. Total: ${todasLasSolicitudes.length}`);
               observer.next({ 
                 content: todasLasSolicitudes, 
                 totalElements: todasLasSolicitudes.length,
@@ -155,7 +154,7 @@ export class SolicitudesDesarrolloService {
             }
           },
           error: (err) => {
-            console.error('❌ Error al cargar página:', err);
+            console.error('GET /api/solicitudes (paginado) - Error al cargar página:', err);
             observer.error(err);
           }
         });

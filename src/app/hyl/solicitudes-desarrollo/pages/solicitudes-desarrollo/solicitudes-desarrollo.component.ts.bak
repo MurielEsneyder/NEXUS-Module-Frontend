@@ -1,4 +1,4 @@
-// solicitudes-desarrollo.component.ts
+﻿// solicitudes-desarrollo.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { SolicitudesDesarrolloService } from '../../services/solicitudes-desarrollo.service';
 import { NexusSecurityService } from '../../../shared/services/nexus-security.service';
@@ -281,7 +281,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // OBTENER DATOS DEL COLABORADOR
   // ============================================================
   private obtenerDatosColaborador(): void {
-    console.log('Iniciando obtención de datos del colaborador...');
+    console.log('🔍 Iniciando obtención de datos del colaborador...');
     let dataLocalLista = false;
 
     try {
@@ -319,11 +319,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           idPersona: afilInfo.idPersona || null,
           codUser: afilInfo.codUser || ''
         };
-        console.log('Datos desde sessionStorage:', this.datosColaborador);
+        console.log('✅ Datos desde sessionStorage:', this.datosColaborador);
         dataLocalLista = true;
       }
     } catch (e) {
-      console.warn('Error en getAfilInfo():', e);
+      console.warn('⚠️ Error en getAfilInfo():', e);
     }
 
     if (!dataLocalLista) {
@@ -344,16 +344,16 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             idPersona: null,
             codUser: ''
           };
-          console.log('Datos desde el token:', this.datosColaborador);
+          console.log('✅ Datos desde el token:', this.datosColaborador);
           dataLocalLista = true;
         }
       } catch (e) {
-        console.warn('Error al leer el token:', e);
+        console.warn('⚠️ Error al leer el token:', e);
       }
     }
 
     if (!dataLocalLista) {
-      console.warn('No se pudieron obtener datos del colaborador, usando fallback.');
+      console.warn('⚠️ No se pudieron obtener datos, usando fallback');
       this.datosColaborador = {
         nombreCompleto: 'Usuario de Prueba',
         correo: 'usuario@asmetsalud.com',
@@ -370,21 +370,22 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     // console.log('🔍 DEBUG - Comparando nombre:', this.datosColaborador.nombreCompleto, 'con username:', usernameActual);
     
     if (this.datosColaborador.nombreCompleto.toLowerCase() === usernameActual.toLowerCase() || this.datosColaborador.nombreCompleto === 'Usuario de Prueba' || this.datosColaborador.nombreCompleto === 'Usuario') {
-      console.log('GET /api/colaborador/actual - Obteniendo nombre real del colaborador desde el backend...');
+      console.log('🔄 Nombre incompleto detectado. Forzando obtención directa desde el backend (http://localhost:8085/api/colaborador/actual)...');
       this.solicitudesService.obtenerColaboradorActual().subscribe({
         next: (res: any) => {
+          // console.log('🔍 DEBUG - Respuesta del backend al buscar colaborador:', res);
           if (res && res.nombreCompleto) {
             this.datosColaborador.nombreCompleto = res.nombreCompleto;
             if (res.cargo) this.datosColaborador.cargo = res.cargo;
             if (res.sede) this.datosColaborador.sede = res.sede;
-            console.log('GET /api/colaborador/actual - Nombre corregido:', this.datosColaborador.nombreCompleto);
+            console.log('✅ Nombre real corregido desde backend:', this.datosColaborador.nombreCompleto);
           } else {
-            console.warn('GET /api/colaborador/actual - Respuesta sin nombreCompleto:', res);
+            console.warn('⚠️ Backend respondió, pero no trae nombreCompleto.', res);
           }
           this.continuarInicializacion();
         },
         error: (err) => {
-          console.error('GET /api/colaborador/actual - Error al obtener colaborador:', err);
+          console.error('❌ ERROR AL OBTENER COLABORADOR DEL BACKEND:', err);
           this.continuarInicializacion();
         }
       });
@@ -397,7 +398,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // CONTINUAR INICIALIZACIÓN
   // ============================================================
   private continuarInicializacion(): void {
-    console.log('Colaborador listo para inicializar:', this.datosColaborador.nombreCompleto);
+    console.log('✅ Datos finales del colaborador:', this.datosColaborador);
     this.solicitudActual = this.inicializarNuevaSolicitud();
     this.cargarCatalogos();
     this.cargarSolicitudes();
@@ -411,10 +412,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.solicitudesService.obtenerTipos().subscribe({
       next: (tipos: any[]) => {
         this.tiposSolicitud = (tipos && tipos.length > 0) ? tipos : this.getFallbackTipos();
-        console.log('GET /api/solicitudes/tipos - Tipos de solicitud cargados:', this.tiposSolicitud.length);
+        console.log('✅ Tipos cargados:', this.tiposSolicitud);
       },
       error: (err: any) => {
-        console.warn('GET /api/solicitudes/tipos - Backend no disponible (status ' + err.status + '). Usando datos locales.');
+        console.warn('⚠️ Backend no disponible para tipos. Usando fallback.', err.status);
         this.tiposSolicitud = this.getFallbackTipos();
       }
     });
@@ -425,7 +426,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.areas = (data && data.length > 0) ? data : this.getFallbackAreas();
       },
       error: (err) => {
-        console.warn('GET /api/solicitudes/areas - Backend no disponible (status ' + err.status + '). Usando datos locales.');
+        console.warn('⚠️ Backend no disponible para áreas. Usando fallback.', err.status);
         this.areas = this.getFallbackAreas();
       }
     });
@@ -436,7 +437,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.procesosSolicitante = (data && data.length > 0) ? data : this.getFallbackProcesos();
       },
       error: (err) => {
-        console.warn('GET /api/solicitudes/procesos - Backend no disponible (status ' + err.status + '). Usando datos locales.');
+        console.warn('⚠️ Backend no disponible para procesos. Usando fallback.', err.status);
         this.procesosSolicitante = this.getFallbackProcesos();
       }
     });
@@ -447,7 +448,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.vicepresidencias = (data && data.length > 0) ? data : this.getFallbackVicepresidencias();
       },
       error: (err) => {
-        console.warn('GET /api/solicitudes/vicepresidencias - Backend no disponible (status ' + err.status + '). Usando datos locales.');
+        console.warn('⚠️ Backend no disponible para vicepresidencias. Usando fallback.', err.status);
         this.vicepresidencias = this.getFallbackVicepresidencias();
       }
     });
@@ -458,7 +459,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.cargosArray = (data && data.length > 0) ? data : this.getFallbackCargos();
       },
       error: (err) => {
-        console.warn('GET /api/solicitudes/cargos - Backend no disponible (status ' + err.status + '). Usando datos locales.');
+        console.warn('⚠️ Backend no disponible para cargos. Usando fallback.', err.status);
         this.cargosArray = this.getFallbackCargos();
       }
     });
@@ -473,10 +474,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           this.estadosDisponibles = this.getFallbackEstadosList();
           this.estadosList = this.getFallbackEstadosList();
         }
-        console.log('GET /api/solicitudes/estados - Estados cargados:', this.estadosDisponibles.length);
+        console.log('✅ Estados cargados:', this.estadosDisponibles);
       },
       error: (err: any) => {
-        console.warn('GET /api/solicitudes/estados - Backend no disponible (status ' + err.status + '). Usando datos locales.');
+        console.warn('⚠️ Backend no disponible para estados. Usando fallback.', err.status);
         this.estadosDisponibles = this.getFallbackEstadosList();
         this.estadosList = this.getFallbackEstadosList();
       }
@@ -486,10 +487,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.solicitudesService.obtenerPrioridades().subscribe({
       next: (prioridades: any[]) => {
         this.prioridadesList = (prioridades && prioridades.length > 0) ? prioridades : this.getFallbackPrioridadesList();
-        console.log('GET /api/solicitudes/prioridades - Prioridades cargadas:', this.prioridadesList.length);
+        console.log('✅ Prioridades cargadas:', this.prioridadesList);
       },
       error: (err: any) => {
-        console.warn('GET /api/solicitudes/prioridades - Backend no disponible (status ' + err.status + '). Usando datos locales.');
+        console.warn('⚠️ Backend no disponible para prioridades. Usando fallback.', err.status);
         this.prioridadesList = this.getFallbackPrioridadesList();
       }
     });
@@ -604,18 +605,19 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   cargarSolicitudes(): void {
     if (this.cargandoSolicitudes) {
-      return; // Ya hay una carga en progreso, no duplicar
+      console.log('⏳ Ya se están cargando solicitudes...');
+      return;
     }
 
     this.cargandoSolicitudes = true;
     this.errorCargandoSolicitudes = false;
 
-    console.log('GET /api/solicitudes - Solicitando listado completo de solicitudes...');
+    console.log('📥 Cargando solicitudes...');
 
     // 1. CARGAR DESDE CACHÉ PRIMERO (PARA RESPUESTA INMEDIATA)
     const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
     if (cargadoDesdeCache) {
-      console.log('CACHE - Datos cargados desde localStorage mientras el backend responde.');
+      console.log('📦 Mostrando datos desde caché mientras se actualiza...');
       this.actualizarListasOrdenadas(); // Ordenar los datos cargados desde caché
       this.cargandoSolicitudes = false; // Ocultar indicador de carga si ya hay datos
     }
@@ -623,7 +625,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     // 2. OBTENER DATOS FRESCOS DEL BACKEND (EN SEGUNDO PLANO)
     this.solicitudesService.obtenerTodasCompletas().subscribe({
       next: (data: any) => {
-        console.log('GET /api/solicitudes - Respuesta recibida:', (data?.content?.length || 0), 'solicitudes');
+        console.log('📦 Datos recibidos del backend:', data?.content?.length || 0, 'solicitudes');
 
         if (data && data.content) {
           // Mapear los datos
@@ -643,7 +645,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             this.solicitudesCargadas = this.solicitudes.length;
             this.todasCargadas = true;
 
-            console.log('GET /api/solicitudes - Lista actualizada:', this.solicitudes.length, 'solicitudes (ordenadas desc por ID)');
+            console.log(`✅ ${this.solicitudes.length} solicitudes cargadas correctamente (ordenadas por ID descendente - más reciente primero)`);
 
             // Guardar en caché para futuras cargas
             this.guardarSolicitudesEnCache();
@@ -653,7 +655,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
               this.mostrarNotificacionSnackbar(`Se actualizaron ${nuevasSolicitudes.length} solicitudes`, 'info');
             }
           } else {
-            console.log('GET /api/solicitudes - Sin cambios detectados. Manteniendo datos en caché.');
+            console.log('📦 No hay cambios significativos, manteniendo datos en caché');
             // Actualizar solo el conteo
             this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
             this.todasCargadas = true;
@@ -663,20 +665,21 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             this.solicitudes = [];
             this.solicitudesFiltradas = [];
             this.totalSolicitudesBD = 0;
-            console.warn('GET /api/solicitudes - El backend no retornó datos.');
+            console.warn('⚠️ No se recibieron datos del backend');
           }
         }
         this.cargandoSolicitudes = false;
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        console.error('GET /api/solicitudes - Error al cargar:', err.message || err);
+        console.error('❌ Error al cargar solicitudes:', err);
         this.cargandoSolicitudes = false;
         this.errorCargandoSolicitudes = true;
 
+        // Si no hay caché, mostrar mensaje solo en consola
         const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
         if (!cargadoDesdeCache) {
-          console.error('GET /api/solicitudes - Sin datos en caché. No hay información disponible.');
+          console.error('❌ No hay datos disponibles. Error:', err.message);
           this.solicitudes = [];
           this.solicitudesFiltradas = [];
           this.mostrarNotificacionSnackbar('Error al cargar solicitudes', 'error');
@@ -708,14 +711,15 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // MOSTRAR NOTIFICACIÓN TIPO SNACKBAR (SIN ALERTAS)
   // ============================================================
   private mostrarNotificacionSnackbar(mensaje: string, tipo: 'success' | 'error' | 'info' = 'info'): void {
-    console.log(`[${tipo.toUpperCase()}] ${mensaje}`);
+    const icono = tipo === 'success' ? '✅' : tipo === 'error' ? '❌' : 'ℹ️';
+    console.log(`${icono} ${mensaje}`);
   }
 
   // ============================================================
   // RECARGAR SOLICITUDES (FORZADO)
   // ============================================================
   recargarSolicitudes(): void {
-    console.log('CACHE - Limpiando caché y recargando solicitudes desde el backend...');
+    console.log('🔄 Recargando todas las solicitudes...');
     localStorage.removeItem('solicitudes_desarrollo_cache');
     this.cargarSolicitudes();
   }
@@ -734,12 +738,12 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           this.totalSolicitudesBD = this.solicitudes.length;
           this.solicitudesCargadas = this.solicitudes.length;
           this.todasCargadas = true;
-          console.log('CACHE - Solicitudes restauradas desde localStorage:', this.solicitudes.length);
+          console.log(`✅ ${this.solicitudes.length} solicitudes cargadas desde caché (ordenadas por ID descendente - más reciente primero)`);
           return true;
         }
       }
     } catch (e) {
-      console.warn('CACHE - Error al leer localStorage:', e);
+      console.warn('⚠️ No se pudieron cargar desde caché:', e);
     }
     return false;
   }
@@ -753,10 +757,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         // Guardar ya ordenadas por ID descendente
         const solicitudesOrdenadas = this.ordenarSolicitudesPorId([...this.solicitudes]);
         localStorage.setItem('solicitudes_desarrollo_cache', JSON.stringify(solicitudesOrdenadas));
-        console.log('CACHE - Solicitudes guardadas en localStorage:', this.solicitudes.length);
+        console.log('💾 Solicitudes guardadas en caché (ordenadas por ID descendente)');
       }
     } catch (e) {
-      console.warn('CACHE - Error al escribir en localStorage:', e);
+      console.warn('⚠️ No se pudo guardar en caché:', e);
     }
   }
 
@@ -815,23 +819,12 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
     if (item.requerimientos && Array.isArray(item.requerimientos)) {
       item.requerimientos.forEach((req: any) => {
-        const rawImgs = req.imagenesUrls || req.imagenes || req.archivos || [];
-        const mappedImgsUrls = rawImgs.map((img: any, idx: number) => {
-          if (typeof img === 'string') return { url: img, orden: idx + 1 };
-          return { url: img.url || img.base64 || img.url_imagen || '', orden: img.orden || idx + 1 };
-        });
-
-        if (mappedImgsUrls.length > 0) {
-          tieneImagenes = true;
-        }
-
         const reqMapped: RequerimientoItem = {
           id: req.id ? String(req.id) : '',
           descripcion: req.objetivo || req.detalle || 'Sin descripción',
           detalle: req.detalle || '',
           cargoImpactado: req.cargoImpactado || '',
-          archivos: rawImgs,
-          imagenesUrls: mappedImgsUrls
+          archivos: req.imagenes || req.archivos || []
         };
 
         const tipoReq = req.tipoRequerimiento !== undefined ? req.tipoRequerimiento : req.tipo_requerimiento;
@@ -923,7 +916,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   };
 
   verDetalle(solicitud: SolicitudDesarrollo): void {
-    console.log('UI - Abriendo detalle de solicitud:', solicitud.numeroSolicitud);
+    console.log('👁️ Ver detalle de:', solicitud);
     this.solicitudSeleccionada = { ...solicitud };
     this.puedeEditarDetalle = this.vistaActual === 'bandeja';
     this.modoEdicion = false;
@@ -943,17 +936,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   verDetalleRequerimiento(req: RequerimientoItem, tipo: 'funcional' | 'noFuncional', index: number): void {
     this.requerimientoSeleccionadoModal = { ...req };
-    if (!this.requerimientoSeleccionadoModal.imagenesUrls) {
-      this.requerimientoSeleccionadoModal.imagenesUrls = [];
-    }
-    if (this.requerimientoSeleccionadoModal.archivos && this.requerimientoSeleccionadoModal.archivos.length > 0) {
-      this.requerimientoSeleccionadoModal.archivos.forEach((a: any, idx: number) => {
-        const urlVal = typeof a === 'string' ? a : (a.url || a.base64 || '');
-        if (urlVal && !this.requerimientoSeleccionadoModal!.imagenesUrls!.some(i => i.url === urlVal)) {
-          this.requerimientoSeleccionadoModal!.imagenesUrls!.push({ url: urlVal, orden: this.requerimientoSeleccionadoModal!.imagenesUrls!.length + 1 });
-        }
-      });
-    }
     this.requerimientoSeleccionadoTipo = tipo;
     this.requerimientoSeleccionadoIndex = index;
     this.modoEdicionReq = false;
@@ -1000,12 +982,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     
     // Asignar orden automáticamente
     const orden = this.requerimientoSeleccionadoModal.imagenesUrls.length + 1;
-    const urlAgregada = this.nuevaUrlImagenModal.trim();
     this.requerimientoSeleccionadoModal.imagenesUrls.push({
-      url: urlAgregada,
+      url: this.nuevaUrlImagenModal.trim(),
       orden: orden
     });
-    console.log('ADJUNTOS - URL agregada al requerimiento:', urlAgregada, '| Orden:', orden);
+    
     this.nuevaUrlImagenModal = ''; // Limpiar input
   }
 
@@ -1039,7 +1020,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   guardarCambiosDetalle(): void {
     if (!this.puedeEditarDetalle || !this.solicitudSeleccionada || !this.solicitudSeleccionada.id) {
-      console.warn('UI - Intento de guardar sin permisos o sin solicitud seleccionada.');
+      console.warn('⚠️ No hay permiso para guardar cambios en esta vista');
       return;
     }
 
@@ -1068,7 +1049,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         const observacion = `Cambio de estado desde edición: ${solicitudOriginal.estado} → ${this.estadoEditado}`;
         this.solicitudesService.cambiarEstado(this.solicitudSeleccionada.id, estadoSeleccionado.id, observacion).subscribe({
           next: () => {
-            console.log('POST /api/solicitudes/{id}/estado - Estado actualizado correctamente.');
+            console.log('✅ Estado actualizado correctamente');
             if (prioridadCambiada) {
               this.actualizarPrioridadEnServicio(this.solicitudSeleccionada!.id!, this.prioridadEditada);
             } else {
@@ -1076,9 +1057,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             }
           },
           error: (err) => {
-            console.error('POST /api/solicitudes/{id}/estado - Error al actualizar estado:', err.message || err);
+            console.error('❌ Error al actualizar estado:', err);
             if (err.error) {
-              console.error('POST /api/solicitudes/{id}/estado - Detalle del backend:', err.error);
+              console.error('❌ Detalle del backend:', err.error);
             }
             this.guardandoCambios = false;
             this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
@@ -1101,11 +1082,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   private actualizarPrioridadEnServicio(id: number, prioridad: string): void {
     this.solicitudesService.actualizarPrioridad(id, prioridad).subscribe({
       next: () => {
-        console.log('POST /api/solicitudes/{id}/prioridad - Prioridad actualizada correctamente.');
+        console.log('✅ Prioridad actualizada correctamente');
         this.finalizarGuardado();
       },
       error: (err) => {
-        console.error('POST /api/solicitudes/{id}/prioridad - Error al actualizar:', err.message || err);
+        console.error('❌ Error al actualizar prioridad:', err);
         this.guardandoCambios = false;
         this.mostrarNotificacionSnackbar('Error al actualizar la prioridad', 'error');
       }
@@ -1142,7 +1123,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     
     this.solicitudesService.eliminar(this.solicitudAEliminar.id).subscribe({
       next: () => {
-        console.log('DELETE /api/solicitudes/{id} - Solicitud eliminada correctamente.');
+        console.log('✅ Solicitud eliminada');
         this.cargarSolicitudes();
         if (this.vistaActual === 'historial') {
           this.cargarMisSolicitudes();
@@ -1152,7 +1133,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.mostrarNotificacionSnackbar('Solicitud eliminada exitosamente', 'success');
       },
       error: (err) => {
-        console.error('DELETE /api/solicitudes/{id} - Error al eliminar:', err.message || err);
+        console.error('❌ Error al eliminar:', err);
         this.mostrarNotificacionSnackbar('Error al eliminar la solicitud', 'error');
         this.mostrarModalEliminarSolicitud = false;
         this.solicitudAEliminar = null;
@@ -1174,7 +1155,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         }
       },
       error: (err) => {
-        console.error('GET /api/solicitudes/estados - Error al obtener estados:', err.message || err);
+        console.error('❌ Error al obtener estados del backend:', err);
         this.setFallbackEstados();
       }
     });
@@ -1216,7 +1197,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   guardarCambioEstado(): void {
     if (!this.solicitudSeleccionada || !this.solicitudSeleccionada.id || !this.nuevoEstadoSeleccionadoId) {
-      console.warn('UI - Cambio de estado cancelado: falta solicitud seleccionada o ID de estado.');
+      console.warn('⚠️ Faltan datos para realizar el cambio de estado');
       return;
     }
 
@@ -1224,18 +1205,18 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     const nuevoEstadoId = Number(this.nuevoEstadoSeleccionadoId);
     const observacion = this.observacionCambioEstado.trim();
 
-    console.log(`POST /api/solicitudes/${id}/estado - Cambiando a estadoId=${nuevoEstadoId}...`);
+    console.log(`🔄 Cambiando estado de solicitud ${id} a: ${nuevoEstadoId}`);
 
     this.solicitudesService.cambiarEstado(id, nuevoEstadoId, observacion).subscribe({
       next: (response) => {
-        console.log('POST /api/solicitudes/{id}/estado - Cambio exitoso:', response);
+        console.log('✅ Estado cambiado exitosamente:', response);
         this.cerrarModalCambioEstado();
         this.cerrarModalDetalle();
         this.cargarSolicitudes();
         this.mostrarNotificacionSnackbar('El estado de la solicitud ha sido actualizado correctamente', 'success');
       },
       error: (err) => {
-        console.error('POST /api/solicitudes/{id}/estado - Error:', err.message || err);
+        console.error('❌ Error al cambiar el estado de la solicitud:', err);
         let mensajeError = 'Hubo un error al intentar cambiar el estado de la solicitud.';
         if (err.error && err.error.message) {
           mensajeError += '\n' + err.error.message;
@@ -1329,7 +1310,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
     // Si no tenemos documento, usamos el correo como identificador
     if (!doc && correo) {
-      console.log('GET /api/solicitudes/mis-solicitudes/correo/{correo} - Buscando por correo:', correo);
+      console.log('🔍 Buscando mis solicitudes por correo:', correo);
       this.solicitudesService.obtenerMisSolicitudesPorCorreo(correo, 0, 100).subscribe({
         next: (data: any) => {
           if (data && data.content) {
@@ -1345,7 +1326,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         },
         error: (err: any) => {
-          console.error('GET /api/solicitudes/mis-solicitudes/correo - Error:', err.message || err);
+          console.error('❌ Error al cargar mis solicitudes por correo:', err);
           this.cargandoMisSolicitudes = false;
           this.misSolicitudes = [];
           this.mostrarNotificacionSnackbar('Error al cargar mis solicitudes', 'error');
@@ -1355,7 +1336,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log('GET /api/solicitudes/mis-solicitudes/{doc} - Buscando por documento:', doc);
+    console.log('🔍 Buscando mis solicitudes para documento:', doc);
     this.solicitudesService.obtenerMisSolicitudes(doc, 0, 100).subscribe({
       next: (data: any) => {
         if (data && data.content) {
@@ -1371,7 +1352,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-          console.error('GET /api/solicitudes/mis-solicitudes - Error:', err.message || err);
+        console.error('❌ Error al cargar mis solicitudes:', err);
         this.cargandoMisSolicitudes = false;
         this.misSolicitudes = [];
         this.mostrarNotificacionSnackbar('Error al cargar mis solicitudes', 'error');
@@ -1394,7 +1375,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('GET /api/solicitudes/{id}/historial - Error al obtener historial:', err.message || err);
+        console.error('❌ Error al obtener historial:', err);
         this.cargandoHistorial = false;
         this.mostrarNotificacionSnackbar('Error al obtener el historial de cambios', 'error');
         this.cdr.detectChanges();
@@ -1567,7 +1548,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             archivo: file,
             base64: reader.result
           });
-          console.log('ADJUNTOS - Imagen cargada localmente:', file.name, '| Total temporales:', this.archivosAdjuntosTemporales.length);
           this.cdr.detectChanges();
         };
         reader.readAsDataURL(file);
@@ -1633,26 +1613,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     const numero = lista.length + 1;
     const id = `${prefijo}_${this.padNumber(numero)}`;
 
-    const imagenesUrlsMapped = this.archivosAdjuntosTemporales.map((a: any, idx: number) => ({
-      url: typeof a === 'string' ? a : (a.base64 || a.url || ''),
-      orden: idx + 1
-    }));
-
     const nuevoReq: RequerimientoItem = {
       id: id,
       descripcion: descripcion.trim(),
       detalle: detalle?.trim() || '',
       cargoImpactado: cargo?.trim() || '',
-      archivos: [...this.archivosAdjuntosTemporales],
-      imagenesUrls: imagenesUrlsMapped,
-      tieneImagen: imagenesUrlsMapped.length > 0
+      archivos: [...this.archivosAdjuntosTemporales]
     };
-
-    if (imagenesUrlsMapped.length > 0) {
-      this.solicitudActual.tieneImagenes = true;
-    }
-
-    console.log('REQUERIMIENTO - Requerimiento agregado:', id, '| Imágenes adjuntas:', nuevoReq.imagenesUrls?.length || 0);
 
     if (tipo === 'funcional') {
       if (!this.solicitudActual.requerimientosFuncionales) {
@@ -1781,7 +1748,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // GUARDAR SOLICITUD
   // ============================================================
   guardarSolicitud(): void {
-    console.log('UI - Validando formulario y preparando payload para crear solicitud...');
+    console.log('Iniciando carga de datos...');
 
     if (!this.validarPasoGeneral()) {
       this.mostrarErroresGeneral();
@@ -1833,52 +1800,38 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       observaciones: this.formGeneral.observacion || '',
       impacto: this.impactoTexto,
       requerimientos: [
-        ...(this.solicitudActual.requerimientosFuncionales || []).map((req: RequerimientoItem) => {
-          const imgsUrls = (req.imagenesUrls && req.imagenesUrls.length > 0)
-            ? req.imagenesUrls
-            : (req.archivos || []).map((a: any, idx: number) => ({
-                url: typeof a === 'string' ? a : (a.base64 || a.url || ''),
-                orden: idx + 1
-              })).filter((a: any) => a.url);
-
-          console.log('PAYLOAD - RF', req.id, '| Imágenes enviadas al backend:', imgsUrls.length);
-
-          return {
-            tipoRequerimiento: 0,
-            objetivo: req.descripcion,
-            detalle: req.detalle || req.descripcion,
-            cargoImpactado: req.cargoImpactado || '',
-            imagenesUrls: imgsUrls
-          };
-        }),
-        ...(this.solicitudActual.requerimientosNoFuncionales || []).map((req: RequerimientoItem) => {
-          const imgsUrls = (req.imagenesUrls && req.imagenesUrls.length > 0)
-            ? req.imagenesUrls
-            : (req.archivos || []).map((a: any, idx: number) => ({
-                url: typeof a === 'string' ? a : (a.base64 || a.url || ''),
-                orden: idx + 1
-              })).filter((a: any) => a.url);
-
-          console.log('PAYLOAD - RNF', req.id, '| Imágenes enviadas al backend:', imgsUrls.length);
-
-          return {
-            tipoRequerimiento: 1,
-            objetivo: req.descripcion,
-            detalle: req.detalle || req.descripcion,
-            cargoImpactado: req.cargoImpactado || '',
-            imagenesUrls: imgsUrls
-          };
-        })
+        ...(this.solicitudActual.requerimientosFuncionales || []).map((req: RequerimientoItem) => ({
+          tipoRequerimiento: 0,
+          objetivo: req.descripcion,
+          detalle: req.detalle || req.descripcion,
+          cargoImpactado: req.cargoImpactado || '',
+          imagenes: req.archivos && req.archivos.length > 0 ? req.archivos.map((a: any) => ({
+            nombre: a.nombre,
+            tipo: a.tipo,
+            base64: a.base64
+          })) : []
+        })),
+        ...(this.solicitudActual.requerimientosNoFuncionales || []).map((req: RequerimientoItem) => ({
+          tipoRequerimiento: 1,
+          objetivo: req.descripcion,
+          detalle: req.detalle || req.descripcion,
+          cargoImpactado: req.cargoImpactado || '',
+          imagenes: req.archivos && req.archivos.length > 0 ? req.archivos.map((a: any) => ({
+            nombre: a.nombre,
+            tipo: a.tipo,
+            base64: a.base64
+          })) : []
+        }))
       ]
     };
 
-    console.log('POST /api/solicitudes - Enviando nueva solicitud:', payload);
+    console.log('📤 Enviando solicitud:', payload);
     this.guardando = true;
 
     this.solicitudesService.crearSolicitud(payload).subscribe({
       next: (response: any) => {
         this.guardando = false;
-        console.log('POST /api/solicitudes - Solicitud creada. Código:', response?.codigo, '| ID:', response?.id);
+        console.log('✅ Solicitud creada exitosamente:', response);
         this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
 
         // Enviar correo con PDF adjunto usando la ruta #265 /api/solicitudes/{id}/enviar-notificacion
@@ -1891,21 +1844,21 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         this.guardando = false;
-        console.error('POST /api/solicitudes - Error al crear solicitud:', err.message || err);
+        console.error('❌ Error al crear solicitud:', err);
         let errorMsg = 'Error al guardar la solicitud.';
         if (err.error) {
-          console.error('POST /api/solicitudes - Detalle del backend:', err.error);
+          console.error('📋 Detalles del error:', err.error);
           if (err.error.errors) {
-            console.error('POST /api/solicitudes - Errores de validación:');
+            console.error('📋 Errores de validación:');
             Object.keys(err.error.errors).forEach(key => {
-              console.error(`  Campo ${key}: ${err.error.errors[key]}`);
+              console.error(`  ${key}: ${err.error.errors[key]}`);
             });
             errorMsg = Object.values(err.error.errors).join('\n');
           } else if (err.error.message) {
             errorMsg = err.error.message;
           }
         }
-        alert(errorMsg);
+        alert(`❌ ${errorMsg}`);
         this.numeroSolicitudExito = `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
         this.mostrarModalExito = true;
         this.cargarSolicitudes();
@@ -1915,13 +1868,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   enviarNotificacionConPdf(response: any): void {
     if (!response || !response.id) return;
-    console.log('POST /api/solicitudes/' + response.id + '/enviar-notificacion - Enviando notificación de correo con PDF...');
+    console.log('📧 Solicitando al backend enviar notificación de correo con PDF para solicitud ID:', response.id);
     this.solicitudesService.enviarNotificacion(response.id, {}).subscribe({
       next: (res) => {
-        console.log('POST /api/solicitudes/{id}/enviar-notificacion - Correo enviado correctamente:', res);
+        console.log('✅ Respuesta de notificación de correo:', res);
       },
       error: (err) => {
-        console.error('POST /api/solicitudes/{id}/enviar-notificacion - Error al enviar correo:', err.message || err);
+        console.error('❌ Error al solicitar el envío de correo de la solicitud:', err);
       }
     });
   }
@@ -1950,7 +1903,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   guardarObservaciones(): void {
     if (this.solicitudSeleccionada && this.observacionesModal) {
-      console.log('UI - Guardando observaciones para solicitud:', this.solicitudSeleccionada.numeroSolicitud);
+      console.log('📝 Guardando observaciones para:', this.solicitudSeleccionada.numeroSolicitud);
+      console.log('📝 Observaciones:', this.observacionesModal);
     }
     this.cerrarModalInf();
   }
@@ -1960,7 +1914,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   generarDocumentoPDF(solicitud: SolicitudDesarrollo): jsPDF | null {
     try {
-      console.log('PDF - Generando documento para solicitud:', solicitud.numeroSolicitud);
+      console.log('📄 Generando documento PDF para:', solicitud.numeroSolicitud);
 
       const doc = new jsPDF();
 
@@ -2116,66 +2070,46 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       yPos = (doc as any).lastAutoTable.finalY + 10;
 
       // 8. ADJUNTOS / IMÁGENES
-      const todosReqs = [...(solicitud.requerimientosFuncionales || []), ...(solicitud.requerimientosNoFuncionales || [])];
-      let hasImgHeader = false;
-
-      console.log('PDF - Procesando imágenes para PDF. Solicitud:', solicitud.numeroSolicitud, '| Total Reqs:', todosReqs.length);
-
-      for (const req of todosReqs) {
-        const imagenesList: string[] = [];
-        if (req.imagenesUrls && req.imagenesUrls.length > 0) {
-          req.imagenesUrls.forEach(img => { if (img.url) imagenesList.push(img.url); });
-        }
-        if (req.archivos && req.archivos.length > 0) {
-          req.archivos.forEach(arch => {
-            const val = typeof arch === 'string' ? arch : (arch.base64 || arch.url);
-            if (val && !imagenesList.includes(val)) imagenesList.push(val);
-          });
-        }
-
-        console.log('PDF - Requerimiento:', req.id, '| Imágenes a procesar:', imagenesList.length);
-
-        if (imagenesList.length > 0) {
-          if (!hasImgHeader) {
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(0, 0, 0);
-            doc.text('IMÁGENES ADJUNTAS', 14, yPos);
-            yPos += 10;
-            hasImgHeader = true;
-          }
-
-          for (let idx = 0; idx < imagenesList.length; idx++) {
-            const imgVal = imagenesList[idx];
-            if (yPos > 230) {
-              doc.addPage();
-              yPos = 20;
+      if (solicitud.tieneImagenes) {
+        const todosReqs = [...(solicitud.requerimientosFuncionales || []), ...(solicitud.requerimientosNoFuncionales || [])];
+        let hasImg = false;
+        
+        for (const req of todosReqs) {
+          if (req.archivos && req.archivos.length > 0) {
+            if (!hasImg) {
+              doc.setFontSize(12);
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(0, 0, 0);
+              doc.text('IMÁGENES ADJUNTAS', 14, yPos);
+              yPos += 10;
+              hasImg = true;
             }
 
-            if (typeof imgVal === 'string' && imgVal.startsWith('data:image')) {
-              try {
-                const format = imgVal.includes('png') ? 'PNG' : 'JPEG';
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`Requerimiento ${req.id} - Imagen ${idx + 1}:`, 14, yPos);
-                yPos += 5;
-                doc.addImage(imgVal, format, 14, yPos, 60, 45);
-                yPos += 50;
-                console.log('PDF - Renderizada imagen Base64 exitosamente para:', req.id);
-              } catch (e) {
-                console.error('PDF - Error renderizando base64 en PDF:', e);
-                yPos += 10;
+            if (req.imagenesUrls && req.imagenesUrls.length > 0) {
+              for (const imgObj of req.imagenesUrls) {
+                try {
+                  const urlStr = imgObj.url;
+                  
+                  if (yPos > 240) {
+                    doc.addPage();
+                    yPos = 20;
+                  }
+                  
+                  doc.setFontSize(9);
+                  doc.setFont('helvetica', 'normal');
+                  doc.setTextColor(0, 0, 255); // Azul para enlaces
+                  doc.textWithLink(`[Imagen ${imgObj.orden}] Ver imagen adjunta`, 14, yPos, { url: urlStr });
+                  doc.setTextColor(0, 0, 0); // Restaurar color negro
+                  
+                  doc.setFontSize(8);
+                  doc.text(urlStr.substring(0, 100) + (urlStr.length > 100 ? '...' : ''), 14, yPos + 5);
+                  
+                  yPos += 15;
+                } catch (e) {
+                  // Comentario agregado para entender el funcionamiento
+                  console.error('Error procesando URL de imagen para PDF', e);
+                }
               }
-            } else if (typeof imgVal === 'string') {
-              doc.setFontSize(9);
-              doc.setFont('helvetica', 'normal');
-              doc.setTextColor(0, 0, 255);
-              doc.textWithLink(`[Imagen ${idx + 1} - Req ${req.id}] Ver imagen adjunta`, 14, yPos, { url: imgVal });
-              doc.setTextColor(0, 0, 0);
-              doc.setFontSize(8);
-              doc.text(imgVal.substring(0, 90) + (imgVal.length > 90 ? '...' : ''), 14, yPos + 5);
-              yPos += 15;
-              console.log('PDF - Agregado enlace de URL de imagen para:', req.id);
             }
           }
         }
@@ -2183,7 +2117,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
       return doc;
     } catch (error) {
-      console.error('PDF - Error al generar el documento:', error);
+      console.error('❌ Error al generar PDF:', error);
       return null;
     }
   }
@@ -2193,7 +2127,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     if (doc) {
       const nombreArchivo = `Solicitud_Desarrollo_${solicitud.numeroSolicitud || new Date().getTime()}.pdf`;
       doc.save(nombreArchivo);
-      console.log('PDF - Descargado exitosamente:', nombreArchivo);
+      console.log('✅ PDF descargado exitosamente:', nombreArchivo);
     } else {
       alert('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.');
     }

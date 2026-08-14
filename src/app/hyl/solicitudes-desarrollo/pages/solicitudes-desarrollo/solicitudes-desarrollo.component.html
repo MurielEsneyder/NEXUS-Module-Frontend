@@ -802,26 +802,27 @@
       
       <!-- Vista Normal -->
       <div *ngIf="!modoEdicionReq">
-        <div class="img-preview-grid" *ngIf="requerimientoSeleccionadoModal.archivos?.length">
-          <div *ngFor="let archivo of requerimientoSeleccionadoModal.archivos" class="img-preview-tile" style="cursor:default;">
-            <img *ngIf="archivo.base64" [src]="archivo.base64" [alt]="archivo.nombre" class="img-preview-thumb">
-            <span *ngIf="!archivo.base64" class="text-muted" style="padding:8px; font-size:12px;">📎 {{ archivo.nombre }}</span>
+        <div class="img-preview-grid" *ngIf="(requerimientoSeleccionadoModal.imagenesUrls?.length || requerimientoSeleccionadoModal.archivos?.length)">
+          <div *ngFor="let imagen of requerimientoSeleccionadoModal.imagenesUrls" class="img-preview-tile" style="cursor:default;">
+            <img [src]="imagen.url" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}">
+          </div>
+          <div *ngFor="let arch of requerimientoSeleccionadoModal.archivos" class="img-preview-tile" style="cursor:default;">
+            <img [src]="arch.base64 || arch.url || arch" class="img-preview-thumb" [alt]="arch.nombre || 'Imagen'">
           </div>
         </div>
-        <div *ngIf="!requerimientoSeleccionadoModal.archivos?.length" class="text-muted" style="font-size:13px; margin-top:5px;">Sin imágenes / adjuntos</div>
+        <div *ngIf="!requerimientoSeleccionadoModal.imagenesUrls?.length && !requerimientoSeleccionadoModal.archivos?.length" class="text-muted" style="font-size:13px; margin-top:5px;">Sin imágenes / adjuntos</div>
       </div>
 
       <!-- Modo Edición -->
       <div *ngIf="modoEdicionReq">
-        <input type="file" multiple accept="image/*" (change)="seleccionarArchivoModal($event)" style="display:none" #fileInputModal>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+          <input type="text" class="input-text-wizard" placeholder="URL de la imagen" [(ngModel)]="nuevaUrlImagenModal">
+          <button type="button" class="btn-principal" (click)="agregarImagenUrlModal()" style="white-space: nowrap; padding: 0 15px; border-radius: 6px;">Agregar URL</button>
+        </div>
         <div class="img-preview-grid">
-          <div *ngFor="let archivo of requerimientoSeleccionadoModal.archivos; let j = index" class="img-preview-tile">
-            <img *ngIf="archivo.base64" [src]="archivo.base64" [alt]="archivo.nombre" class="img-preview-thumb">
-            <span *ngIf="!archivo.base64" class="text-muted" style="font-size:11px; padding:4px;">📎 {{ archivo.nombre }}</span>
-            <button class="img-preview-x" (click)="eliminarImagenModal(j)" title="Eliminar imagen">✕</button>
-          </div>
-          <div class="img-preview-add" (click)="fileInputModal.click()" title="Agregar imágenes">
-            <span>+</span>
+          <div *ngFor="let imagen of requerimientoSeleccionadoModal.imagenesUrls; let j = index" class="img-preview-tile">
+            <img [src]="imagen.url" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}">
+            <button class="img-preview-x" (click)="eliminarImagenUrlModal(j)" title="Eliminar imagen">✕</button>
           </div>
         </div>
       </div>
