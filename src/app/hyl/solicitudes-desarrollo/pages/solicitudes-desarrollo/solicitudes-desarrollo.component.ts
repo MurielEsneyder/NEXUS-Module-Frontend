@@ -1978,7 +1978,25 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   // PDF - GENERAR Y DESCARGAR
   // ============================================================
-  generarDocumentoPDF(solicitud: SolicitudDesarrollo): jsPDF | null {
+  private obtenerDimensionesImagen(src: string): Promise<{ width: number; height: number }> {
+    return new Promise((resolve) => {
+      if (!src) {
+        return resolve({ width: 800, height: 600 });
+      }
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth || img.width || 800;
+        const h = img.naturalHeight || img.height || 600;
+        resolve({ width: w, height: h });
+      };
+      img.onerror = () => {
+        resolve({ width: 800, height: 600 });
+      };
+      img.src = src;
+    });
+  }
+
+  async generarDocumentoPDF(solicitud: SolicitudDesarrollo): Promise<jsPDF | null> {
     try {
       console.log('PDF - Generando documento para solicitud:', solicitud.numeroSolicitud);
 
@@ -2157,6 +2175,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
         if (imagenesList.length > 0) {
           if (!hasImgHeader) {
+            if (yPos + 25 > 270) {
+              doc.addPage();
+              yPos = 20;
+            }
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
@@ -2168,16 +2190,35 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           for (let idx = 0; idx < imagenesList.length; idx++) {
             const imgVal = imagenesList[idx];
 
-            // Si no cabe en la página actual (necesita 125mm de alto), agregar página nueva
-            if (yPos + 125 > 275) {
-              doc.addPage();
-              yPos = 20;
-            }
-
             if (typeof imgVal === 'string' && imgVal.startsWith('data:image')) {
               try {
                 const format = imgVal.includes('png') ? 'PNG' : 'JPEG';
                 
+                // Obtener dimensiones reales de la imagen
+                const dims = await this.obtenerDimensionesImagen(imgVal);
+                const aspectRatio = dims.width / dims.height;
+
+                // Definir límites de tamaño en la página A4 (ancho disponible: 182mm, alto máximo deseado: 220mm)
+                const maxAncho = 182;
+                const maxAlto = 220;
+
+                let imgAncho = maxAncho;
+                let imgAlto = imgAncho / aspectRatio;
+
+                if (imgAlto > maxAlto) {
+                  imgAlto = maxAlto;
+                  imgAncho = imgAlto * aspectRatio;
+                }
+
+                // Calcular la altura requerida para banner (13mm) + imagen (imgAlto) + margen inferior (12mm)
+                const alturaRequerida = 13 + imgAlto + 12;
+
+                // Si no cabe en la página actual (limite 270mm), agregar página nueva ANTES de dibujar banner
+                if (yPos + alturaRequerida > 270) {
+                  doc.addPage();
+                  yPos = 20;
+                }
+
                 // Banner con fondo para la cabecera de la imagen
                 doc.setFillColor(240, 244, 248);
                 doc.rect(14, yPos, 182, 9, 'F');
@@ -2187,11 +2228,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
                 doc.text(`Requerimiento ${req.id} - Imagen ${idx + 1} de ${imagenesList.length}`, 18, yPos + 6);
                 yPos += 13;
 
-                // Imagen centrada de tamaño grande (150mm de ancho x 100mm de alto)
-                const imgAncho = 150;
-                const imgAlto = 100;
-                const xCentrado = 14 + (182 - imgAncho) / 2; // ~30mm
-                
+                // Centrar imagen según su ancho calculado
+                const xCentrado = 14 + (182 - imgAncho) / 2;
+
                 doc.addImage(imgVal, format, xCentrado, yPos, imgAncho, imgAlto);
                 
                 // Marco sutil alrededor de la imagen
@@ -2199,12 +2238,16 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
                 doc.rect(xCentrado, yPos, imgAncho, imgAlto);
 
                 yPos += imgAlto + 15;
-                console.log('PDF - Renderizada imagen Base64 grande y centrada para:', req.id);
+                console.log('PDF - Renderizada imagen Base64 proporcionada y centrada para:', req.id, '| Dimensiones:', Math.round(imgAncho), 'x', Math.round(imgAlto), 'mm');
               } catch (e) {
                 console.error('PDF - Error renderizando base64 en PDF:', e);
                 yPos += 10;
               }
             } else if (typeof imgVal === 'string' && (imgVal.startsWith('http://') || imgVal.startsWith('https://'))) {
+              if (yPos + 35 > 270) {
+                doc.addPage();
+                yPos = 20;
+              }
               doc.setFillColor(240, 244, 248);
               doc.rect(14, yPos, 182, 9, 'F');
               doc.setFontSize(10);
@@ -2217,9 +2260,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
               doc.setFont('helvetica', 'normal');
               doc.setTextColor(0, 0, 255);
               doc.textWithLink(`[Ver imagen adjunta en navegador]`, 18, yPos, { url: imgVal });
-              doc.setTextColor(100, 100, 100);
-              doc.setFontSize(8);
-              doc.text(imgVal.substring(0, 110) + (imgVal.length > 110 ? '...' : ''), 18, yPos + 5);
               yPos += 18;
               console.log('PDF - Agregado enlace de URL de imagen para:', req.id);
             }
@@ -2234,8 +2274,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     }
   }
 
-  descargarSolicitudPDF(solicitud: SolicitudDesarrollo): void {
-    const doc = this.generarDocumentoPDF(solicitud);
+  async descargarSolicitudPDF(solicitud: SolicitudDesarrollo): Promise<void> {
+    const doc = await this.generarDocumentoPDF(solicitud);
     if (doc) {
       const nombreArchivo = `Solicitud_Desarrollo_${solicitud.numeroSolicitud || new Date().getTime()}.pdf`;
       doc.save(nombreArchivo);
