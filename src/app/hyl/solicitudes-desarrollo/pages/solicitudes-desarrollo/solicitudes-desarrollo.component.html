@@ -675,11 +675,10 @@
         
         <div class="imagenes-adjuntas" *ngIf="solicitudSeleccionada.tieneImagenes">
           <ng-container *ngFor="let req of (solicitudSeleccionada.requerimientosFuncionales || []).concat(solicitudSeleccionada.requerimientosNoFuncionales || [])">
-            <div *ngIf="req.archivos && req.archivos.length > 0" class="img-preview-grid" style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 5px; width: 100%;">
+            <div *ngIf="obtenerImagenesUnicas(req).length > 0" class="img-preview-grid" style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 5px; width: 100%;">
               <p style="width: 100%; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Requerimiento: {{req.id}}</p>
-              <div *ngFor="let arch of req.archivos" class="img-preview-tile" style="margin-right: 10px;">
-                <!-- Soporta el formato cuando viene del API (solo base64 string) o el objeto local -->
-                <img [src]="arch.base64 || arch.url || arch" [alt]="arch.nombre || 'Adjunto'" class="img-preview-thumb" style="max-height: 80px; width: auto; border: 1px solid #ddd; border-radius: 4px;">
+              <div *ngFor="let arch of obtenerImagenesUnicas(req)" class="img-preview-tile" style="margin-right: 10px;">
+                <img [src]="arch.url" alt="Adjunto {{arch.orden}}" class="img-preview-thumb" style="max-height: 80px; width: auto; border: 1px solid #ddd; border-radius: 4px;">
               </div>
             </div>
           </ng-container>
@@ -802,29 +801,28 @@
       
       <!-- Vista Normal -->
       <div *ngIf="!modoEdicionReq">
-        <div class="img-preview-grid" *ngIf="(requerimientoSeleccionadoModal.imagenesUrls?.length || requerimientoSeleccionadoModal.archivos?.length)">
-          <div *ngFor="let imagen of requerimientoSeleccionadoModal.imagenesUrls" class="img-preview-tile" style="cursor:default;">
+        <div class="img-preview-grid" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length">
+          <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal)" class="img-preview-tile" style="cursor:default;">
             <img [src]="imagen.url" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}">
           </div>
-          <div *ngFor="let arch of requerimientoSeleccionadoModal.archivos" class="img-preview-tile" style="cursor:default;">
-            <img [src]="arch.base64 || arch.url || arch" class="img-preview-thumb" [alt]="arch.nombre || 'Imagen'">
-          </div>
         </div>
-        <div *ngIf="!requerimientoSeleccionadoModal.imagenesUrls?.length && !requerimientoSeleccionadoModal.archivos?.length" class="text-muted" style="font-size:13px; margin-top:5px;">Sin imágenes / adjuntos</div>
+        <div *ngIf="!obtenerImagenesUnicas(requerimientoSeleccionadoModal).length" class="text-muted" style="font-size:13px; margin-top:5px;">Sin imágenes / adjuntos</div>
       </div>
 
       <!-- Modo Edición -->
       <div *ngIf="modoEdicionReq">
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-          <input type="text" class="input-text-wizard" placeholder="URL de la imagen" [(ngModel)]="nuevaUrlImagenModal">
-          <button type="button" class="btn-principal" (click)="agregarImagenUrlModal()" style="white-space: nowrap; padding: 0 15px; border-radius: 6px;">Agregar URL</button>
-        </div>
-        <div class="img-preview-grid">
-          <div *ngFor="let imagen of requerimientoSeleccionadoModal.imagenesUrls; let j = index" class="img-preview-tile">
+        <div class="img-preview-grid" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length">
+          <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal); let j = index" class="img-preview-tile">
             <img [src]="imagen.url" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}">
-            <button class="img-preview-x" (click)="eliminarImagenUrlModal(j)" title="Eliminar imagen">✕</button>
+            <button class="img-preview-x" (click)="eliminarImagenModal(j)" title="Eliminar imagen">✕</button>
           </div>
         </div>
+        <div *ngIf="!obtenerImagenesUnicas(requerimientoSeleccionadoModal).length" class="text-muted" style="font-size:13px; margin-top:5px; margin-bottom:10px;">Sin imágenes / adjuntos</div>
+        
+        <input type="file" multiple accept="image/*" (change)="seleccionarArchivoModal($event)" style="display:none" #fileInputModal>
+        <button type="button" class="btn-principal" (click)="fileInputModal.click()" style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; font-size:13px; padding: 6px 14px; border-radius: 6px;">
+          📷 Adjuntar imágenes
+        </button>
       </div>
     </div>
 

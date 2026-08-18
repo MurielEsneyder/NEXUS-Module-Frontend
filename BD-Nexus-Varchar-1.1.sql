@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS sd_requerimiento_imagen (
     orden            INTEGER      NOT NULL DEFAULT 1,
     usuario_registro VARCHAR(100) NOT NULL,
     created_at       TIMESTAMP    NOT NULL DEFAULT NOW()
-);
+); np
 
 CREATE INDEX IF NOT EXISTS idx_sd_reqi_req ON sd_requerimiento_imagen(requerimiento_id);
 

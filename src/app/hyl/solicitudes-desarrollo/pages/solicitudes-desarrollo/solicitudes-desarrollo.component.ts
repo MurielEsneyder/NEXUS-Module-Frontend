@@ -938,22 +938,42 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.modoEdicion = false;
   }
 
+  obtenerImagenesUnicas(req: any): { url: string, orden: number }[] {
+    if (!req) return [];
+    const imagenes: { url: string, orden: number }[] = [];
+    const vistas = new Set<string>();
+
+    const procesarLista = (lista: any[]) => {
+      if (!lista || !Array.isArray(lista)) return;
+      lista.forEach((item: any) => {
+        let urlVal = '';
+        if (typeof item === 'string') {
+          urlVal = item;
+        } else if (item && typeof item === 'object') {
+          urlVal = item.url || item.base64 || item.url_imagen || '';
+        }
+        if (urlVal && !vistas.has(urlVal)) {
+          vistas.add(urlVal);
+          imagenes.push({
+            url: urlVal,
+            orden: item.orden || (imagenes.length + 1)
+          });
+        }
+      });
+    };
+
+    procesarLista(req.imagenesUrls);
+    procesarLista(req.archivos);
+    procesarLista(req.imagenes);
+
+    return imagenes;
+  }
+
   // ============================================================
   // MODO DETALLE DE REQUERIMIENTO
   // ============================================================
   verDetalleRequerimiento(req: RequerimientoItem, tipo: 'funcional' | 'noFuncional', index: number): void {
     this.requerimientoSeleccionadoModal = { ...req };
-    if (!this.requerimientoSeleccionadoModal.imagenesUrls) {
-      this.requerimientoSeleccionadoModal.imagenesUrls = [];
-    }
-    if (this.requerimientoSeleccionadoModal.archivos && this.requerimientoSeleccionadoModal.archivos.length > 0) {
-      this.requerimientoSeleccionadoModal.archivos.forEach((a: any, idx: number) => {
-        const urlVal = typeof a === 'string' ? a : (a.url || a.base64 || '');
-        if (urlVal && !this.requerimientoSeleccionadoModal!.imagenesUrls!.some(i => i.url === urlVal)) {
-          this.requerimientoSeleccionadoModal!.imagenesUrls!.push({ url: urlVal, orden: this.requerimientoSeleccionadoModal!.imagenesUrls!.length + 1 });
-        }
-      });
-    }
     this.requerimientoSeleccionadoTipo = tipo;
     this.requerimientoSeleccionadoIndex = index;
     this.modoEdicionReq = false;
@@ -2147,7 +2167,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
           for (let idx = 0; idx < imagenesList.length; idx++) {
             const imgVal = imagenesList[idx];
-            if (yPos > 230) {
+
+            // Si no cabe en la página actual (necesita 125mm de alto), agregar página nueva
+            if (yPos + 125 > 275) {
               doc.addPage();
               yPos = 20;
             }
@@ -2155,26 +2177,50 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             if (typeof imgVal === 'string' && imgVal.startsWith('data:image')) {
               try {
                 const format = imgVal.includes('png') ? 'PNG' : 'JPEG';
-                doc.setFontSize(9);
+                
+                // Banner con fondo para la cabecera de la imagen
+                doc.setFillColor(240, 244, 248);
+                doc.rect(14, yPos, 182, 9, 'F');
+                doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
-                doc.text(`Requerimiento ${req.id} - Imagen ${idx + 1}:`, 14, yPos);
-                yPos += 5;
-                doc.addImage(imgVal, format, 14, yPos, 60, 45);
-                yPos += 50;
-                console.log('PDF - Renderizada imagen Base64 exitosamente para:', req.id);
+                doc.setTextColor(59, 175, 182);
+                doc.text(`Requerimiento ${req.id} - Imagen ${idx + 1} de ${imagenesList.length}`, 18, yPos + 6);
+                yPos += 13;
+
+                // Imagen centrada de tamaño grande (150mm de ancho x 100mm de alto)
+                const imgAncho = 150;
+                const imgAlto = 100;
+                const xCentrado = 14 + (182 - imgAncho) / 2; // ~30mm
+                
+                doc.addImage(imgVal, format, xCentrado, yPos, imgAncho, imgAlto);
+                
+                // Marco sutil alrededor de la imagen
+                doc.setDrawColor(210, 215, 220);
+                doc.rect(xCentrado, yPos, imgAncho, imgAlto);
+
+                yPos += imgAlto + 15;
+                console.log('PDF - Renderizada imagen Base64 grande y centrada para:', req.id);
               } catch (e) {
                 console.error('PDF - Error renderizando base64 en PDF:', e);
                 yPos += 10;
               }
-            } else if (typeof imgVal === 'string') {
+            } else if (typeof imgVal === 'string' && (imgVal.startsWith('http://') || imgVal.startsWith('https://'))) {
+              doc.setFillColor(240, 244, 248);
+              doc.rect(14, yPos, 182, 9, 'F');
+              doc.setFontSize(10);
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(59, 175, 182);
+              doc.text(`Requerimiento ${req.id} - Imagen ${idx + 1}`, 18, yPos + 6);
+              yPos += 13;
+
               doc.setFontSize(9);
               doc.setFont('helvetica', 'normal');
               doc.setTextColor(0, 0, 255);
-              doc.textWithLink(`[Imagen ${idx + 1} - Req ${req.id}] Ver imagen adjunta`, 14, yPos, { url: imgVal });
-              doc.setTextColor(0, 0, 0);
+              doc.textWithLink(`[Ver imagen adjunta en navegador]`, 18, yPos, { url: imgVal });
+              doc.setTextColor(100, 100, 100);
               doc.setFontSize(8);
-              doc.text(imgVal.substring(0, 90) + (imgVal.length > 90 ? '...' : ''), 14, yPos + 5);
-              yPos += 15;
+              doc.text(imgVal.substring(0, 110) + (imgVal.length > 110 ? '...' : ''), 18, yPos + 5);
+              yPos += 18;
               console.log('PDF - Agregado enlace de URL de imagen para:', req.id);
             }
           }
