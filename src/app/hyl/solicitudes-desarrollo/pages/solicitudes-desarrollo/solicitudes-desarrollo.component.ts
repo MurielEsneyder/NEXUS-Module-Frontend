@@ -815,22 +815,86 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       );
     }
 
-    let areaNombre = 'Área no definida';
+    // Resolver Área
+    let areaNombre = 'No especificada';
     if (item.area && item.area.nombre) {
       areaNombre = item.area.nombre;
     } else if (item.areaNombre) {
       areaNombre = item.areaNombre;
     } else if (item.areaId) {
-      const foundInAreas = (this.areas || []).find((a: any) => Number(a.id) === Number(item.areaId));
+      const areaIdNum = Number(item.areaId);
+      const foundInAreas = (this.areas || []).find((a: any) => Number(a.id) === areaIdNum);
       if (foundInAreas && foundInAreas.nombre) {
         areaNombre = foundInAreas.nombre;
-      } else if (this.areaMap[item.areaId]) {
-        areaNombre = this.areaMap[item.areaId];
+      } else if (this.areaMap && this.areaMap[areaIdNum]) {
+        areaNombre = this.areaMap[areaIdNum];
       } else {
-        areaNombre = `Área #${item.areaId}`;
+        const defaultAreaMap: { [key: number]: string } = {
+          44: 'Transformación Digital',
+          45: 'Servicios de Salud Financiera',
+          46: 'Gestión Documental',
+          47: 'Talento Humano',
+          48: 'Desarrollo Organizacional',
+          1: 'Transformación Digital',
+          2: 'Servicios de Salud Financiera',
+          3: 'Gestión Documental',
+          4: 'Talento Humano',
+          5: 'Desarrollo Organizacional'
+        };
+        areaNombre = defaultAreaMap[areaIdNum] || `Área #${areaIdNum}`;
       }
     } else if (item.solicitudProceso) {
       areaNombre = item.solicitudProceso;
+    }
+
+    // Resolver Proceso Solicitante
+    let procesoNombre = 'No especificado';
+    if (item.proceso && item.proceso.nombre) {
+      procesoNombre = item.proceso.nombre;
+    } else if (item.procesoNombre) {
+      procesoNombre = item.procesoNombre;
+    } else if (item.procesoId) {
+      const procesoIdNum = Number(item.procesoId);
+      const foundProceso = (this.procesosSolicitante || []).find((p: any) => Number(p.id) === procesoIdNum);
+      if (foundProceso && foundProceso.nombre) {
+        procesoNombre = foundProceso.nombre;
+      } else {
+        const defaultProcesoMap: { [key: number]: string } = {
+          40: 'Desarrollo Tecnológico',
+          41: 'Gestión Documental',
+          42: 'Contabilidad',
+          43: 'Talento Humano',
+          1: 'Desarrollo Tecnológico',
+          2: 'Gestión Documental',
+          3: 'Contabilidad',
+          4: 'Talento Humano'
+        };
+        procesoNombre = defaultProcesoMap[procesoIdNum] || `Proceso #${procesoIdNum}`;
+      }
+    }
+
+    // Resolver Vicepresidencia / Macroproceso
+    let vicepresidenciaNombre = 'No especificada';
+    if (item.macroproceso && item.macroproceso.nombre) {
+      vicepresidenciaNombre = item.macroproceso.nombre;
+    } else if (item.vicepresidenciaNombre) {
+      vicepresidenciaNombre = item.vicepresidenciaNombre;
+    } else if (item.macroprocesoId) {
+      const macroIdNum = Number(item.macroprocesoId);
+      const foundVice = (this.vicepresidencias || []).find((v: any) => Number(v.id) === macroIdNum);
+      if (foundVice && foundVice.nombre) {
+        vicepresidenciaNombre = foundVice.nombre;
+      } else {
+        const defaultViceMap: { [key: number]: string } = {
+          49: 'Vicepresidencia de Salud',
+          50: 'Vicepresidencia Administrativa',
+          51: 'Vicepresidencia Financiera',
+          1: 'Vicepresidencia de Salud',
+          2: 'Vicepresidencia Administrativa',
+          3: 'Vicepresidencia Financiera'
+        };
+        vicepresidenciaNombre = defaultViceMap[macroIdNum] || `Vicepresidencia #${macroIdNum}`;
+      }
     }
 
     const reqFuncionales: RequerimientoItem[] = [];
@@ -874,9 +938,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       });
     }
 
-    const procesoNombre = item.proceso?.nombre || item.procesoNombre || 'No especificado';
-    const vicepresidenciaNombre = item.macroproceso?.nombre || item.vicepresidenciaNombre || 'No especificada';
-
     return {
       id: item.id,
       numeroSolicitud: item.codigo,
@@ -885,7 +946,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       area: areaNombre,
       estado: (item.estado?.nombre || 'Pendiente').toUpperCase(),
       tipo: item.tipoSolicitud?.nombre || 'N/A',
-      fechaCreacion: new Date(item.fechaCreacion),
+      fechaCreacion: item.createdAt ? new Date(item.createdAt) : (item.fechaCreacion ? new Date(item.fechaCreacion) : new Date()),
       prioridad: this.extraerPrioridad(item),
       coordinador: 'Coordinador Asignado',
       funcionalAsignado: 'Funcional Asignado',
@@ -1582,18 +1643,60 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   // MÉTODOS DE MAPEO DE IDs
   // ============================================================
+  abrirImagenCompleta(url: string): void {
+    if (!url) return;
+    if (url.startsWith('data:')) {
+      try {
+        const win = window.open();
+        if (win) {
+          win.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Vista Previa de Imagen</title>
+                <style>
+                  body { margin: 0; background: #0e171e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; }
+                  img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+                </style>
+              </head>
+              <body>
+                <img src="${url}" alt="Imagen Completa" />
+              </body>
+            </html>
+          `);
+          win.document.close();
+        }
+      } catch (e) {
+        console.error('Error al abrir la imagen base64:', e);
+      }
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+
   private mapearProcesoId(procesoNombre: string): number {
+    if (!procesoNombre) return 40;
+    const nombreClean = procesoNombre.toLowerCase().trim();
+
+    const found = (this.procesosSolicitante || []).find((p: any) =>
+      (p.nombre && p.nombre.toLowerCase().trim() === nombreClean) ||
+      (typeof p === 'string' && p.toLowerCase().trim() === nombreClean)
+    );
+    if (found && found.id) return Number(found.id);
+
     const map: { [key: string]: number } = {
-      'Desarrollo Tecnológico': 1,
-      'Gestión Documental': 2,
-      'Contabilidad': 3,
-      'Talento Humano': 4
+      'desarrollo tecnológico': 40,
+      'desarrollo tecnologico': 40,
+      'gestión documental': 41,
+      'gestion documental': 41,
+      'contabilidad': 42,
+      'talento humano': 43
     };
-    return map[procesoNombre] || 1;
+    return map[nombreClean] || 40;
   }
 
   private mapearAreaId(areaNombre: string): number {
-    if (!areaNombre) return 1;
+    if (!areaNombre) return 44;
     const nombreClean = areaNombre.toLowerCase().trim();
 
     const areaObj = (this.areas || []).find((a: any) =>
@@ -1602,22 +1705,33 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     if (areaObj && areaObj.id) return Number(areaObj.id);
 
     const map: { [key: string]: number } = {
-      'transformación digital': 1,
-      'servicios de salud financiera': 2,
-      'gestión documental': 3,
-      'talento humano': 4,
-      'desarrollo organizacional': 5
+      'transformación digital': 44,
+      'transformacion digital': 44,
+      'servicios de salud financiera': 45,
+      'gestión documental': 46,
+      'gestion documental': 46,
+      'talento humano': 47,
+      'desarrollo organizacional': 48
     };
-    return map[nombreClean] || 1;
+    return map[nombreClean] || 44;
   }
 
   private mapearMacroprocesoId(vicepresidenciaNombre: string): number {
+    if (!vicepresidenciaNombre) return 49;
+    const nombreClean = vicepresidenciaNombre.toLowerCase().trim();
+
+    const found = (this.vicepresidencias || []).find((v: any) =>
+      (v.nombre && v.nombre.toLowerCase().trim() === nombreClean) ||
+      (typeof v === 'string' && v.toLowerCase().trim() === nombreClean)
+    );
+    if (found && found.id) return Number(found.id);
+
     const map: { [key: string]: number } = {
-      'Vicepresidencia de Salud': 1,
-      'Vicepresidencia Administrativa': 2,
-      'Vicepresidencia Financiera': 3
+      'vicepresidencia de salud': 49,
+      'vicepresidencia administrativa': 50,
+      'vicepresidencia financiera': 51
     };
-    return map[vicepresidenciaNombre] || 1;
+    return map[nombreClean] || 49;
   }
 
   // ============================================================
