@@ -570,8 +570,7 @@
   width: 700px;
   max-width: 92vw;
   max-height: 90vh;
-  /* overflow-y: auto; */
-  overflow-y: hidden;
+  overflow-y: auto;
   animation: modalSlideIn 0.3s ease-out;
 }
 
@@ -593,9 +592,11 @@
 
 /* Botón cerrar (X) */
 .btn-cerrar-modal {
-  position: absolute;
+  position: sticky;
   top: 12px;
-  right: 16px;
+  float: right;
+  margin-right: -20px;
+  margin-top: -20px;
   background: #e74c3c;
   color: white;
   border: none;
