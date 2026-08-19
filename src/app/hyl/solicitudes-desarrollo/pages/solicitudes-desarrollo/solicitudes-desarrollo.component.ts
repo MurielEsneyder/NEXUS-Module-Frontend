@@ -1058,22 +1058,24 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // GUARDAR CAMBIOS DEL MODAL
   // ============================================================
   guardarCambiosDetalle(): void {
-    if (!this.puedeEditarDetalle || !this.solicitudSeleccionada || !this.solicitudSeleccionada.id) {
-      console.warn('UI - Intento de guardar sin permisos o sin solicitud seleccionada.');
+    if (!this.solicitudSeleccionada || !this.solicitudSeleccionada.id) {
+      console.warn('UI - Intento de guardar sin solicitud seleccionada.');
       return;
     }
 
     this.guardandoCambios = true;
-    const solicitudOriginal = this.solicitudes.find(s => s.id === this.solicitudSeleccionada!.id);
+    const targetId = this.solicitudSeleccionada.id;
+    const solicitudOriginal = this.solicitudes.find(s => s.id === targetId) ||
+                              this.misSolicitudes.find(s => s.id === targetId) ||
+                              this.solicitudSeleccionada;
 
-    if (!solicitudOriginal) {
-      this.guardandoCambios = false;
-      this.mostrarNotificacionSnackbar('No se encontró la solicitud en la lista', 'error');
-      return;
-    }
+    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase();
+    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase();
+    const estadoCambiado = estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== (solicitudOriginal.estado || '').toLowerCase();
 
-    const estadoCambiado = this.estadoEditado !== solicitudOriginal.estado;
-    const prioridadCambiada = this.prioridadEditada !== solicitudOriginal.prioridad;
+    const prioridadOriginalStr = (solicitudOriginal.prioridad || 'media').toLowerCase();
+    const prioridadNuevaStr = (this.prioridadEditada || 'media').toLowerCase();
+    const prioridadCambiada = prioridadNuevaStr !== prioridadOriginalStr;
 
     if (!estadoCambiado && !prioridadCambiada) {
       this.guardandoCambios = false;
@@ -1083,36 +1085,37 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     }
 
     if (estadoCambiado) {
-      const estadoSeleccionado = this.estadosList.find(e => e.nombre === this.estadoEditado);
+      const estadoSeleccionado = this.estadosList.find(e => e.nombre.toLowerCase() === estadoNuevoStr);
       if (estadoSeleccionado) {
         const observacion = `Cambio de estado desde edición: ${solicitudOriginal.estado} → ${this.estadoEditado}`;
-        this.solicitudesService.cambiarEstado(this.solicitudSeleccionada.id, estadoSeleccionado.id, observacion).subscribe({
+        this.solicitudesService.cambiarEstado(targetId, estadoSeleccionado.id, observacion).subscribe({
           next: () => {
             console.log('POST /api/solicitudes/{id}/estado - Estado actualizado correctamente.');
             if (prioridadCambiada) {
-              this.actualizarPrioridadEnServicio(this.solicitudSeleccionada!.id!, this.prioridadEditada);
+              this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
             } else {
               this.finalizarGuardado();
             }
           },
           error: (err) => {
             console.error('POST /api/solicitudes/{id}/estado - Error al actualizar estado:', err.message || err);
-            if (err.error) {
-              console.error('POST /api/solicitudes/{id}/estado - Detalle del backend:', err.error);
+            if (prioridadCambiada) {
+              this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
+            } else {
+              this.guardandoCambios = false;
+              this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
             }
-            this.guardandoCambios = false;
-            this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
           }
         });
       } else {
         if (prioridadCambiada) {
-          this.actualizarPrioridadEnServicio(this.solicitudSeleccionada.id!, this.prioridadEditada);
+          this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
         } else {
           this.finalizarGuardado();
         }
       }
     } else if (prioridadCambiada) {
-      this.actualizarPrioridadEnServicio(this.solicitudSeleccionada.id!, this.prioridadEditada);
+      this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
     } else {
       this.finalizarGuardado();
     }
@@ -1136,6 +1139,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.guardandoCambios = false;
     this.modoEdicion = false;
     this.cargarSolicitudes();
+    this.cargarMisSolicitudes();
     this.mostrarNotificacionSnackbar('Cambios guardados exitosamente', 'success');
 
     if (this.solicitudSeleccionada) {
@@ -2275,6 +2279,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   async descargarSolicitudPDF(solicitud: SolicitudDesarrollo): Promise<void> {
+    if (solicitud && solicitud.id) {
+      this.descargarPdfBackend(solicitud.id);
+      return;
+    }
     const doc = await this.generarDocumentoPDF(solicitud);
     if (doc) {
       const nombreArchivo = `Solicitud_Desarrollo_${solicitud.numeroSolicitud || new Date().getTime()}.pdf`;

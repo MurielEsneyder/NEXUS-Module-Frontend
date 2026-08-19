@@ -545,6 +545,9 @@
         <span *ngIf="!modoEdicion">✏️ Editar</span>
         <span *ngIf="modoEdicion">👁️ Ver</span>
       </button>
+      <button *ngIf="solicitudSeleccionada?.id" class="btn-ver-pdf-modal" (click)="verPdfBackend(solicitudSeleccionada.id)" style="margin-left: 8px; background: #3bafb6; color: #ffffff; border: none; border-radius: 6px; padding: 6px 14px; font-weight: bold; cursor: pointer;" title="Visualizar PDF oficial con la estructura TDI-DT-F-08">
+        📄 Ver PDF Oficial
+      </button>
       <span *ngIf="!puedeEditarDetalle" class="modo-indicador">🔒 Solo lectura</span>
       <span class="modo-indicador" *ngIf="modoEdicion && puedeEditarDetalle" class="modo-edicion-activo">✏️ Modo Edición</span>
     </div>
