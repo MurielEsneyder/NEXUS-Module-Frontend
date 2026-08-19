@@ -423,6 +423,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.solicitudesService.obtenerAreas().subscribe({
       next: (data) => {
         this.areas = (data && data.length > 0) ? data : this.getFallbackAreas();
+        if (this.areas && Array.isArray(this.areas)) {
+          this.areas.forEach((a: any) => {
+            if (a.id && a.nombre) {
+              this.areaMap[a.id] = a.nombre;
+            }
+          });
+        }
       },
       error: (err) => {
         console.warn('GET /api/solicitudes/areas - Backend no disponible (status ' + err.status + '). Usando datos locales.');
@@ -808,7 +815,23 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       );
     }
 
-    const areaNombre = this.areaMap[item.areaId] || 'Área no definida';
+    let areaNombre = 'Área no definida';
+    if (item.area && item.area.nombre) {
+      areaNombre = item.area.nombre;
+    } else if (item.areaNombre) {
+      areaNombre = item.areaNombre;
+    } else if (item.areaId) {
+      const foundInAreas = (this.areas || []).find((a: any) => Number(a.id) === Number(item.areaId));
+      if (foundInAreas && foundInAreas.nombre) {
+        areaNombre = foundInAreas.nombre;
+      } else if (this.areaMap[item.areaId]) {
+        areaNombre = this.areaMap[item.areaId];
+      } else {
+        areaNombre = `Área #${item.areaId}`;
+      }
+    } else if (item.solicitudProceso) {
+      areaNombre = item.solicitudProceso;
+    }
 
     const reqFuncionales: RequerimientoItem[] = [];
     const reqNoFuncionales: RequerimientoItem[] = [];
@@ -1433,6 +1456,25 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================
+  // MODAL ALERTA DE MENSAJE CUSTOM
+  // ============================================================
+  mostrarModalAlertaMensaje: boolean = false;
+  tituloAlertaMensaje: string = 'Atención';
+  mensajeAlertaMensaje: string = '';
+  iconoAlertaMensaje: string = 'ℹ️';
+
+  mostrarAlerta(mensaje: string, titulo: string = 'Atención', icono: string = 'ℹ️'): void {
+    this.tituloAlertaMensaje = titulo;
+    this.mensajeAlertaMensaje = mensaje;
+    this.iconoAlertaMensaje = icono;
+    this.mostrarModalAlertaMensaje = true;
+  }
+
+  cerrarModalAlertaMensaje(): void {
+    this.mostrarModalAlertaMensaje = false;
+  }
+
+  // ============================================================
   // NAVEGACIÓN ENTRE PASOS DEL WIZARD
   // ============================================================
   irPaso(paso: number): void {
@@ -1456,13 +1498,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         break;
       case 3:
         if (!this.validarRequerimientosFuncionales()) {
-          alert('⚠️ Debe agregar al menos un requerimiento funcional.');
+          this.mostrarAlerta('Debe agregar al menos un requerimiento funcional.', 'Campo Requerido', '⚠️');
           return;
         }
         break;
       case 4:
         if (!this.validarRequerimientosNoFuncionales()) {
-          alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
+          this.mostrarAlerta('Debe agregar al menos un requerimiento no funcional.', 'Campo Requerido', '⚠️');
           return;
         }
         break;
@@ -1476,19 +1518,19 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   avanzarDesdeGeneral(): void {
-    if (this.validarPasoGeneral()) {
-      this.pasoActivo = 2;
-    } else {
+    if (!this.validarPasoGeneral()) {
       this.mostrarErroresGeneral();
+      return;
     }
+    this.pasoActivo = 2;
   }
 
   avanzarDesdeImpacto(): void {
-    if (this.validarImpacto()) {
-      this.pasoActivo = 3;
-    } else {
+    if (!this.validarImpacto()) {
       this.errorImpacto = true;
+      return;
     }
+    this.pasoActivo = 3;
   }
 
   // ============================================================
@@ -1508,14 +1550,14 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   private mostrarErroresGeneral(): void {
-    let mensaje = '⚠️ Por favor complete los siguientes campos:\n';
+    let mensaje = 'Por favor complete los siguientes campos requeridos:\n';
     if (this.erroresGeneral.solicitudProceso) mensaje += '• Solicitud del proceso\n';
     if (this.erroresGeneral.proceso) mensaje += '• Proceso solicitante\n';
     if (this.erroresGeneral.area) mensaje += '• Área\n';
     if (this.erroresGeneral.vicepresidencia) mensaje += '• Vicepresidencia\n';
     if (this.erroresGeneral.tipoSolicitud) mensaje += '• Tipo de solicitud\n';
     if (this.erroresGeneral.prioridad) mensaje += '• Prioridad\n';
-    alert(mensaje);
+    this.mostrarAlerta(mensaje, 'Campos Incompletos', '⚠️');
   }
 
   private validarImpacto(): boolean {
@@ -1551,14 +1593,22 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   private mapearAreaId(areaNombre: string): number {
+    if (!areaNombre) return 1;
+    const nombreClean = areaNombre.toLowerCase().trim();
+
+    const areaObj = (this.areas || []).find((a: any) =>
+      a.nombre && a.nombre.toLowerCase().trim() === nombreClean
+    );
+    if (areaObj && areaObj.id) return Number(areaObj.id);
+
     const map: { [key: string]: number } = {
-      'Transformación Digital': 1,
-      'Servicios de salud financiera': 2,
-      'Gestión Documental': 3,
-      'Talento Humano': 4,
-      'Desarrollo Organizacional': 5
+      'transformación digital': 1,
+      'servicios de salud financiera': 2,
+      'gestión documental': 3,
+      'talento humano': 4,
+      'desarrollo organizacional': 5
     };
-    return map[areaNombre] || 1;
+    return map[nombreClean] || 1;
   }
 
   private mapearMacroprocesoId(vicepresidenciaNombre: string): number {
@@ -1735,7 +1785,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   verAdjunto(req: RequerimientoItem): void {
     if (!req.archivos || req.archivos.length === 0) {
-      alert('Este requerimiento no tiene archivos adjuntos.');
+      this.mostrarAlerta('Este requerimiento no tiene archivos adjuntos.', 'Sin Archivos', '📄');
       return;
     }
     const archivo = req.archivos[0];
@@ -1749,7 +1799,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       const blobUrl = URL.createObjectURL(blob);
       window.open(blobUrl, '_blank');
     } else {
-      alert('No se puede abrir el archivo. Intente descargándolo nuevamente.');
+      this.mostrarAlerta('No se puede abrir el archivo. Intente descargándolo nuevamente.', 'Error de Archivo', '⚠️');
     }
   }
 
@@ -1814,19 +1864,19 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
     if (!this.validarImpacto()) {
       this.errorImpacto = true;
-      alert('⚠️ Debe describir el impacto (mínimo 10 caracteres).');
+      this.mostrarAlerta('Debe describir el impacto (mínimo 10 caracteres).', 'Campo Requerido', '⚠️');
       this.pasoActivo = 2;
       return;
     }
 
     if (!this.validarRequerimientosFuncionales()) {
-      alert('⚠️ Debe agregar al menos un requerimiento funcional.');
+      this.mostrarAlerta('Debe agregar al menos un requerimiento funcional.', 'Campo Requerido', '⚠️');
       this.pasoActivo = 3;
       return;
     }
 
     if (!this.validarRequerimientosNoFuncionales()) {
-      alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
+      this.mostrarAlerta('Debe agregar al menos un requerimiento no funcional.', 'Campo Requerido', '⚠️');
       this.pasoActivo = 4;
       return;
     }
@@ -1929,10 +1979,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             errorMsg = err.error.message;
           }
         }
-        alert(errorMsg);
-        this.numeroSolicitudExito = `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
-        this.mostrarModalExito = true;
-        this.cargarSolicitudes();
+        this.mostrarAlerta(errorMsg, 'Error al Guardar Solicitud', '⚠️');
       }
     });
   }
@@ -2289,7 +2336,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       doc.save(nombreArchivo);
       console.log('PDF - Descargado exitosamente:', nombreArchivo);
     } else {
-      alert('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.');
+      this.mostrarAlerta('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.', 'Error en PDF', '❌');
     }
   }
 

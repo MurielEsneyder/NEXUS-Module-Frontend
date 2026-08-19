@@ -736,6 +736,19 @@
   </div>
 </div>
 
+<!-- Modal Alerta Mensaje General -->
+<div class="overlay-modal overlay-alerta" *ngIf="mostrarModalAlertaMensaje" (click)="cerrarModalAlertaMensaje()"></div>
+<div class="modal-alerta modal-alerta-mensaje" *ngIf="mostrarModalAlertaMensaje">
+  <div class="modal-alerta-contenido">
+    <div class="icono-alerta-custom">{{ iconoAlertaMensaje || 'ℹ️' }}</div>
+    <h3>{{ tituloAlertaMensaje || 'Atención' }}</h3>
+    <p style="white-space: pre-line; margin-top: 8px;">{{ mensajeAlertaMensaje }}</p>
+    <div class="modal-alerta-botones" style="margin-top: 16px;">
+      <button class="btn-alerta-aceptar" (click)="cerrarModalAlertaMensaje()">Aceptar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Éxito -->
 <div class="overlay-modal" *ngIf="mostrarModalExito" (click)="cerrarModalExito()"></div>
 <div class="modal-exito" *ngIf="mostrarModalExito">
