@@ -2,21 +2,21 @@
    VARIABLES GENERALES
    ============================================================ */
 :host {
-  --primary-dark: #0f6b6c;
-  --primary-blue: #2b8f93;
-  --primary-light: #5fb4b1;
-  --accent-gold: #7ba7a3;
-  --btn-blue: #2b8f93;
-  --btn-green: #4f9b8d;
-  --btn-verde-light: #7eb8b1;
-  --bg-light: #eef7f6;
-  --text-dark: #255b5d;
-  --text-medium: #4f6f70;
-  --text-light: #6f8788;
+  --primary-dark: #00767c;
+  --primary-blue: #3bafb6;
+  --primary-light: #76c7cb;
+  --accent-gold: #3bafb6;
+  --btn-blue: #3bafb6;
+  --btn-green: #3bafb6;
+  --btn-verde-light: #bde5e7;
+  --bg-light: #f4f6f8;
+  --text-dark: #1a252c;
+  --text-medium: #4a5568;
+  --text-light: #718096;
   --white: #ffffff;
-  --shadow: 0 2px 8px rgba(15, 107, 108, 0.08);
-  --border-soft: #dce8e7;
-  --border-radius: 1px;
+  --shadow: 0 2px 8px rgba(0, 118, 124, 0.1);
+  --border-soft: #dcdcdc;
+  --border-radius: 4px;
 }
 
 .container {
@@ -499,9 +499,20 @@
   background: #eef3f5;
 }
 
+.btn-ver {
+  background: #e6f7f8;
+  color: #00767c;
+  border: 1px solid #bde5e7;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
 .btn-ver:hover { 
-  background: #e3f2fd; 
-  color: #0d47a1;
+  background: #3bafb6; 
+  color: #ffffff;
+  border-color: #3bafb6;
+  transform: scale(1.08);
+  box-shadow: 0 3px 8px rgba(59, 175, 182, 0.3);
 }
 
 .btn-eliminar:hover { 
@@ -567,8 +578,8 @@
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 9999;
-  width: 700px;
-  max-width: 92vw;
+  width: 820px;
+  max-width: 94vw;
   max-height: 90vh;
   overflow-y: auto;
   animation: modalSlideIn 0.3s ease-out;
@@ -580,6 +591,8 @@
   padding: 32px 36px;
   box-shadow: 0 8px 50px rgba(0, 0, 0, 0.3);
   position: relative;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal-detalle-contenido h3 {
@@ -697,7 +710,7 @@
 
 .btn-toggle-edicion {
   padding: 6px 18px;
-  background: #1565C0;
+  background: #3bafb6;
   color: white;
   border: none;
   border-radius: 6px;
@@ -708,17 +721,19 @@
 }
 
 .btn-toggle-edicion:hover {
-  background: #0d47a1;
+  background: #00767c;
   transform: scale(1.02);
+  box-shadow: 0 3px 8px rgba(0, 118, 124, 0.25);
 }
 
 .modo-indicador {
   font-size: 13px;
   font-weight: 600;
-  color: #1565C0;
+  color: #00767c;
   padding: 4px 14px;
-  background: #e3f2fd;
+  background: #e6f7f8;
   border-radius: 20px;
+  border: 1px solid #bde5e7;
 }
 
 .modo-edicion-activo {
@@ -842,6 +857,29 @@
   background: #c0392b;
 }
 
+.btn-alerta-aceptar {
+  padding: 10px 36px;
+  background: #3bafb6;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-alerta-aceptar:hover {
+  background: #00767c;
+  box-shadow: 0 4px 12px rgba(0, 118, 124, 0.25);
+}
+
+.icono-alerta-custom {
+  font-size: 42px;
+  margin-bottom: 10px;
+  display: block;
+}
+
 /* ============================================================
    MODAL DE ÉXITO
    ============================================================ */
@@ -907,17 +945,17 @@
 }
 
 .exito-numero-container {
-  background-color: #f7fafc;
+  background-color: #e6f7f8;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
-  border: 2px dashed #48bb78;
+  border: 2px dashed #3bafb6;
 }
 
 .exito-numero-label {
   display: block;
   font-size: 14px;
-  color: #4a5568;
+  color: #00767c;
   margin-bottom: 4px;
 }
 
@@ -925,12 +963,12 @@
   display: block;
   font-size: 28px;
   font-weight: 700;
-  color: #2f855a;
+  color: #00767c;
   letter-spacing: 1px;
 }
 
 .btn-exito-aceptar {
-  background-color: #48bb78;
+  background-color: #3bafb6;
   color: white;
   border: none;
   padding: 12px 40px;
@@ -938,12 +976,12 @@
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s ease;
   width: 100%;
 }
 
 .btn-exito-aceptar:hover {
-  background-color: #38a169;
+  background-color: #00767c;
 }
 
 /* ============================================================
@@ -1240,32 +1278,38 @@
 .btn-atras:hover { background: #186b66; }
 
 .btn-siguiente {
-  background: #00A9AB;
+  background: #3bafb6;
   color: #fff;
   border: none;
   padding: 8px 28px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
-.btn-siguiente:hover { background: #186b66; }
+.btn-siguiente:hover {
+  background: #00767c;
+  box-shadow: 0 4px 12px rgba(0, 118, 124, 0.25);
+}
 
 .btn-guardar-final {
-  background: #555;
+  background: #3bafb6;
   color: #fff;
   border: none;
   padding: 8px 28px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
-.btn-guardar-final:hover { background: #333; }
+.btn-guardar-final:hover {
+  background: #00767c;
+  box-shadow: 0 4px 12px rgba(0, 118, 124, 0.25);
+}
 
 /* ============================================================
    REQUERIMIENTOS EN WIZARD
@@ -1326,19 +1370,23 @@
 .btn-eliminar-req:hover { transform: scale(1.2); }
 
 .btn-guardar-req {
-  background: var(--btn-green);
+  background: #3bafb6;
   color: #fff;
   border: none;
-  padding: 7px 24px;
-  border-radius: 4px;
+  padding: 8px 24px;
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   margin-top: 8px;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(59, 175, 182, 0.25);
 }
 
-.btn-guardar-req:hover { background: #1b5e20; }
+.btn-guardar-req:hover {
+  background: #00767c;
+  box-shadow: 0 4px 12px rgba(0, 118, 124, 0.3);
+}
 
 .agregar-req-footer {
   display: flex;

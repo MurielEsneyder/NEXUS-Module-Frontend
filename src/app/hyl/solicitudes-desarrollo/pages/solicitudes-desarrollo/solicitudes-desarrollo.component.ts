@@ -423,6 +423,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.solicitudesService.obtenerAreas().subscribe({
       next: (data) => {
         this.areas = (data && data.length > 0) ? data : this.getFallbackAreas();
+        if (this.areas && Array.isArray(this.areas)) {
+          this.areas.forEach((a: any) => {
+            if (a.id && a.nombre) {
+              this.areaMap[a.id] = a.nombre;
+            }
+          });
+        }
       },
       error: (err) => {
         console.warn('GET /api/solicitudes/areas - Backend no disponible (status ' + err.status + '). Usando datos locales.');
@@ -808,7 +815,87 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       );
     }
 
-    const areaNombre = this.areaMap[item.areaId] || 'Área no definida';
+    // Resolver Área
+    let areaNombre = 'No especificada';
+    if (item.area && item.area.nombre) {
+      areaNombre = item.area.nombre;
+    } else if (item.areaNombre) {
+      areaNombre = item.areaNombre;
+    } else if (item.areaId) {
+      const areaIdNum = Number(item.areaId);
+      const foundInAreas = (this.areas || []).find((a: any) => Number(a.id) === areaIdNum);
+      if (foundInAreas && foundInAreas.nombre) {
+        areaNombre = foundInAreas.nombre;
+      } else if (this.areaMap && this.areaMap[areaIdNum]) {
+        areaNombre = this.areaMap[areaIdNum];
+      } else {
+        const defaultAreaMap: { [key: number]: string } = {
+          44: 'Transformación Digital',
+          45: 'Servicios de Salud Financiera',
+          46: 'Gestión Documental',
+          47: 'Talento Humano',
+          48: 'Desarrollo Organizacional',
+          1: 'Transformación Digital',
+          2: 'Servicios de Salud Financiera',
+          3: 'Gestión Documental',
+          4: 'Talento Humano',
+          5: 'Desarrollo Organizacional'
+        };
+        areaNombre = defaultAreaMap[areaIdNum] || `Área #${areaIdNum}`;
+      }
+    } else if (item.solicitudProceso) {
+      areaNombre = item.solicitudProceso;
+    }
+
+    // Resolver Proceso Solicitante
+    let procesoNombre = 'No especificado';
+    if (item.proceso && item.proceso.nombre) {
+      procesoNombre = item.proceso.nombre;
+    } else if (item.procesoNombre) {
+      procesoNombre = item.procesoNombre;
+    } else if (item.procesoId) {
+      const procesoIdNum = Number(item.procesoId);
+      const foundProceso = (this.procesosSolicitante || []).find((p: any) => Number(p.id) === procesoIdNum);
+      if (foundProceso && foundProceso.nombre) {
+        procesoNombre = foundProceso.nombre;
+      } else {
+        const defaultProcesoMap: { [key: number]: string } = {
+          40: 'Desarrollo Tecnológico',
+          41: 'Gestión Documental',
+          42: 'Contabilidad',
+          43: 'Talento Humano',
+          1: 'Desarrollo Tecnológico',
+          2: 'Gestión Documental',
+          3: 'Contabilidad',
+          4: 'Talento Humano'
+        };
+        procesoNombre = defaultProcesoMap[procesoIdNum] || `Proceso #${procesoIdNum}`;
+      }
+    }
+
+    // Resolver Vicepresidencia / Macroproceso
+    let vicepresidenciaNombre = 'No especificada';
+    if (item.macroproceso && item.macroproceso.nombre) {
+      vicepresidenciaNombre = item.macroproceso.nombre;
+    } else if (item.vicepresidenciaNombre) {
+      vicepresidenciaNombre = item.vicepresidenciaNombre;
+    } else if (item.macroprocesoId) {
+      const macroIdNum = Number(item.macroprocesoId);
+      const foundVice = (this.vicepresidencias || []).find((v: any) => Number(v.id) === macroIdNum);
+      if (foundVice && foundVice.nombre) {
+        vicepresidenciaNombre = foundVice.nombre;
+      } else {
+        const defaultViceMap: { [key: number]: string } = {
+          49: 'Vicepresidencia de Salud',
+          50: 'Vicepresidencia Administrativa',
+          51: 'Vicepresidencia Financiera',
+          1: 'Vicepresidencia de Salud',
+          2: 'Vicepresidencia Administrativa',
+          3: 'Vicepresidencia Financiera'
+        };
+        vicepresidenciaNombre = defaultViceMap[macroIdNum] || `Vicepresidencia #${macroIdNum}`;
+      }
+    }
 
     const reqFuncionales: RequerimientoItem[] = [];
     const reqNoFuncionales: RequerimientoItem[] = [];
@@ -851,9 +938,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       });
     }
 
-    const procesoNombre = item.proceso?.nombre || item.procesoNombre || 'No especificado';
-    const vicepresidenciaNombre = item.macroproceso?.nombre || item.vicepresidenciaNombre || 'No especificada';
-
     return {
       id: item.id,
       numeroSolicitud: item.codigo,
@@ -862,7 +946,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       area: areaNombre,
       estado: (item.estado?.nombre || 'Pendiente').toUpperCase(),
       tipo: item.tipoSolicitud?.nombre || 'N/A',
-      fechaCreacion: new Date(item.fechaCreacion),
+      fechaCreacion: item.createdAt ? new Date(item.createdAt) : (item.fechaCreacion ? new Date(item.fechaCreacion) : new Date()),
       prioridad: this.extraerPrioridad(item),
       coordinador: 'Coordinador Asignado',
       funcionalAsignado: 'Funcional Asignado',
@@ -1058,22 +1142,24 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // GUARDAR CAMBIOS DEL MODAL
   // ============================================================
   guardarCambiosDetalle(): void {
-    if (!this.puedeEditarDetalle || !this.solicitudSeleccionada || !this.solicitudSeleccionada.id) {
-      console.warn('UI - Intento de guardar sin permisos o sin solicitud seleccionada.');
+    if (!this.solicitudSeleccionada || !this.solicitudSeleccionada.id) {
+      console.warn('UI - Intento de guardar sin solicitud seleccionada.');
       return;
     }
 
     this.guardandoCambios = true;
-    const solicitudOriginal = this.solicitudes.find(s => s.id === this.solicitudSeleccionada!.id);
+    const targetId = this.solicitudSeleccionada.id;
+    const solicitudOriginal = this.solicitudes.find(s => s.id === targetId) ||
+                              this.misSolicitudes.find(s => s.id === targetId) ||
+                              this.solicitudSeleccionada;
 
-    if (!solicitudOriginal) {
-      this.guardandoCambios = false;
-      this.mostrarNotificacionSnackbar('No se encontró la solicitud en la lista', 'error');
-      return;
-    }
+    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase();
+    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase();
+    const estadoCambiado = estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== (solicitudOriginal.estado || '').toLowerCase();
 
-    const estadoCambiado = this.estadoEditado !== solicitudOriginal.estado;
-    const prioridadCambiada = this.prioridadEditada !== solicitudOriginal.prioridad;
+    const prioridadOriginalStr = (solicitudOriginal.prioridad || 'media').toLowerCase();
+    const prioridadNuevaStr = (this.prioridadEditada || 'media').toLowerCase();
+    const prioridadCambiada = prioridadNuevaStr !== prioridadOriginalStr;
 
     if (!estadoCambiado && !prioridadCambiada) {
       this.guardandoCambios = false;
@@ -1083,36 +1169,37 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     }
 
     if (estadoCambiado) {
-      const estadoSeleccionado = this.estadosList.find(e => e.nombre === this.estadoEditado);
+      const estadoSeleccionado = this.estadosList.find(e => e.nombre.toLowerCase() === estadoNuevoStr);
       if (estadoSeleccionado) {
         const observacion = `Cambio de estado desde edición: ${solicitudOriginal.estado} → ${this.estadoEditado}`;
-        this.solicitudesService.cambiarEstado(this.solicitudSeleccionada.id, estadoSeleccionado.id, observacion).subscribe({
+        this.solicitudesService.cambiarEstado(targetId, estadoSeleccionado.id, observacion).subscribe({
           next: () => {
             console.log('POST /api/solicitudes/{id}/estado - Estado actualizado correctamente.');
             if (prioridadCambiada) {
-              this.actualizarPrioridadEnServicio(this.solicitudSeleccionada!.id!, this.prioridadEditada);
+              this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
             } else {
               this.finalizarGuardado();
             }
           },
           error: (err) => {
             console.error('POST /api/solicitudes/{id}/estado - Error al actualizar estado:', err.message || err);
-            if (err.error) {
-              console.error('POST /api/solicitudes/{id}/estado - Detalle del backend:', err.error);
+            if (prioridadCambiada) {
+              this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
+            } else {
+              this.guardandoCambios = false;
+              this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
             }
-            this.guardandoCambios = false;
-            this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
           }
         });
       } else {
         if (prioridadCambiada) {
-          this.actualizarPrioridadEnServicio(this.solicitudSeleccionada.id!, this.prioridadEditada);
+          this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
         } else {
           this.finalizarGuardado();
         }
       }
     } else if (prioridadCambiada) {
-      this.actualizarPrioridadEnServicio(this.solicitudSeleccionada.id!, this.prioridadEditada);
+      this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
     } else {
       this.finalizarGuardado();
     }
@@ -1136,6 +1223,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.guardandoCambios = false;
     this.modoEdicion = false;
     this.cargarSolicitudes();
+    this.cargarMisSolicitudes();
     this.mostrarNotificacionSnackbar('Cambios guardados exitosamente', 'success');
 
     if (this.solicitudSeleccionada) {
@@ -1429,6 +1517,25 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================
+  // MODAL ALERTA DE MENSAJE CUSTOM
+  // ============================================================
+  mostrarModalAlertaMensaje: boolean = false;
+  tituloAlertaMensaje: string = 'Atención';
+  mensajeAlertaMensaje: string = '';
+  iconoAlertaMensaje: string = 'ℹ️';
+
+  mostrarAlerta(mensaje: string, titulo: string = 'Atención', icono: string = 'ℹ️'): void {
+    this.tituloAlertaMensaje = titulo;
+    this.mensajeAlertaMensaje = mensaje;
+    this.iconoAlertaMensaje = icono;
+    this.mostrarModalAlertaMensaje = true;
+  }
+
+  cerrarModalAlertaMensaje(): void {
+    this.mostrarModalAlertaMensaje = false;
+  }
+
+  // ============================================================
   // NAVEGACIÓN ENTRE PASOS DEL WIZARD
   // ============================================================
   irPaso(paso: number): void {
@@ -1452,13 +1559,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         break;
       case 3:
         if (!this.validarRequerimientosFuncionales()) {
-          alert('⚠️ Debe agregar al menos un requerimiento funcional.');
+          this.mostrarAlerta('Debe agregar al menos un requerimiento funcional.', 'Campo Requerido', '⚠️');
           return;
         }
         break;
       case 4:
         if (!this.validarRequerimientosNoFuncionales()) {
-          alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
+          this.mostrarAlerta('Debe agregar al menos un requerimiento no funcional.', 'Campo Requerido', '⚠️');
           return;
         }
         break;
@@ -1472,19 +1579,19 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   avanzarDesdeGeneral(): void {
-    if (this.validarPasoGeneral()) {
-      this.pasoActivo = 2;
-    } else {
+    if (!this.validarPasoGeneral()) {
       this.mostrarErroresGeneral();
+      return;
     }
+    this.pasoActivo = 2;
   }
 
   avanzarDesdeImpacto(): void {
-    if (this.validarImpacto()) {
-      this.pasoActivo = 3;
-    } else {
+    if (!this.validarImpacto()) {
       this.errorImpacto = true;
+      return;
     }
+    this.pasoActivo = 3;
   }
 
   // ============================================================
@@ -1504,14 +1611,14 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   private mostrarErroresGeneral(): void {
-    let mensaje = '⚠️ Por favor complete los siguientes campos:\n';
+    let mensaje = 'Por favor complete los siguientes campos requeridos:\n';
     if (this.erroresGeneral.solicitudProceso) mensaje += '• Solicitud del proceso\n';
     if (this.erroresGeneral.proceso) mensaje += '• Proceso solicitante\n';
     if (this.erroresGeneral.area) mensaje += '• Área\n';
     if (this.erroresGeneral.vicepresidencia) mensaje += '• Vicepresidencia\n';
     if (this.erroresGeneral.tipoSolicitud) mensaje += '• Tipo de solicitud\n';
     if (this.erroresGeneral.prioridad) mensaje += '• Prioridad\n';
-    alert(mensaje);
+    this.mostrarAlerta(mensaje, 'Campos Incompletos', '⚠️');
   }
 
   private validarImpacto(): boolean {
@@ -1536,34 +1643,95 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   // MÉTODOS DE MAPEO DE IDs
   // ============================================================
+  abrirImagenCompleta(url: string): void {
+    if (!url) return;
+    if (url.startsWith('data:')) {
+      try {
+        const win = window.open();
+        if (win) {
+          win.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Vista Previa de Imagen</title>
+                <style>
+                  body { margin: 0; background: #0e171e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; }
+                  img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+                </style>
+              </head>
+              <body>
+                <img src="${url}" alt="Imagen Completa" />
+              </body>
+            </html>
+          `);
+          win.document.close();
+        }
+      } catch (e) {
+        console.error('Error al abrir la imagen base64:', e);
+      }
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+
   private mapearProcesoId(procesoNombre: string): number {
+    if (!procesoNombre) return 40;
+    const nombreClean = procesoNombre.toLowerCase().trim();
+
+    const found = (this.procesosSolicitante || []).find((p: any) =>
+      (p.nombre && p.nombre.toLowerCase().trim() === nombreClean) ||
+      (typeof p === 'string' && p.toLowerCase().trim() === nombreClean)
+    );
+    if (found && found.id) return Number(found.id);
+
     const map: { [key: string]: number } = {
-      'Desarrollo Tecnológico': 1,
-      'Gestión Documental': 2,
-      'Contabilidad': 3,
-      'Talento Humano': 4
+      'desarrollo tecnológico': 40,
+      'desarrollo tecnologico': 40,
+      'gestión documental': 41,
+      'gestion documental': 41,
+      'contabilidad': 42,
+      'talento humano': 43
     };
-    return map[procesoNombre] || 1;
+    return map[nombreClean] || 40;
   }
 
   private mapearAreaId(areaNombre: string): number {
+    if (!areaNombre) return 44;
+    const nombreClean = areaNombre.toLowerCase().trim();
+
+    const areaObj = (this.areas || []).find((a: any) =>
+      a.nombre && a.nombre.toLowerCase().trim() === nombreClean
+    );
+    if (areaObj && areaObj.id) return Number(areaObj.id);
+
     const map: { [key: string]: number } = {
-      'Transformación Digital': 1,
-      'Servicios de salud financiera': 2,
-      'Gestión Documental': 3,
-      'Talento Humano': 4,
-      'Desarrollo Organizacional': 5
+      'transformación digital': 44,
+      'transformacion digital': 44,
+      'servicios de salud financiera': 45,
+      'gestión documental': 46,
+      'gestion documental': 46,
+      'talento humano': 47,
+      'desarrollo organizacional': 48
     };
-    return map[areaNombre] || 1;
+    return map[nombreClean] || 44;
   }
 
   private mapearMacroprocesoId(vicepresidenciaNombre: string): number {
+    if (!vicepresidenciaNombre) return 49;
+    const nombreClean = vicepresidenciaNombre.toLowerCase().trim();
+
+    const found = (this.vicepresidencias || []).find((v: any) =>
+      (v.nombre && v.nombre.toLowerCase().trim() === nombreClean) ||
+      (typeof v === 'string' && v.toLowerCase().trim() === nombreClean)
+    );
+    if (found && found.id) return Number(found.id);
+
     const map: { [key: string]: number } = {
-      'Vicepresidencia de Salud': 1,
-      'Vicepresidencia Administrativa': 2,
-      'Vicepresidencia Financiera': 3
+      'vicepresidencia de salud': 49,
+      'vicepresidencia administrativa': 50,
+      'vicepresidencia financiera': 51
     };
-    return map[vicepresidenciaNombre] || 1;
+    return map[nombreClean] || 49;
   }
 
   // ============================================================
@@ -1731,7 +1899,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   verAdjunto(req: RequerimientoItem): void {
     if (!req.archivos || req.archivos.length === 0) {
-      alert('Este requerimiento no tiene archivos adjuntos.');
+      this.mostrarAlerta('Este requerimiento no tiene archivos adjuntos.', 'Sin Archivos', '📄');
       return;
     }
     const archivo = req.archivos[0];
@@ -1745,7 +1913,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       const blobUrl = URL.createObjectURL(blob);
       window.open(blobUrl, '_blank');
     } else {
-      alert('No se puede abrir el archivo. Intente descargándolo nuevamente.');
+      this.mostrarAlerta('No se puede abrir el archivo. Intente descargándolo nuevamente.', 'Error de Archivo', '⚠️');
     }
   }
 
@@ -1810,19 +1978,19 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
     if (!this.validarImpacto()) {
       this.errorImpacto = true;
-      alert('⚠️ Debe describir el impacto (mínimo 10 caracteres).');
+      this.mostrarAlerta('Debe describir el impacto (mínimo 10 caracteres).', 'Campo Requerido', '⚠️');
       this.pasoActivo = 2;
       return;
     }
 
     if (!this.validarRequerimientosFuncionales()) {
-      alert('⚠️ Debe agregar al menos un requerimiento funcional.');
+      this.mostrarAlerta('Debe agregar al menos un requerimiento funcional.', 'Campo Requerido', '⚠️');
       this.pasoActivo = 3;
       return;
     }
 
     if (!this.validarRequerimientosNoFuncionales()) {
-      alert('⚠️ Debe agregar al menos un requerimiento no funcional.');
+      this.mostrarAlerta('Debe agregar al menos un requerimiento no funcional.', 'Campo Requerido', '⚠️');
       this.pasoActivo = 4;
       return;
     }
@@ -1925,10 +2093,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             errorMsg = err.error.message;
           }
         }
-        alert(errorMsg);
-        this.numeroSolicitudExito = `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
-        this.mostrarModalExito = true;
-        this.cargarSolicitudes();
+        this.mostrarAlerta(errorMsg, 'Error al Guardar Solicitud', '⚠️');
       }
     });
   }
@@ -2275,13 +2440,17 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   async descargarSolicitudPDF(solicitud: SolicitudDesarrollo): Promise<void> {
+    if (solicitud && solicitud.id) {
+      this.descargarPdfBackend(solicitud.id);
+      return;
+    }
     const doc = await this.generarDocumentoPDF(solicitud);
     if (doc) {
       const nombreArchivo = `Solicitud_Desarrollo_${solicitud.numeroSolicitud || new Date().getTime()}.pdf`;
       doc.save(nombreArchivo);
       console.log('PDF - Descargado exitosamente:', nombreArchivo);
     } else {
-      alert('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.');
+      this.mostrarAlerta('Ocurrió un error al generar el PDF. Revisa la consola para más detalles.', 'Error en PDF', '❌');
     }
   }
 

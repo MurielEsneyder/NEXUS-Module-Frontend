@@ -545,33 +545,61 @@
         <span *ngIf="!modoEdicion">✏️ Editar</span>
         <span *ngIf="modoEdicion">👁️ Ver</span>
       </button>
+      <button *ngIf="solicitudSeleccionada?.id" class="btn-ver-pdf-modal" (click)="verPdfBackend(solicitudSeleccionada.id)" style="margin-left: 8px; background: #3bafb6; color: #ffffff; border: none; border-radius: 6px; padding: 6px 14px; font-weight: bold; cursor: pointer;" title="Visualizar PDF oficial con la estructura TDI-DT-F-08">
+        📄 Ver PDF Oficial
+      </button>
       <span *ngIf="!puedeEditarDetalle" class="modo-indicador">🔒 Solo lectura</span>
       <span class="modo-indicador" *ngIf="modoEdicion && puedeEditarDetalle" class="modo-edicion-activo">✏️ Modo Edición</span>
     </div>
 
+    <!-- INFORMACIÓN GENERAL Y METADATOS DE CREACIÓN -->
+    <div class="sec-header-modal" style="background: #3bafb6; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; margin: 15px 0 10px 0;">
+      INFORMACIÓN GENERAL Y DE CREACIÓN
+    </div>
+
     <div class="detalle-grid">
       <div class="detalle-item">
-        <label>Código:</label>
+        <label>Código Solicitud:</label>
         <span>{{ solicitudSeleccionada.numeroSolicitud || 'N/A' }}</span>
       </div>
       <div class="detalle-item">
-        <label>Proyecto:</label>
+        <label>Solicitud del Proceso:</label>
         <span>{{ solicitudSeleccionada.objetivo || 'N/A' }}</span>
       </div>
       <div class="detalle-item">
-        <label>Solicitante:</label>
+        <label>Solicitado Por:</label>
         <span>{{ solicitudSeleccionada.solicitante || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Cargo Solicitante:</label>
+        <span>{{ solicitudSeleccionada.cargo || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Correo / Contacto:</label>
+        <span>{{ solicitudSeleccionada.correo || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Sede Solicitante:</label>
+        <span>{{ solicitudSeleccionada.sede || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Proceso Solicitante:</label>
+        <span>{{ solicitudSeleccionada.proceso || 'N/A' }}</span>
       </div>
       <div class="detalle-item">
         <label>Área:</label>
         <span>{{ solicitudSeleccionada.area || 'N/A' }}</span>
       </div>
       <div class="detalle-item">
-        <label>Tipo:</label>
+        <label>Vicepresidencia / Macroproceso:</label>
+        <span>{{ solicitudSeleccionada.vicepresidencia || 'N/A' }}</span>
+      </div>
+      <div class="detalle-item">
+        <label>Tipo de Solicitud:</label>
         <span>{{ solicitudSeleccionada.tipo || 'N/A' }}</span>
       </div>
       <div class="detalle-item">
-        <label>Fecha:</label>
+        <label>Fecha de Solicitud:</label>
         <span>{{ solicitudSeleccionada.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
       </div>
 
@@ -622,78 +650,105 @@
           </select>
         </div>
       </div>
+    </div>
 
-      <div class="detalle-item detalle-full-width">
-        <label>Requerimientos ({{ solicitudSeleccionada.totalRequerimientos || 0 }}):</label>
+    <!-- 1. IMPACTO DEL REQUERIMIENTO -->
+    <div class="sec-header-modal" style="background: #f0f4f8; color: #1a252c; border: 1px solid #dcdcdc; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; margin: 15px 0 8px 0;">
+      1. IMPACTO DEL REQUERIMIENTO
+    </div>
+    <div style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px; margin-bottom: 15px; font-size: 13px; line-height: 1.5; color: #333;">
+      <b>Impacto especificado:</b><br>
+      <span>{{ solicitudSeleccionada.impacto || 'No se especificó impacto.' }}</span>
+      
+      <div *ngIf="solicitudSeleccionada.observaciones" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e0e0e0;">
+        <b>Observaciones adicionales:</b><br>
+        <span>{{ solicitudSeleccionada.observaciones }}</span>
+      </div>
+    </div>
 
-        <div class="requerimientos-list" *ngIf="(solicitudSeleccionada.totalRequerimientos || 0) > 0">
-          <h4 *ngIf="solicitudSeleccionada.requerimientosFuncionales?.length">Funcionales</h4>
-          <table class="tabla-req" *ngIf="solicitudSeleccionada.requerimientosFuncionales?.length">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Objetivo</th>
-                <th>Cargo Impactado</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let req of solicitudSeleccionada.requerimientosFuncionales">
-                <td>{{ req.id }}</td>
-                <td>{{ req.descripcion }}</td>
-                <td>{{ req.cargoImpactado || 'N/A' }}</td>
-              </tr>
-            </tbody>
-          </table>
+    <!-- REQUERIMIENTOS FUNCIONALES -->
+    <div class="sec-header-modal" style="background: #3bafb6; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; margin: 15px 0 10px 0;">
+      3. REQUERIMIENTOS FUNCIONALES
+    </div>
 
-          <h4 *ngIf="solicitudSeleccionada.requerimientosNoFuncionales?.length" style="margin-top: 10px;">No Funcionales</h4>
-          <table class="tabla-req" *ngIf="solicitudSeleccionada.requerimientosNoFuncionales?.length">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Objetivo</th>
-                <th>Cargo Impactado</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let req of solicitudSeleccionada.requerimientosNoFuncionales">
-                <td>{{ req.id }}</td>
-                <td>{{ req.descripcion }}</td>
-                <td>{{ req.cargoImpactado || 'N/A' }}</td>
-              </tr>
-            </tbody>
-          </table>
+    <div *ngIf="!solicitudSeleccionada.requerimientosFuncionales?.length" style="padding: 10px; background: #fafafa; border: 1px solid #ddd; text-align: center; color: #777; border-radius: 4px; margin-bottom: 15px;">
+      No hay requerimientos funcionales registrados.
+    </div>
 
-          <div *ngIf="!solicitudSeleccionada.requerimientosFuncionales?.length && !solicitudSeleccionada.requerimientosNoFuncionales?.length" class="text-muted">
-            Los requerimientos existen pero tienen un formato no reconocido.
+    <div *ngFor="let req of solicitudSeleccionada.requerimientosFuncionales" style="border: 1px solid #3bafb6; border-radius: 6px; overflow: hidden; margin-bottom: 15px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+      <div style="background: #3bafb6; color: #ffffff; padding: 8px 12px; font-weight: bold; font-size: 12px; display: flex; justify-content: space-between;">
+        <span>Requerimiento N°: {{ req.id }}</span>
+        <span>Cargo Impactado: {{ req.cargoImpactado || 'N/A' }}</span>
+      </div>
+      <div style="padding: 10px 12px; border-bottom: 1px solid #eee; background: #ffffff;">
+        <b style="color: #00767c; font-size: 12px;">Objetivo de la solicitud:</b><br>
+        <span style="font-size: 13px; color: #333;">{{ req.descripcion }}</span>
+      </div>
+      <div style="padding: 10px 12px; background: #fafafa;" *ngIf="req.detalle">
+        <b style="color: #00767c; font-size: 12px;">Detalle su necesidad:</b><br>
+        <span style="font-size: 13px; color: #333;">{{ req.detalle }}</span>
+      </div>
+
+      <!-- Imágenes incrustadas directamente dentro del cuadro de este requerimiento (Vista grande) -->
+      <div *ngIf="obtenerImagenesUnicas(req).length > 0" style="padding: 12px; background: #ffffff; border-top: 1px solid #e0e0e0;">
+        <div style="font-weight: bold; color: #3bafb6; font-size: 12px; margin-bottom: 10px;">
+          📷 Imágenes descriptivas asociadas a {{ req.id }}:
+        </div>
+        <div *ngFor="let arch of obtenerImagenesUnicas(req); let idx = index" style="margin-bottom: 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; text-align: center;">
+          <div style="font-size: 11px; color: #475569; font-weight: bold; margin-bottom: 8px; text-align: left; display: flex; justify-content: space-between;">
+            <span>Requerimiento {{ req.id }} - Imagen {{ idx + 1 }} de {{ obtenerImagenesUnicas(req).length }}</span>
+            <button type="button" (click)="abrirImagenCompleta(arch.url)" style="background: none; border: none; color: #3bafb6; text-decoration: underline; font-weight: bold; cursor: pointer;">🔍 Abrir a tamaño completo</button>
+          </div>
+          <div (click)="abrirImagenCompleta(arch.url)" style="cursor: pointer;">
+            <img [src]="arch.url" alt="Imagen {{ req.id }}" style="max-width: 100%; max-height: 480px; width: auto; border: 1px solid #94a3b8; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
           </div>
         </div>
-        <span *ngIf="!solicitudSeleccionada.totalRequerimientos">No hay requerimientos registrados.</span>
       </div>
-      <div class="detalle-item detalle-full-width">
-        <label>Adjuntos:</label>
-        <span *ngIf="!solicitudSeleccionada.tieneImagenes">📄 Sin imágenes</span>
-        
-        <div class="imagenes-adjuntas" *ngIf="solicitudSeleccionada.tieneImagenes">
-          <ng-container *ngFor="let req of (solicitudSeleccionada.requerimientosFuncionales || []).concat(solicitudSeleccionada.requerimientosNoFuncionales || [])">
-            <div *ngIf="obtenerImagenesUnicas(req).length > 0" class="img-preview-grid" style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 5px; width: 100%;">
-              <p style="width: 100%; font-size: 13px; margin-bottom: 8px; font-weight: 500;">Requerimiento: {{req.id}}</p>
-              <div *ngFor="let arch of obtenerImagenesUnicas(req)" class="img-preview-tile" style="margin-right: 10px;">
-                <img [src]="arch.url" alt="Adjunto {{arch.orden}}" class="img-preview-thumb" style="max-height: 80px; width: auto; border: 1px solid #ddd; border-radius: 4px;">
-              </div>
-            </div>
-          </ng-container>
+    </div>
+
+    <!-- REQUERIMIENTOS NO FUNCIONALES -->
+    <div class="sec-header-modal" style="background: #3bafb6; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; margin: 20px 0 10px 0;">
+      4. REQUISITOS NO FUNCIONALES
+    </div>
+
+    <div *ngIf="!solicitudSeleccionada.requerimientosNoFuncionales?.length" style="padding: 10px; background: #fafafa; border: 1px solid #ddd; text-align: center; color: #777; border-radius: 4px; margin-bottom: 15px;">
+      No hay requisitos no funcionales registrados.
+    </div>
+
+    <div *ngFor="let req of solicitudSeleccionada.requerimientosNoFuncionales" style="border: 1px solid #3bafb6; border-radius: 6px; overflow: hidden; margin-bottom: 15px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+      <div style="background: #3bafb6; color: #ffffff; padding: 8px 12px; font-weight: bold; font-size: 12px; display: flex; justify-content: space-between;">
+        <span>Requerimiento N°: {{ req.id }}</span>
+        <span>Cargo Impactado: {{ req.cargoImpactado || 'N/A' }}</span>
+      </div>
+      <div style="padding: 10px 12px; border-bottom: 1px solid #eee; background: #ffffff;">
+        <b style="color: #00767c; font-size: 12px;">Objetivo de la solicitud:</b><br>
+        <span style="font-size: 13px; color: #333;">{{ req.descripcion }}</span>
+      </div>
+      <div style="padding: 10px 12px; background: #fafafa;" *ngIf="req.detalle">
+        <b style="color: #00767c; font-size: 12px;">Detalle su necesidad:</b><br>
+        <span style="font-size: 13px; color: #333;">{{ req.detalle }}</span>
+      </div>
+
+      <!-- Imágenes incrustadas directamente dentro del cuadro de este requerimiento (Vista grande) -->
+      <div *ngIf="obtenerImagenesUnicas(req).length > 0" style="padding: 12px; background: #ffffff; border-top: 1px solid #e0e0e0;">
+        <div style="font-weight: bold; color: #3bafb6; font-size: 12px; margin-bottom: 10px;">
+          📷 Imágenes descriptivas asociadas a {{ req.id }}:
+        </div>
+        <div *ngFor="let arch of obtenerImagenesUnicas(req); let idx = index" style="margin-bottom: 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; text-align: center;">
+          <div style="font-size: 11px; color: #475569; font-weight: bold; margin-bottom: 8px; text-align: left; display: flex; justify-content: space-between;">
+            <span>Requerimiento {{ req.id }} - Imagen {{ idx + 1 }} de {{ obtenerImagenesUnicas(req).length }}</span>
+            <button type="button" (click)="abrirImagenCompleta(arch.url)" style="background: none; border: none; color: #3bafb6; text-decoration: underline; font-weight: bold; cursor: pointer;">🔍 Abrir a tamaño completo</button>
+          </div>
+          <div (click)="abrirImagenCompleta(arch.url)" style="cursor: pointer;">
+            <img [src]="arch.url" alt="Imagen {{ req.id }}" style="max-width: 100%; max-height: 480px; width: auto; border: 1px solid #94a3b8; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="detalle-observaciones" *ngIf="solicitudSeleccionada.observaciones">
-      <label>Observaciones:</label>
-      <p>{{ solicitudSeleccionada.observaciones }}</p>
-    </div>
-
+    <!-- FOOTER BOTONES -->
     <div class="modal-footer">
       <button class="btn-cerrar" (click)="cerrarModalDetalle()">Cerrar</button>
-      <!-- Botón Guardar Cambios - SOLO visible en modo edición -->
       <button
         *ngIf="modoEdicion && puedeEditarDetalle"
         class="btn-guardar-cambios"
@@ -729,6 +784,19 @@
     <div class="modal-alerta-botones">
       <button class="btn-alerta-no" (click)="cancelarEliminarSolicitud()">No</button>
       <button class="btn-alerta-si" (click)="confirmarEliminarSolicitud()">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Alerta Mensaje General -->
+<div class="overlay-modal overlay-alerta" *ngIf="mostrarModalAlertaMensaje" (click)="cerrarModalAlertaMensaje()"></div>
+<div class="modal-alerta modal-alerta-mensaje" *ngIf="mostrarModalAlertaMensaje">
+  <div class="modal-alerta-contenido">
+    <div class="icono-alerta-custom">{{ iconoAlertaMensaje || 'ℹ️' }}</div>
+    <h3>{{ tituloAlertaMensaje || 'Atención' }}</h3>
+    <p style="white-space: pre-line; margin-top: 8px;">{{ mensajeAlertaMensaje }}</p>
+    <div class="modal-alerta-botones" style="margin-top: 16px;">
+      <button class="btn-alerta-aceptar" (click)="cerrarModalAlertaMensaje()">Aceptar</button>
     </div>
   </div>
 </div>
