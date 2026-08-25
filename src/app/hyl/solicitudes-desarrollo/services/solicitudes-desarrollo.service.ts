@@ -105,6 +105,22 @@ export class SolicitudesDesarrolloService {
     return this.dataService.requestGetBlob({}, `solicitudes/${id}/pdf/ver`, 'v1') as Observable<Blob>;
   }
 
+  descargarImagenBlob(ruta: string): Observable<Blob> {
+    let rutaLimpia = String(ruta || '').trim();
+    if (rutaLimpia.startsWith('http://') || rutaLimpia.startsWith('https://')) {
+      const idx = rutaLimpia.indexOf('/api/');
+      if (idx !== -1) {
+        rutaLimpia = rutaLimpia.substring(idx + 5);
+      }
+    }
+    if (rutaLimpia.startsWith('/api/')) {
+      rutaLimpia = rutaLimpia.substring(5);
+    } else if (rutaLimpia.startsWith('/')) {
+      rutaLimpia = rutaLimpia.substring(1);
+    }
+    return this.dataService.requestGetBlob({}, rutaLimpia, 'v1') as unknown as Observable<Blob>;
+  }
+
   // ============================================================
   // NUEVOS MÉTODOS PARA CARGAR TODAS LAS SOLICITUDES
   // ============================================================

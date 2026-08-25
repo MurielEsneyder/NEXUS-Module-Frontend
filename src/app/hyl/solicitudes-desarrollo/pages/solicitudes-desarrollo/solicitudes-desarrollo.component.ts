@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 // @ts-ignore - jspdf-autotable no tiene tipos
 import autoTable from 'jspdf-autotable';
 import { Area, Proceso, Vicepresidencia, Cargo } from '../../models/solicitudes-desarrollo.models';
+import { environment } from '../../../../../environments/environment';
 
 // ============================================================
 // INTERFACES
@@ -904,8 +905,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       item.requerimientos.forEach((req: any) => {
         const rawImgs = req.imagenesUrls || req.imagenes || req.archivos || [];
         const mappedImgsUrls = rawImgs.map((img: any, idx: number) => {
-          if (typeof img === 'string') return { url: img, orden: idx + 1 };
-          return { url: img.url || img.base64 || img.url_imagen || '', orden: img.orden || idx + 1 };
+          let u = '';
+          if (typeof img === 'string') u = img;
+          else if (img && typeof img === 'object') u = img.url || img.base64 || img.url_imagen || '';
+          return {
+            url: this.formatearUrlImagen(u),
+            orden: img?.orden || idx + 1
+          };
         });
 
         if (mappedImgsUrls.length > 0) {
@@ -917,7 +923,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           descripcion: req.objetivo || req.detalle || 'Sin descripción',
           detalle: req.detalle || '',
           cargoImpactado: req.cargoImpactado || '',
-          archivos: rawImgs,
+          archivos: mappedImgsUrls,
           imagenesUrls: mappedImgsUrls
         };
 
@@ -1014,12 +1020,124 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.estadoEditado = this.solicitudSeleccionada.estado;
     this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
     this.mostrarModalDetalle = true;
+    this.precargarImagenesSolicitud(this.solicitudSeleccionada);
   }
 
   cerrarModalDetalle(): void {
     this.mostrarModalDetalle = false;
     this.solicitudSeleccionada = null;
     this.modoEdicion = false;
+  }
+
+  formatearUrlImagen(url: string): string {
+    if (!url) return '';
+    const trimmed = String(url).trim();
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+
+    let apiBase = (environment && environment.services) ? environment.services : 'http://localhost:8084/api';
+    apiBase = apiBase.replace(/\/+$/, '');
+
+    let cleanPath = trimmed;
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = '/' + cleanPath;
+    }
+
+    if (cleanPath.startsWith('/api/')) {
+      const rootHost = apiBase.replace(/\/api$/, '');
+      return `${rootHost}${cleanPath}`;
+    }
+
+    if (cleanPath.startsWith('/imagenes/')) {
+      return `${apiBase}${cleanPath}`;
+    }
+
+    return `${apiBase}/archivos-ftp/descargar?ruta=${encodeURIComponent(cleanPath)}`;
+  }
+
+  // Mapa en memoria de ObjectURLs autenticados (evita 401 Unauthorized por falta de header JWT)
+  imagenesBlobCache = new Map<string, string>();
+  private imagenesCargando = new Set<string>();
+
+  private readonly PLACEHOLDER_CARGA = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160"><rect fill="%23f8fafc" width="320" height="160"/><text fill="%2300767c" font-family="sans-serif" font-size="13" font-weight="bold" x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">⏳ Cargando imagen...</text></svg>';
+
+  precargarImagenesSolicitud(solicitud: SolicitudDesarrollo): void {
+    if (!solicitud) return;
+    const todosReqs = [
+      ...(solicitud.requerimientosFuncionales || []),
+      ...(solicitud.requerimientosNoFuncionales || [])
+    ];
+    todosReqs.forEach(req => {
+      const imgs = this.obtenerImagenesUnicas(req);
+      imgs.forEach(img => {
+        if (img && img.url) {
+          this.cargarImagenSegura(img.url);
+        }
+      });
+    });
+  }
+
+  cargarImagenSegura(rawUrl: string): void {
+    if (!rawUrl) return;
+    const trimmed = String(rawUrl).trim();
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || this.imagenesBlobCache.has(trimmed) || this.imagenesCargando.has(trimmed)) {
+      return;
+    }
+    this.imagenesCargando.add(trimmed);
+
+    // Descargar usando el servicio autenticado DataService para no disparar HTTP Basic Auth
+    this.solicitudesService.descargarImagenBlob(trimmed).subscribe({
+      next: (blob: Blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        this.imagenesBlobCache.set(trimmed, objectUrl);
+        this.imagenesCargando.delete(trimmed);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.imagenesCargando.delete(trimmed);
+        console.warn('⚠️ Error al descargar imagen con token oficial:', trimmed, err);
+      }
+    });
+  }
+
+  obtenerSrcImagen(rawUrl: string): string {
+    if (!rawUrl) return '';
+    const trimmed = String(rawUrl).trim();
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+      return trimmed;
+    }
+    if (this.imagenesBlobCache.has(trimmed)) {
+      return this.imagenesBlobCache.get(trimmed)!;
+    }
+    // Iniciar la descarga autenticada con token en background
+    this.cargarImagenSegura(trimmed);
+    // Retornar placeholder SVG para que el browser NO intente hacer una petición sin token
+    return this.PLACEHOLDER_CARGA;
+  }
+
+  manejarErrorImagen(event: any, rawUrl: string): void {
+    if (!rawUrl) return;
+    const trimmed = String(rawUrl).trim();
+    if (this.imagenesBlobCache.has(trimmed)) {
+      if (event && event.target) {
+        event.target.src = this.imagenesBlobCache.get(trimmed)!;
+      }
+      return;
+    }
+    this.solicitudesService.descargarImagenBlob(trimmed).subscribe({
+      next: (blob: Blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        this.imagenesBlobCache.set(trimmed, objectUrl);
+        if (event && event.target) {
+          event.target.src = objectUrl;
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.warn('⚠️ Fallback final de imagen con error:', trimmed, err);
+      }
+    });
   }
 
   obtenerImagenesUnicas(req: any): { url: string, orden: number }[] {
@@ -1039,7 +1157,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         if (urlVal && !vistas.has(urlVal)) {
           vistas.add(urlVal);
           imagenes.push({
-            url: urlVal,
+            url: this.formatearUrlImagen(urlVal),
             orden: item.orden || (imagenes.length + 1)
           });
         }
@@ -1645,7 +1763,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   abrirImagenCompleta(url: string): void {
     if (!url) return;
-    if (url.startsWith('data:')) {
+    const finalUrl = this.imagenesBlobCache.get(String(url).trim()) || this.formatearUrlImagen(url);
+    if (finalUrl.startsWith('data:') || finalUrl.startsWith('blob:')) {
       try {
         const win = window.open();
         if (win) {
@@ -1660,17 +1779,45 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
                 </style>
               </head>
               <body>
-                <img src="${url}" alt="Imagen Completa" />
+                <img src="${finalUrl}" alt="Imagen Completa" />
               </body>
             </html>
           `);
           win.document.close();
         }
       } catch (e) {
-        console.error('Error al abrir la imagen base64:', e);
+        console.error('Error al abrir la imagen base64/blob:', e);
       }
     } else {
-      window.open(url, '_blank');
+      // Descargar con token de sesión vía DataService para evitar 401 y popup Basic Auth
+      this.solicitudesService.descargarImagenBlob(url).subscribe({
+        next: (blob: Blob) => {
+          const blobUrl = URL.createObjectURL(blob);
+          this.imagenesBlobCache.set(String(url).trim(), blobUrl);
+          const win = window.open();
+          if (win) {
+            win.document.write(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <title>Vista Previa de Imagen</title>
+                  <style>
+                    body { margin: 0; background: #0e171e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; }
+                    img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+                  </style>
+                </head>
+                <body>
+                  <img src="${blobUrl}" alt="Imagen Completa" />
+                </body>
+              </html>
+            `);
+            win.document.close();
+          }
+        },
+        error: (err) => {
+          console.error('Error al abrir imagen con token:', err);
+        }
+      });
     }
   }
 
@@ -2067,15 +2214,24 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.guardando = false;
         console.log('POST /api/solicitudes - Solicitud creada. Código:', response?.codigo, '| ID:', response?.id);
-        this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
+        this.numeroSolicitudExito = response?.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
 
-        // Enviar correo con PDF adjunto usando la ruta #265 /api/solicitudes/{id}/enviar-notificacion
+        // Insertar de inmediato la nueva solicitud al inicio de la bandeja (0ms delay)
+        if (response) {
+          const nuevaMapeada = this.mapearSolicitud(response);
+          this.solicitudes = [nuevaMapeada, ...this.solicitudes.filter(s => s.id !== response.id)];
+          this.solicitudesFiltradas = [...this.solicitudes];
+          this.totalSolicitudesBD = this.solicitudes.length;
+          this.guardarSolicitudesEnCache();
+        }
+
+        // Enviar correo con PDF adjunto en segundo plano
         if (response && response.id) {
           this.enviarNotificacionConPdf(response);
         }
 
         this.mostrarModalExito = true;
-        this.cargarSolicitudes();
+        this.cdr.detectChanges();
       },
       error: (err: any) => {
         this.guardando = false;
