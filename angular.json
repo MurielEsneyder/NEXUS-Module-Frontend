@@ -76,6 +76,15 @@
                 }
               ],
               "sourceMap": true
+            },
+            "ngrok": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.ngrok.ts"
+                }
+              ],
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
@@ -94,6 +103,9 @@
             },
             "serverpr1": {
               "buildTarget": "aplicativo-sparta-v2:build:serverpr1"
+            },
+            "ngrok": {
+              "buildTarget": "aplicativo-sparta-v2:build:ngrok"
             }
           },
           "defaultConfiguration": "development"
