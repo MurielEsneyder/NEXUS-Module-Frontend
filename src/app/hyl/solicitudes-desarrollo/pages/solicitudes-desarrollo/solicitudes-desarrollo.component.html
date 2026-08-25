@@ -138,6 +138,7 @@
               <td class="text-center">
                 <div class="acciones-btns">
                   <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
+                  <button *ngIf="esAdministrador" class="btn-accion btn-editar" (click)="editarSolicitud(solicitud)" title="Editar solicitud">✏️</button>
                   <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
                 </div>
               </td>
@@ -333,8 +334,11 @@
                     <td>{{ solicitudActual.fechaCreacion | date:'dd/MM/yyyy' }}</td>
                     <td>{{ req.id }}</td>
                     <td>
-                      <span class="radio-ver" (click)="verDetalleRequerimiento(req, 'funcional', i)">👁️</span>
-                      <button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('funcional', i)">🗑️</button>
+                      <div class="acciones-req-grupo" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn-accion-req btn-ver-req" (click)="verDetalleRequerimiento(req, 'funcional', i)" title="Ver requerimiento">👁️</button>
+                        <button type="button" class="btn-accion-req btn-editar-req" (click)="editarRequerimiento(req, 'funcional', i)" title="Editar requerimiento">✏️</button>
+                        <button type="button" class="btn-accion-req btn-eliminar-req" (click)="confirmarEliminarRequerimiento('funcional', i)" title="Eliminar requerimiento">🗑️</button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -400,8 +404,11 @@
                     <td>{{ solicitudActual.fechaCreacion | date:'dd/MM/yyyy' }}</td>
                     <td>{{ req.id }}</td>
                     <td>
-                      <span class="radio-ver" (click)="verDetalleRequerimiento(req, 'noFuncional', i)">👁️</span>
-                      <button class="btn-eliminar-req" (click)="confirmarEliminarRequerimiento('noFuncional', i)">🗑️</button>
+                      <div class="acciones-req-grupo" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn-accion-req btn-ver-req" (click)="verDetalleRequerimiento(req, 'noFuncional', i)" title="Ver requerimiento">👁️</button>
+                        <button type="button" class="btn-accion-req btn-editar-req" (click)="editarRequerimiento(req, 'noFuncional', i)" title="Editar requerimiento">✏️</button>
+                        <button type="button" class="btn-accion-req btn-eliminar-req" (click)="confirmarEliminarRequerimiento('noFuncional', i)" title="Eliminar requerimiento">🗑️</button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -885,19 +892,19 @@
       <!-- Vista Normal -->
       <div *ngIf="!modoEdicionReq">
         <div class="img-preview-grid" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length">
-          <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal)" class="img-preview-tile" style="cursor:default;">
+          <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal)" class="img-preview-tile" (click)="abrirImagenCompleta(imagen.url)" style="cursor:pointer;" title="Clic para ampliar">
             <img [src]="obtenerSrcImagen(imagen.url)" (error)="manejarErrorImagen($event, imagen.url)" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}">
           </div>
         </div>
         <div *ngIf="!obtenerImagenesUnicas(requerimientoSeleccionadoModal).length" class="text-muted" style="font-size:13px; margin-top:5px;">Sin imágenes / adjuntos</div>
       </div>
 
-      <!-- Modo Edición -->
+      <!-- Modo Edición / Administración -->
       <div *ngIf="modoEdicionReq">
         <div class="img-preview-grid" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length">
           <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal); let j = index" class="img-preview-tile">
-            <img [src]="obtenerSrcImagen(imagen.url)" (error)="manejarErrorImagen($event, imagen.url)" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}">
-            <button class="img-preview-x" (click)="eliminarImagenModal(j)" title="Eliminar imagen">✕</button>
+            <img [src]="obtenerSrcImagen(imagen.url)" (error)="manejarErrorImagen($event, imagen.url)" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}" (click)="abrirImagenCompleta(imagen.url)" style="cursor:pointer;" title="Clic para ampliar">
+            <button type="button" class="img-preview-x" (click)="eliminarImagenModal(j); $event.stopPropagation()" title="Eliminar imagen">✕</button>
           </div>
         </div>
         <div *ngIf="!obtenerImagenesUnicas(requerimientoSeleccionadoModal).length" class="text-muted" style="font-size:13px; margin-top:5px; margin-bottom:10px;">Sin imágenes / adjuntos</div>

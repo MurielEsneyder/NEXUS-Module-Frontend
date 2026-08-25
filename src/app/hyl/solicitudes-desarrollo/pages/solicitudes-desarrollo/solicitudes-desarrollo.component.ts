@@ -20,6 +20,7 @@ export interface RequerimientoItem {
   archivos?: any[];
   tieneImagen?: boolean;
   imagenesUrls?: { url: string, orden: number }[];
+  imagenes?: any[];
 }
 
 export interface SolicitudDesarrollo {
@@ -1020,13 +1021,52 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.estadoEditado = this.solicitudSeleccionada.estado;
     this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
     this.mostrarModalDetalle = true;
-    this.precargarImagenesSolicitud(this.solicitudSeleccionada);
+    this.precargarImagenesSolicitud(solicitud);
+
+    if (solicitud.id) {
+      this.solicitudesService.obtenerPorId(solicitud.id).subscribe({
+        next: (detalleBackend) => {
+          if (detalleBackend) {
+            const solicitudMapeada = this.mapearSolicitud(detalleBackend);
+            this.solicitudSeleccionada = { ...solicitudMapeada };
+            this.precargarImagenesSolicitud(solicitudMapeada);
+            this.cdr.markForCheck();
+          }
+        },
+        error: (err) => console.warn('No se pudo cargar detalle extendido:', err)
+      });
+    }
   }
 
   cerrarModalDetalle(): void {
     this.mostrarModalDetalle = false;
     this.solicitudSeleccionada = null;
     this.modoEdicion = false;
+  }
+
+  editarSolicitud(solicitud: SolicitudDesarrollo): void {
+    console.log('UI - Abriendo edición directa de solicitud:', solicitud.numeroSolicitud);
+    this.solicitudSeleccionada = { ...solicitud };
+    this.puedeEditarDetalle = true;
+    this.modoEdicion = true;
+    this.estadoEditado = this.solicitudSeleccionada.estado;
+    this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
+    this.mostrarModalDetalle = true;
+    this.precargarImagenesSolicitud(solicitud);
+
+    if (solicitud.id) {
+      this.solicitudesService.obtenerPorId(solicitud.id).subscribe({
+        next: (detalleBackend) => {
+          if (detalleBackend) {
+            const solicitudMapeada = this.mapearSolicitud(detalleBackend);
+            this.solicitudSeleccionada = { ...solicitudMapeada };
+            this.precargarImagenesSolicitud(solicitudMapeada);
+            this.cdr.markForCheck();
+          }
+        },
+        error: (err) => console.warn('No se pudo cargar detalle extendido:', err)
+      });
+    }
   }
 
   formatearUrlImagen(url: string): string {
@@ -1092,7 +1132,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         const objectUrl = URL.createObjectURL(blob);
         this.imagenesBlobCache.set(trimmed, objectUrl);
         this.imagenesCargando.delete(trimmed);
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       },
       error: (err) => {
         this.imagenesCargando.delete(trimmed);
@@ -1107,11 +1147,14 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
       return trimmed;
     }
-    if (this.imagenesBlobCache.has(trimmed)) {
-      return this.imagenesBlobCache.get(trimmed)!;
+    const cached = this.imagenesBlobCache.get(trimmed);
+    if (cached) {
+      return cached;
     }
-    // Iniciar la descarga autenticada con token en background
-    this.cargarImagenSegura(trimmed);
+    if (!this.imagenesCargando.has(trimmed)) {
+      // Iniciar la descarga autenticada con token en background solo si no está en proceso
+      this.cargarImagenSegura(trimmed);
+    }
     // Retornar placeholder SVG para que el browser NO intente hacer una petición sin token
     return this.PLACEHOLDER_CARGA;
   }
@@ -1132,7 +1175,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         if (event && event.target) {
           event.target.src = objectUrl;
         }
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.warn('⚠️ Fallback final de imagen con error:', trimmed, err);
@@ -1142,6 +1185,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   obtenerImagenesUnicas(req: any): { url: string, orden: number }[] {
     if (!req) return [];
+    // Retornar del cache del objeto si ya fue calculado para evitar loops en ChangeDetection
+    if (req._imagenesUnicas) {
+      return req._imagenesUnicas;
+    }
     const imagenes: { url: string, orden: number }[] = [];
     const vistas = new Set<string>();
 
@@ -1168,6 +1215,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     procesarLista(req.archivos);
     procesarLista(req.imagenes);
 
+    req._imagenesUnicas = imagenes;
     return imagenes;
   }
 
@@ -1175,10 +1223,20 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // MODO DETALLE DE REQUERIMIENTO
   // ============================================================
   verDetalleRequerimiento(req: RequerimientoItem, tipo: 'funcional' | 'noFuncional', index: number): void {
-    this.requerimientoSeleccionadoModal = { ...req };
+    this.requerimientoSeleccionadoModal = JSON.parse(JSON.stringify(req));
+    delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
     this.requerimientoSeleccionadoTipo = tipo;
     this.requerimientoSeleccionadoIndex = index;
-    this.modoEdicionReq = false;
+    this.modoEdicionReq = false; // Modo sólo lectura para el botón de ver (ojo)
+    this.mostrarModalRequerimiento = true;
+  }
+
+  editarRequerimiento(req: RequerimientoItem, tipo: 'funcional' | 'noFuncional', index: number): void {
+    this.requerimientoSeleccionadoModal = JSON.parse(JSON.stringify(req));
+    delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
+    this.requerimientoSeleccionadoTipo = tipo;
+    this.requerimientoSeleccionadoIndex = index;
+    this.modoEdicionReq = true; // Modo edición activo para el lápiz
     this.mostrarModalRequerimiento = true;
   }
 
@@ -1199,7 +1257,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       : (this.solicitudActual.requerimientosNoFuncionales || []);
 
     if (this.requerimientoSeleccionadoIndex >= 0 && this.requerimientoSeleccionadoIndex < lista.length) {
+      delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
       lista[this.requerimientoSeleccionadoIndex] = { ...this.requerimientoSeleccionadoModal };
+      delete (lista[this.requerimientoSeleccionadoIndex] as any)._imagenesUnicas;
     }
 
     this.modoEdicionReq = false;
@@ -1933,7 +1993,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
               archivo: file,
               base64: reader.result
             });
-            this.cdr.detectChanges();
+            delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
+            this.cdr.markForCheck();
           };
           reader.readAsDataURL(file);
         }
@@ -1943,8 +2004,27 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   eliminarImagenModal(index: number): void {
-    if (this.requerimientoSeleccionadoModal && this.requerimientoSeleccionadoModal.archivos) {
-      this.requerimientoSeleccionadoModal.archivos.splice(index, 1);
+    if (!this.requerimientoSeleccionadoModal) return;
+    const imagenes = this.obtenerImagenesUnicas(this.requerimientoSeleccionadoModal);
+    if (index >= 0 && index < imagenes.length) {
+      const imgAEliminar = imagenes[index];
+      if (this.requerimientoSeleccionadoModal.archivos) {
+        this.requerimientoSeleccionadoModal.archivos = this.requerimientoSeleccionadoModal.archivos.filter(
+          (a: any) => (a.base64 || a.url || this.formatearUrlImagen(a.url || a.base64 || '')) !== imgAEliminar.url
+        );
+      }
+      if (this.requerimientoSeleccionadoModal.imagenesUrls) {
+        this.requerimientoSeleccionadoModal.imagenesUrls = this.requerimientoSeleccionadoModal.imagenesUrls.filter(
+          (img: any) => (img.url || this.formatearUrlImagen(img.url || '')) !== imgAEliminar.url
+        );
+      }
+      if (this.requerimientoSeleccionadoModal.imagenes) {
+        this.requerimientoSeleccionadoModal.imagenes = this.requerimientoSeleccionadoModal.imagenes.filter(
+          (img: any) => (img.url || img.url_imagen || this.formatearUrlImagen(img.url || img.url_imagen || '')) !== imgAEliminar.url
+        );
+      }
+      delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
+      this.cdr.markForCheck();
     }
   }
 
