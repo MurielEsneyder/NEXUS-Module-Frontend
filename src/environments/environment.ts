@@ -6,12 +6,9 @@
 export const environment = {
   name: "local",
   origin: "HyL-Sparta-V2",
-  production: false,
+  production: true,
 
-
-  auth: 'https://reach.asmetsalud.com/auth/login',
-  services: 'https://reach.asmetsalud.com/api',
-  menu: 'https://reach.asmetsalud.com/api/menu/ejecutarMenus'
-
-
+  auth: 'https://nerd-commodore-claim.ngrok-free.dev/auth/login',
+  services: 'https://nerd-commodore-claim.ngrok-free.dev/api',
+  menu: 'https://nerd-commodore-claim.ngrok-free.dev/api/menu/ejecutarMenus'
 };
