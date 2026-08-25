@@ -1316,6 +1316,24 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     }
   }
 
+  get hayCambiosEnDetalle(): boolean {
+    if (!this.solicitudSeleccionada || !this.modoEdicion) return false;
+    const targetId = this.solicitudSeleccionada.id;
+    const solicitudOriginal = this.solicitudes.find(s => s.id === targetId) ||
+                              this.misSolicitudes.find(s => s.id === targetId) ||
+                              this.solicitudSeleccionada;
+
+    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase();
+    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase();
+    const estadoCambiado = estadoNuevoStr !== '' && estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== (solicitudOriginal.estado || '').toLowerCase();
+
+    const prioridadOriginalStr = (solicitudOriginal.prioridad || 'media').toLowerCase();
+    const prioridadNuevaStr = (this.prioridadEditada || 'media').toLowerCase();
+    const prioridadCambiada = prioridadNuevaStr !== prioridadOriginalStr;
+
+    return estadoCambiado || prioridadCambiada;
+  }
+
   // ============================================================
   // GUARDAR CAMBIOS DEL MODAL
   // ============================================================

@@ -562,12 +562,26 @@
     <h3>📋 Detalle de Solicitud</h3>
 
     <!-- Modo de visualización o edición -->
-    <div class="detalle-actions">
+    <div class="detalle-actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
       <button *ngIf="puedeEditarDetalle" class="btn-toggle-edicion" (click)="toggleModoEdicion()">
         <span *ngIf="!modoEdicion">✏️ Editar</span>
         <span *ngIf="modoEdicion">👁️ Ver</span>
       </button>
-      <button *ngIf="solicitudSeleccionada?.id" class="btn-ver-pdf-modal" (click)="verPdfBackend(solicitudSeleccionada.id)" style="margin-left: 8px; background: #3bafb6; color: #ffffff; border: none; border-radius: 6px; padding: 6px 14px; font-weight: bold; cursor: pointer;" title="Visualizar PDF oficial con la estructura TDI-DT-F-08">
+
+      <!-- BOTÓN GUARDAR EN LA PARTE SUPERIOR (Aparece automáticamente cuando se realiza algún cambio) -->
+      <button
+        *ngIf="modoEdicion && puedeEditarDetalle && hayCambiosEnDetalle"
+        class="btn-guardar-cambios btn-guardar-top"
+        (click)="guardarCambiosDetalle()"
+        [disabled]="guardandoCambios"
+        style="background: #00767c; color: #ffffff; border: none; border-radius: 6px; padding: 6px 16px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0, 118, 124, 0.4); font-size: 13px; transition: all 0.2s ease;"
+        title="Guardar los cambios realizados"
+      >
+        <span *ngIf="!guardandoCambios">💾 Guardar Cambios</span>
+        <span *ngIf="guardandoCambios">⏳ Guardando...</span>
+      </button>
+
+      <button *ngIf="solicitudSeleccionada?.id" class="btn-ver-pdf-modal" (click)="verPdfBackend(solicitudSeleccionada.id)" style="background: #3bafb6; color: #ffffff; border: none; border-radius: 6px; padding: 6px 14px; font-weight: bold; cursor: pointer;" title="Visualizar PDF oficial con la estructura TDI-DT-F-08">
         📄 Ver PDF Oficial
       </button>
       <span *ngIf="!puedeEditarDetalle" class="modo-indicador">🔒 Solo lectura</span>
@@ -889,7 +903,7 @@
     <div class="detalle-item detalle-full-width" style="margin-top: 15px;" [class.detalle-editable]="modoEdicionReq">
       <label>Imágenes adjuntas:</label>
       
-      <!-- Vista Normal -->
+      <!-- Vista Normal (Solo lectura) -->
       <div *ngIf="!modoEdicionReq">
         <div class="img-preview-grid" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length">
           <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal)" class="img-preview-tile" (click)="abrirImagenCompleta(imagen.url)" style="cursor:pointer;" title="Clic para ampliar">
@@ -901,16 +915,20 @@
 
       <!-- Modo Edición / Administración -->
       <div *ngIf="modoEdicionReq">
-        <div class="img-preview-grid" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length">
+        <input type="file" multiple accept="image/*" (change)="seleccionarArchivoModal($event)" style="display:none" #fileInputModal>
+        
+        <div class="img-preview-grid" style="margin-bottom: 8px;">
           <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal); let j = index" class="img-preview-tile">
             <img [src]="obtenerSrcImagen(imagen.url)" (error)="manejarErrorImagen($event, imagen.url)" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}" (click)="abrirImagenCompleta(imagen.url)" style="cursor:pointer;" title="Clic para ampliar">
             <button type="button" class="img-preview-x" (click)="eliminarImagenModal(j); $event.stopPropagation()" title="Eliminar imagen">✕</button>
           </div>
+          <!-- Recuadro '+' idéntico al del wizard -->
+          <div class="img-preview-add" (click)="fileInputModal.click()" title="Adjuntar imágenes">
+            <span>+</span>
+          </div>
         </div>
-        <div *ngIf="!obtenerImagenesUnicas(requerimientoSeleccionadoModal).length" class="text-muted" style="font-size:13px; margin-top:5px; margin-bottom:10px;">Sin imágenes / adjuntos</div>
-        
-        <input type="file" multiple accept="image/*" (change)="seleccionarArchivoModal($event)" style="display:none" #fileInputModal>
-        <button type="button" class="btn-principal" (click)="fileInputModal.click()" style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; font-size:13px; padding: 6px 14px; border-radius: 6px;">
+
+        <button type="button" class="btn-guardar-req" (click)="fileInputModal.click()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 7px 16px; margin-top: 4px; box-shadow: 0 2px 6px rgba(59, 175, 182, 0.25);">
           📷 Adjuntar imágenes
         </button>
       </div>
