@@ -1,7 +1,9 @@
 // solicitudes-desarrollo.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Router } from '@angular/router';
 import { SolicitudesDesarrolloService } from '../../services/solicitudes-desarrollo.service';
 import { NexusSecurityService } from '../../../shared/services/nexus-security.service';
+import { NexusMenuService } from '../../../shared/services/nexus-menu.service';
 import { HttpClient } from '@angular/common/http';
 import jsPDF from 'jspdf';
 // @ts-ignore - jspdf-autotable no tiene tipos
@@ -202,6 +204,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   constructor(
     private solicitudesService: SolicitudesDesarrolloService,
     private securityService: NexusSecurityService,
+    private nexusMenuService: NexusMenuService,
+    private router: Router,
     private http: HttpClient,
     private cdr: ChangeDetectorRef
   ) { }
@@ -256,6 +260,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ROLES
   // ============================================================
   ngOnInit(): void {
+    // Cerrar automáticamente el menú lateral al ingresar al módulo
+    this.nexusMenuService.closeMenu();
     this.verificarRoles();
     this.obtenerDatosColaborador();
     window.addEventListener('popstate', this.manejarPopState);
@@ -611,15 +617,17 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   // CARGAR SOLICITUDES - VERSIÓN OPTIMIZADA Y SILENCIOSA
   // ============================================================
-  cargarSolicitudes(): void {
-    if (this.cargandoSolicitudes) {
+  cargarSolicitudes(silencioso: boolean = false): void {
+    if (this.cargandoSolicitudes && !silencioso) {
       return; // Ya hay una carga en progreso, no duplicar
     }
 
-    this.cargandoSolicitudes = true;
+    if (!silencioso && (!this.solicitudes || this.solicitudes.length === 0)) {
+      this.cargandoSolicitudes = true;
+    }
     this.errorCargandoSolicitudes = false;
 
-    console.log('GET /api/solicitudes - Solicitando listado completo de solicitudes...');
+    console.log('GET /api/solicitudes - Solicitando listado de solicitudes...');
 
     // 1. CARGAR DESDE CACHÉ PRIMERO (PARA RESPUESTA INMEDIATA)
     const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
@@ -652,27 +660,20 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             this.solicitudesCargadas = this.solicitudes.length;
             this.todasCargadas = true;
 
-            console.log('GET /api/solicitudes - Lista actualizada:', this.solicitudes.length, 'solicitudes (ordenadas desc por ID)');
+            console.log('GET /api/solicitudes - Lista actualizada:', this.solicitudes.length, 'solicitudes');
 
             // Guardar en caché para futuras cargas
             this.guardarSolicitudesEnCache();
-
-            // SOLO mostrar notificación si hay cambios y no es la primera carga
-            if (cargadoDesdeCache && hayCambios) {
-              this.mostrarNotificacionSnackbar(`Se actualizaron ${nuevasSolicitudes.length} solicitudes`, 'info');
-            }
           } else {
             console.log('GET /api/solicitudes - Sin cambios detectados. Manteniendo datos en caché.');
-            // Actualizar solo el conteo
             this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
             this.todasCargadas = true;
           }
         } else {
-          if (!cargadoDesdeCache) {
+          if (!cargadoDesdeCache && (!this.solicitudes || this.solicitudes.length === 0)) {
             this.solicitudes = [];
             this.solicitudesFiltradas = [];
             this.totalSolicitudesBD = 0;
-            console.warn('GET /api/solicitudes - El backend no retornó datos.');
           }
         }
         this.cargandoSolicitudes = false;
@@ -681,11 +682,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         console.error('GET /api/solicitudes - Error al cargar:', err.message || err);
         this.cargandoSolicitudes = false;
-        this.errorCargandoSolicitudes = true;
-
-        const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
-        if (!cargadoDesdeCache) {
-          console.error('GET /api/solicitudes - Sin datos en caché. No hay información disponible.');
+        if (!cargadoDesdeCache && (!this.solicitudes || this.solicitudes.length === 0)) {
+          this.errorCargandoSolicitudes = true;
           this.solicitudes = [];
           this.solicitudesFiltradas = [];
           this.mostrarNotificacionSnackbar('Error al cargar solicitudes', 'error');
@@ -753,19 +751,35 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     return false;
   }
 
-  // ============================================================
-  // GUARDAR EN LOCAL STORAGE (CACHE)
-  // ============================================================
   private guardarSolicitudesEnCache(): void {
     try {
       if (this.solicitudes && this.solicitudes.length > 0) {
-        // Guardar ya ordenadas por ID descendente
-        const solicitudesOrdenadas = this.ordenarSolicitudesPorId([...this.solicitudes]);
-        localStorage.setItem('solicitudes_desarrollo_cache', JSON.stringify(solicitudesOrdenadas));
-        console.log('CACHE - Solicitudes guardadas en localStorage:', this.solicitudes.length);
+        // Guardar versión ligera de las solicitudes más recientes (máximo 40)
+        const solicitudesLigeras = this.ordenarSolicitudesPorId([...this.solicitudes]).slice(0, 40).map(s => ({
+          id: s.id,
+          numeroSolicitud: s.numeroSolicitud,
+          fechaCreacion: s.fechaCreacion,
+          solicitante: s.solicitante,
+          objetivo: s.objetivo,
+          area: s.area,
+          proceso: s.proceso,
+          vicepresidencia: s.vicepresidencia,
+          cargo: s.cargo,
+          correo: s.correo,
+          sede: s.sede,
+          tipo: s.tipo,
+          estado: s.estado,
+          prioridad: s.prioridad,
+          totalRequerimientos: s.totalRequerimientos
+        }));
+        localStorage.setItem('solicitudes_desarrollo_cache', JSON.stringify(solicitudesLigeras));
+        console.log('CACHE - Solicitudes guardadas en localStorage:', solicitudesLigeras.length);
       }
     } catch (e) {
-      console.warn('CACHE - Error al escribir en localStorage:', e);
+      console.warn('CACHE - No se pudo escribir en localStorage (cuota):', e);
+      try {
+        localStorage.removeItem('solicitudes_desarrollo_cache');
+      } catch (ignored) {}
     }
   }
 
@@ -1018,8 +1032,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.solicitudSeleccionada = { ...solicitud };
     this.puedeEditarDetalle = this.vistaActual === 'bandeja';
     this.modoEdicion = false;
-    this.estadoEditado = this.solicitudSeleccionada.estado;
-    this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
+    this.estadoEditado = solicitud.estado;
+    this.prioridadEditada = this.normalizarPrioridad(solicitud.prioridad);
     this.mostrarModalDetalle = true;
     this.precargarImagenesSolicitud(solicitud);
 
@@ -1028,7 +1042,17 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         next: (detalleBackend) => {
           if (detalleBackend) {
             const solicitudMapeada = this.mapearSolicitud(detalleBackend);
-            this.solicitudSeleccionada = { ...solicitudMapeada };
+            if (!this.modoEdicion) {
+              this.solicitudSeleccionada = { ...solicitudMapeada };
+              this.estadoEditado = solicitudMapeada.estado;
+              this.prioridadEditada = this.normalizarPrioridad(solicitudMapeada.prioridad);
+            } else {
+              this.solicitudSeleccionada = {
+                ...solicitudMapeada,
+                estado: this.estadoEditado,
+                prioridad: this.normalizarPrioridad(this.prioridadEditada)
+              };
+            }
             this.precargarImagenesSolicitud(solicitudMapeada);
             this.cdr.markForCheck();
           }
@@ -1049,8 +1073,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.solicitudSeleccionada = { ...solicitud };
     this.puedeEditarDetalle = true;
     this.modoEdicion = true;
-    this.estadoEditado = this.solicitudSeleccionada.estado;
-    this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
+    this.estadoEditado = solicitud.estado;
+    this.prioridadEditada = this.normalizarPrioridad(solicitud.prioridad);
     this.mostrarModalDetalle = true;
     this.precargarImagenesSolicitud(solicitud);
 
@@ -1059,7 +1083,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         next: (detalleBackend) => {
           if (detalleBackend) {
             const solicitudMapeada = this.mapearSolicitud(detalleBackend);
-            this.solicitudSeleccionada = { ...solicitudMapeada };
+            this.solicitudSeleccionada = {
+              ...solicitudMapeada,
+              estado: this.estadoEditado,
+              prioridad: this.normalizarPrioridad(this.prioridadEditada)
+            };
             this.precargarImagenesSolicitud(solicitudMapeada);
             this.cdr.markForCheck();
           }
@@ -1252,19 +1280,37 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   guardarCambiosRequerimiento(): void {
     if (!this.requerimientoSeleccionadoModal) return;
-    const lista = this.requerimientoSeleccionadoTipo === 'funcional'
-      ? (this.solicitudActual.requerimientosFuncionales || [])
-      : (this.solicitudActual.requerimientosNoFuncionales || []);
+    delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
 
-    if (this.requerimientoSeleccionadoIndex >= 0 && this.requerimientoSeleccionadoIndex < lista.length) {
-      delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
-      lista[this.requerimientoSeleccionadoIndex] = { ...this.requerimientoSeleccionadoModal };
-      delete (lista[this.requerimientoSeleccionadoIndex] as any)._imagenesUnicas;
+    const tipo = this.requerimientoSeleccionadoTipo;
+    const index = this.requerimientoSeleccionadoIndex;
+
+    // Actualizar en solicitudActual (Wizard de creación)
+    if (this.solicitudActual) {
+      const listaActual = tipo === 'funcional'
+        ? (this.solicitudActual.requerimientosFuncionales || [])
+        : (this.solicitudActual.requerimientosNoFuncionales || []);
+
+      if (index >= 0 && index < listaActual.length) {
+        listaActual[index] = JSON.parse(JSON.stringify(this.requerimientoSeleccionadoModal));
+      }
+    }
+
+    // Actualizar en solicitudSeleccionada (Modal de detalle/edición de solicitud)
+    if (this.solicitudSeleccionada) {
+      const listaSeleccionada = tipo === 'funcional'
+        ? (this.solicitudSeleccionada.requerimientosFuncionales || [])
+        : (this.solicitudSeleccionada.requerimientosNoFuncionales || []);
+
+      if (index >= 0 && index < listaSeleccionada.length) {
+        listaSeleccionada[index] = JSON.parse(JSON.stringify(this.requerimientoSeleccionadoModal));
+      }
     }
 
     this.modoEdicionReq = false;
     this.mostrarModalRequerimiento = false;
     this.mostrarNotificacionSnackbar('Requerimiento actualizado exitosamente', 'success');
+    this.cdr.detectChanges();
   }
 
   eliminarRequerimientoDesdeModal(): void {
@@ -1312,7 +1358,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.modoEdicion = !this.modoEdicion;
     if (this.modoEdicion && this.solicitudSeleccionada) {
       this.estadoEditado = this.solicitudSeleccionada.estado;
-      this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
+      this.prioridadEditada = this.normalizarPrioridad(this.solicitudSeleccionada.prioridad);
     }
   }
 
@@ -1323,12 +1369,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
                               this.misSolicitudes.find(s => s.id === targetId) ||
                               this.solicitudSeleccionada;
 
-    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase();
-    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase();
-    const estadoCambiado = estadoNuevoStr !== '' && estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== (solicitudOriginal.estado || '').toLowerCase();
+    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase().trim();
+    const estadoOriginalStr = (solicitudOriginal.estado || '').toLowerCase().trim();
+    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase().trim();
+    const estadoCambiado = estadoNuevoStr !== '' && estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== estadoOriginalStr;
 
-    const prioridadOriginalStr = (solicitudOriginal.prioridad || 'media').toLowerCase();
-    const prioridadNuevaStr = (this.prioridadEditada || 'media').toLowerCase();
+    const prioridadOriginalStr = this.normalizarPrioridad(solicitudOriginal.prioridad);
+    const prioridadNuevaStr = this.normalizarPrioridad(this.prioridadEditada);
     const prioridadCambiada = prioridadNuevaStr !== prioridadOriginalStr;
 
     return estadoCambiado || prioridadCambiada;
@@ -1349,12 +1396,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
                               this.misSolicitudes.find(s => s.id === targetId) ||
                               this.solicitudSeleccionada;
 
-    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase();
-    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase();
-    const estadoCambiado = estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== (solicitudOriginal.estado || '').toLowerCase();
+    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase().trim();
+    const estadoOriginalStr = (solicitudOriginal.estado || '').toLowerCase().trim();
+    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase().trim();
+    const estadoCambiado = estadoNuevoStr !== '' && estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== estadoOriginalStr;
 
-    const prioridadOriginalStr = (solicitudOriginal.prioridad || 'media').toLowerCase();
-    const prioridadNuevaStr = (this.prioridadEditada || 'media').toLowerCase();
+    const prioridadOriginalStr = this.normalizarPrioridad(solicitudOriginal.prioridad);
+    const prioridadNuevaStr = this.normalizarPrioridad(this.prioridadEditada);
     const prioridadCambiada = prioridadNuevaStr !== prioridadOriginalStr;
 
     if (!estadoCambiado && !prioridadCambiada) {
@@ -1364,13 +1412,37 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // 1. Actualización inmediata en memoria de la UI (0ms)
+    if (this.solicitudSeleccionada) {
+      if (this.estadoEditado) this.solicitudSeleccionada.estado = this.estadoEditado;
+      if (this.prioridadEditada) this.solicitudSeleccionada.prioridad = prioridadNuevaStr;
+    }
+    const actualizarItem = (item: SolicitudDesarrollo) => {
+      if (item.id === targetId) {
+        if (this.estadoEditado) item.estado = this.estadoEditado;
+        if (this.prioridadEditada) item.prioridad = prioridadNuevaStr;
+      }
+    };
+    this.solicitudes.forEach(actualizarItem);
+    this.solicitudesFiltradas.forEach(actualizarItem);
+    this.misSolicitudes.forEach(actualizarItem);
+    this.guardarSolicitudesEnCache();
+    this.cdr.detectChanges();
+
+    // 2. Persistencia en Backend
     if (estadoCambiado) {
-      const estadoSeleccionado = this.estadosList.find(e => e.nombre.toLowerCase() === estadoNuevoStr);
+      const estadoSeleccionado = this.estadosList.find(e => 
+        (e.nombre && e.nombre.toLowerCase().trim() === estadoNuevoStr) ||
+        (e.codigo && e.codigo.toLowerCase().trim() === estadoNuevoStr) ||
+        (e.id && String(e.id) === estadoNuevoStr) ||
+        (e.nombre && this.getEstadoVisual(e.nombre).toLowerCase().trim() === estadoNuevoStr)
+      );
+
       if (estadoSeleccionado) {
         const observacion = `Cambio de estado desde edición: ${solicitudOriginal.estado} → ${this.estadoEditado}`;
         this.solicitudesService.cambiarEstado(targetId, estadoSeleccionado.id, observacion).subscribe({
           next: () => {
-            console.log('POST /api/solicitudes/{id}/estado - Estado actualizado correctamente.');
+            console.log('POST /api/solicitudes/{id}/estado - Estado actualizado correctamente en backend.');
             if (prioridadCambiada) {
               this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
             } else {
@@ -1383,11 +1455,12 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
               this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
             } else {
               this.guardandoCambios = false;
-              this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
+              this.mostrarNotificacionSnackbar('Error al actualizar el estado en el servidor', 'error');
             }
           }
         });
       } else {
+        console.warn('Estado no encontrado en lista por nombre/código:', estadoNuevoStr);
         if (prioridadCambiada) {
           this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
         } else {
@@ -1418,14 +1491,32 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   private finalizarGuardado(): void {
     this.guardandoCambios = false;
     this.modoEdicion = false;
-    this.cargarSolicitudes();
-    this.cargarMisSolicitudes();
-    this.mostrarNotificacionSnackbar('Cambios guardados exitosamente', 'success');
 
-    if (this.solicitudSeleccionada) {
-      this.solicitudSeleccionada.estado = this.estadoEditado;
-      this.solicitudSeleccionada.prioridad = this.normalizarPrioridad(this.prioridadEditada);
+    const targetId = this.solicitudSeleccionada?.id;
+    if (targetId) {
+      if (this.solicitudSeleccionada) {
+        this.solicitudSeleccionada.estado = this.estadoEditado;
+        this.solicitudSeleccionada.prioridad = this.normalizarPrioridad(this.prioridadEditada);
+      }
+
+      // Actualizar inmediatamente en las listas en memoria (0ms)
+      const actualizarItem = (item: SolicitudDesarrollo) => {
+        if (item.id === targetId) {
+          if (this.estadoEditado) item.estado = this.estadoEditado;
+          if (this.prioridadEditada) item.prioridad = this.normalizarPrioridad(this.prioridadEditada);
+        }
+      };
+      this.solicitudes.forEach(actualizarItem);
+      this.solicitudesFiltradas.forEach(actualizarItem);
+      this.misSolicitudes.forEach(actualizarItem);
+      this.guardarSolicitudesEnCache();
     }
+
+    // Sincronización silenciosa en segundo plano
+    this.cargarSolicitudes(true);
+    this.cargarMisSolicitudes(true);
+    this.mostrarNotificacionSnackbar('Cambios guardados exitosamente', 'success');
+    this.cdr.detectChanges();
   }
 
   // ============================================================
@@ -1443,23 +1534,29 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   confirmarEliminarSolicitud(): void {
     if (!this.solicitudAEliminar || !this.solicitudAEliminar.id) return;
+    const idAEliminar = this.solicitudAEliminar.id;
     
-    this.solicitudesService.eliminar(this.solicitudAEliminar.id).subscribe({
+    // 1. Eliminación instantánea en la UI (0ms)
+    this.solicitudes = this.solicitudes.filter(s => s.id !== idAEliminar);
+    this.solicitudesFiltradas = this.solicitudesFiltradas.filter(s => s.id !== idAEliminar);
+    this.misSolicitudes = this.misSolicitudes.filter(s => s.id !== idAEliminar);
+    this.totalSolicitudesBD = Math.max(0, this.totalSolicitudesBD - 1);
+    this.totalMisSolicitudesBD = Math.max(0, this.totalMisSolicitudesBD - 1);
+    this.guardarSolicitudesEnCache();
+    this.mostrarModalEliminarSolicitud = false;
+    this.solicitudAEliminar = null;
+    this.mostrarNotificacionSnackbar('Solicitud eliminada exitosamente', 'success');
+    this.cdr.detectChanges();
+
+    // 2. Ejecución en backend en segundo plano
+    this.solicitudesService.eliminar(idAEliminar).subscribe({
       next: () => {
-        console.log('DELETE /api/solicitudes/{id} - Solicitud eliminada correctamente.');
-        this.cargarSolicitudes();
-        if (this.vistaActual === 'historial') {
-          this.cargarMisSolicitudes();
-        }
-        this.mostrarModalEliminarSolicitud = false;
-        this.solicitudAEliminar = null;
-        this.mostrarNotificacionSnackbar('Solicitud eliminada exitosamente', 'success');
+        console.log('DELETE /api/solicitudes/{id} - Eliminada en backend correctamente.');
       },
       error: (err) => {
-        console.error('DELETE /api/solicitudes/{id} - Error al eliminar:', err.message || err);
-        this.mostrarNotificacionSnackbar('Error al eliminar la solicitud', 'error');
-        this.mostrarModalEliminarSolicitud = false;
-        this.solicitudAEliminar = null;
+        console.error('DELETE /api/solicitudes/{id} - Error al eliminar en servidor:', err.message || err);
+        this.mostrarNotificacionSnackbar('Error al sincronizar eliminación con el servidor', 'error');
+        this.cargarSolicitudes(true);
       }
     });
   }
@@ -1527,24 +1624,39 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     const id = this.solicitudSeleccionada.id;
     const nuevoEstadoId = Number(this.nuevoEstadoSeleccionadoId);
     const observacion = this.observacionCambioEstado.trim();
+    const estadoObj = this.estadosList.find(e => e.id === nuevoEstadoId);
+    const nuevoEstadoNombre = estadoObj ? estadoObj.nombre : '';
 
     console.log(`POST /api/solicitudes/${id}/estado - Cambiando a estadoId=${nuevoEstadoId}...`);
 
+    // Actualización inmediata en memoria (0ms)
+    if (nuevoEstadoNombre) {
+      this.solicitudSeleccionada.estado = nuevoEstadoNombre;
+      const actualizarItem = (item: SolicitudDesarrollo) => {
+        if (item.id === id) {
+          item.estado = nuevoEstadoNombre;
+        }
+      };
+      this.solicitudes.forEach(actualizarItem);
+      this.solicitudesFiltradas.forEach(actualizarItem);
+      this.misSolicitudes.forEach(actualizarItem);
+      this.guardarSolicitudesEnCache();
+    }
+
+    this.cerrarModalCambioEstado();
+    this.cerrarModalDetalle();
+    this.mostrarNotificacionSnackbar('El estado de la solicitud ha sido actualizado correctamente', 'success');
+    this.cdr.detectChanges();
+
     this.solicitudesService.cambiarEstado(id, nuevoEstadoId, observacion).subscribe({
       next: (response) => {
-        console.log('POST /api/solicitudes/{id}/estado - Cambio exitoso:', response);
-        this.cerrarModalCambioEstado();
-        this.cerrarModalDetalle();
-        this.cargarSolicitudes();
-        this.mostrarNotificacionSnackbar('El estado de la solicitud ha sido actualizado correctamente', 'success');
+        console.log('POST /api/solicitudes/{id}/estado - Cambio exitoso en backend:', response);
+        this.cargarSolicitudes(true);
       },
       error: (err) => {
         console.error('POST /api/solicitudes/{id}/estado - Error:', err.message || err);
-        let mensajeError = 'Hubo un error al intentar cambiar el estado de la solicitud.';
-        if (err.error && err.error.message) {
-          mensajeError += '\n' + err.error.message;
-        }
-        this.mostrarNotificacionSnackbar(mensajeError, 'error');
+        this.mostrarNotificacionSnackbar('Error al sincronizar cambio de estado', 'error');
+        this.cargarSolicitudes(true);
       }
     });
   }
@@ -1590,8 +1702,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     if (this.solicitudes.length > 0) {
       this.solicitudes = this.ordenarSolicitudesPorId([...this.solicitudes]);
       this.solicitudesFiltradas = this.ordenarSolicitudesPorId([...this.solicitudesFiltradas]);
+      this.cargarSolicitudes(true);
+    } else {
+      this.cargarSolicitudes(false);
     }
-    this.cargarSolicitudes();
     if (typeof window !== 'undefined') {
       window.history.pushState({ vista: this.vistaActual }, '', window.location.href);
     }
@@ -1610,7 +1724,14 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   irAtras(): void {
-    this.volverPrincipal();
+    if (this.vistaActual === 'principal') {
+      // Navegar primero y luego abrir el menú lateral una vez la navegación esté completa
+      this.router.navigate(['/hyl/inicio']).then(() => {
+        setTimeout(() => this.nexusMenuService.openMenu(), 50);
+      });
+    } else {
+      this.volverPrincipal();
+    }
   }
 
   // ============================================================
@@ -1620,20 +1741,25 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   mostrarMisSolicitudes(): void {
     this.vistaActual = 'historial';
     this.puedeEditarDetalle = false;
-    this.cargarMisSolicitudes();
+    if (this.misSolicitudes.length > 0) {
+      this.cargarMisSolicitudes(true);
+    } else {
+      this.cargarMisSolicitudes(false);
+    }
     if (typeof window !== 'undefined') {
       window.history.pushState({ vista: this.vistaActual }, '', window.location.href);
     }
   }
 
-  cargarMisSolicitudes(): void {
-    this.cargandoMisSolicitudes = true;
+  cargarMisSolicitudes(silencioso: boolean = false): void {
+    if (!silencioso && (!this.misSolicitudes || this.misSolicitudes.length === 0)) {
+      this.cargandoMisSolicitudes = true;
+    }
     const doc = this.datosColaborador.documento || '';
     const correo = this.datosColaborador.correo || '';
 
     // Si no tenemos documento, usamos el correo como identificador
     if (!doc && correo) {
-      console.log('GET /api/solicitudes/mis-solicitudes/correo/{correo} - Buscando por correo:', correo);
       this.solicitudesService.obtenerMisSolicitudesPorCorreo(correo, 0, 100).subscribe({
         next: (data: any) => {
           if (data && data.content) {
@@ -1642,24 +1768,22 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             );
             this.totalMisSolicitudesBD = data.totalElements;
           } else {
-            this.misSolicitudes = [];
-            this.totalMisSolicitudesBD = 0;
+            if (!silencioso && (!this.misSolicitudes || this.misSolicitudes.length === 0)) {
+              this.misSolicitudes = [];
+              this.totalMisSolicitudesBD = 0;
+            }
           }
           this.cargandoMisSolicitudes = false;
           this.cdr.detectChanges();
         },
         error: (err: any) => {
-          console.error('GET /api/solicitudes/mis-solicitudes/correo - Error:', err.message || err);
           this.cargandoMisSolicitudes = false;
-          this.misSolicitudes = [];
-          this.mostrarNotificacionSnackbar('Error al cargar mis solicitudes', 'error');
           this.cdr.detectChanges();
         }
       });
       return;
     }
 
-    console.log('GET /api/solicitudes/mis-solicitudes/{doc} - Buscando por documento:', doc);
     this.solicitudesService.obtenerMisSolicitudes(doc, 0, 100).subscribe({
       next: (data: any) => {
         if (data && data.content) {
@@ -1668,17 +1792,16 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           );
           this.totalMisSolicitudesBD = data.totalElements;
         } else {
-          this.misSolicitudes = [];
-          this.totalMisSolicitudesBD = 0;
+          if (!silencioso && (!this.misSolicitudes || this.misSolicitudes.length === 0)) {
+            this.misSolicitudes = [];
+            this.totalMisSolicitudesBD = 0;
+          }
         }
         this.cargandoMisSolicitudes = false;
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-          console.error('GET /api/solicitudes/mis-solicitudes - Error:', err.message || err);
         this.cargandoMisSolicitudes = false;
-        this.misSolicitudes = [];
-        this.mostrarNotificacionSnackbar('Error al cargar mis solicitudes', 'error');
         this.cdr.detectChanges();
       }
     });
