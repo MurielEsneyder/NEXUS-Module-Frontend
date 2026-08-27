@@ -311,7 +311,7 @@
               </div>
               <div class="form-grupo">
                 <label class="campo-label">Adjuntar Imágenes <span style="font-size: 11px; color: #718096; font-weight: normal;">(Máximo 4 imágenes - {{ archivosAdjuntosTemporales.length }}/4)</span></label>
-                <input type="file" multiple accept="image/*" (change)="seleccionarArchivo($event)" style="display:none" #fileInputRF>
+                <input type="file" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" (change)="seleccionarArchivo($event)" style="display:none" #fileInputRF>
                 <div class="img-preview-grid">
                   <div *ngFor="let arch of archivosAdjuntosTemporales; let k = index" class="img-preview-tile">
                     <img [src]="arch.base64" [alt]="arch.nombre" class="img-preview-thumb">
@@ -381,7 +381,7 @@
               </div>
               <div class="form-grupo">
                 <label class="campo-label">Adjuntar Imágenes <span style="font-size: 11px; color: #718096; font-weight: normal;">(Máximo 4 imágenes - {{ archivosAdjuntosTemporales.length }}/4)</span></label>
-                <input type="file" multiple accept="image/*" (change)="seleccionarArchivo($event)" style="display:none" #fileInputRNF>
+                <input type="file" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" (change)="seleccionarArchivo($event)" style="display:none" #fileInputRNF>
                 <div class="img-preview-grid">
                   <div *ngFor="let arch of archivosAdjuntosTemporales; let k = index" class="img-preview-tile">
                     <img [src]="arch.base64" [alt]="arch.nombre" class="img-preview-thumb">
@@ -926,7 +926,7 @@
 
       <!-- Modo Edición -->
       <div *ngIf="modoEdicionReq">
-        <input type="file" multiple accept="image/*" (change)="seleccionarArchivoModal($event)" style="display:none" #fileInputModal>
+        <input type="file" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" (change)="seleccionarArchivoModal($event)" style="display:none" #fileInputModal>
         
         <div class="img-preview-grid">
           <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal); let j = index" class="img-preview-tile">

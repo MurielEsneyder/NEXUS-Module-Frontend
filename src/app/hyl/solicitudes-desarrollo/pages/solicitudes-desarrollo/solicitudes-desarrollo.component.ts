@@ -1899,6 +1899,12 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
       for (let i = 0; i < cantidadCargar; i++) {
         const file = files[i];
+        // Validar estrictamente que sea un archivo de imagen
+        if (!file.type || !file.type.startsWith('image/')) {
+          this.mostrarNotificacionSnackbar(`El archivo "${file.name}" no es una imagen válida. Solo se permiten imágenes (PNG, JPG, JPEG, WEBP, GIF).`, 'error');
+          continue;
+        }
+
         const reader = new FileReader();
         reader.onload = () => {
           this.archivosAdjuntosTemporales.push({
@@ -1944,6 +1950,12 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
         for (let i = 0; i < cantidadCargar; i++) {
           const file = files[i];
+          // Validar estrictamente que sea un archivo de imagen
+          if (!file.type || !file.type.startsWith('image/')) {
+            this.mostrarNotificacionSnackbar(`El archivo "${file.name}" no es una imagen válida. Solo se permiten imágenes (PNG, JPG, JPEG, WEBP, GIF).`, 'error');
+            continue;
+          }
+
           const reader = new FileReader();
           reader.onload = () => {
             this.requerimientoSeleccionadoModal!.archivos!.push({
