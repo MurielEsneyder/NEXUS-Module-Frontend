@@ -15,6 +15,8 @@ import { Area, Proceso, Vicepresidencia, Cargo } from '../../models/solicitudes-
 // ============================================================
 export interface RequerimientoItem {
   id: string;
+  dbId?: number;
+  codigo?: string;
   descripcion: string;
   detalle?: string;
   cargoImpactado?: string;
@@ -908,7 +910,16 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     const reqNoFuncionales: RequerimientoItem[] = [];
 
     if (item.requerimientos && Array.isArray(item.requerimientos)) {
-      item.requerimientos.forEach((req: any) => {
+      const reqsOrdenados = [...item.requerimientos].sort((a: any, b: any) => {
+        const tipoA = Number(a.tipoRequerimiento !== undefined ? a.tipoRequerimiento : (a.tipo_requerimiento || 0));
+        const tipoB = Number(b.tipoRequerimiento !== undefined ? b.tipoRequerimiento : (b.tipo_requerimiento || 0));
+        if (tipoA !== tipoB) return tipoA - tipoB;
+        const ordA = a.numeroOrden !== undefined && a.numeroOrden !== null ? Number(a.numeroOrden) : (a.id ? Number(a.id) : 0);
+        const ordB = b.numeroOrden !== undefined && b.numeroOrden !== null ? Number(b.numeroOrden) : (b.id ? Number(b.id) : 0);
+        return ordA - ordB;
+      });
+
+      reqsOrdenados.forEach((req: any) => {
         const rawImgs = req.imagenesUrls || req.imagenes || req.archivos || [];
         const mappedImgsUrls = rawImgs.map((img: any, idx: number) => {
           if (typeof img === 'string') return { url: img, orden: idx + 1 };
@@ -920,7 +931,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         }
 
         const reqMapped: RequerimientoItem = {
-          id: req.id ? String(req.id) : '',
+          id: '',
+          dbId: req.id ? Number(req.id) : undefined,
+          codigo: req.codigo || '',
           descripcion: req.objetivo || req.detalle || 'Sin descripción',
           detalle: req.detalle || '',
           cargoImpactado: req.cargoImpactado || '',
@@ -932,14 +945,14 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         const tipoReqNum = tipoReq !== null && tipoReq !== undefined ? Number(tipoReq) : -1;
         const tipoNombre = req.tipoRequerimientoNombre ? String(req.tipoRequerimientoNombre).toLowerCase() : '';
 
-        if (tipoReqNum === 0 || tipoNombre.includes('funcional') && !tipoNombre.includes('no')) {
-          reqMapped.id = reqMapped.id || `RF_${reqFuncionales.length + 1}`;
+        if (tipoReqNum === 0 || (tipoNombre.includes('funcional') && !tipoNombre.includes('no'))) {
+          reqMapped.id = req.codigo || `RF_${this.padNumber(reqFuncionales.length + 1)}`;
           reqFuncionales.push(reqMapped);
         } else if (tipoReqNum === 1 || tipoNombre.includes('no funcional')) {
-          reqMapped.id = reqMapped.id || `RNF_${reqNoFuncionales.length + 1}`;
+          reqMapped.id = req.codigo || `RNF_${this.padNumber(reqNoFuncionales.length + 1)}`;
           reqNoFuncionales.push(reqMapped);
         } else {
-          reqMapped.id = reqMapped.id || `RF_${reqFuncionales.length + 1}`;
+          reqMapped.id = req.codigo || `RF_${this.padNumber(reqFuncionales.length + 1)}`;
           reqFuncionales.push(reqMapped);
         }
       });
