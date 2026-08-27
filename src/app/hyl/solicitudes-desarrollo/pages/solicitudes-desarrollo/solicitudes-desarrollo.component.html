@@ -443,7 +443,7 @@
           <div class="acciones-paso">
             <button class="btn-atras" (click)="irPaso(4)" [disabled]="guardando">Atras</button>
             <button class="btn-guardar-final" (click)="guardarSolicitud()" [disabled]="guardando">
-              {{ guardando ? 'Creando solicitud...' : 'Enviar' }}
+              {{ guardando ? 'Enviando solicitud...' : 'Enviar' }}
             </button>
           </div>
         </div>
@@ -491,57 +491,62 @@
         </thead>
         <tbody>
           <tr *ngIf="cargandoMisSolicitudes">
-            <td colspan="10" class="text-center cargando-datos">
-              <p>⏳ Cargando mis solicitudes...</p>
-            </td>
-          </tr>
-          <tr *ngFor="let solicitud of misSolicitudes" class="fila-solicitud">
-            <td>{{ solicitud.fechaCreacion | date:'dd/MM/yyyy' }}</td>
-            <td><strong>{{ solicitud.numeroSolicitud }}</strong></td>
-            <td title="{{ solicitud.objetivo }}">{{ solicitud.objetivo | slice:0:25 }}{{ solicitud.objetivo.length > 25 ? '...' : '' }}</td>
-            <td>
-              <span class="badge-tipo" [class.badge-proyecto]="solicitud.tipo === 'Proyecto'" [class.badge-mejora]="solicitud.tipo === 'Mejora'">
-                {{ solicitud.tipo || 'N/A' }}
-              </span>
-            </td>
-            <td>{{ solicitud.area }}</td>
-            <td class="text-center">{{ solicitud.totalRequerimientos || 0 }}</td>
-            <td>
-              <span class="estado-badge" [ngClass]="{
-                'estado-pendiente': getEstadoVisual(solicitud.estado) === 'Pendiente',
-                'estado-enviada': getEstadoVisual(solicitud.estado) === 'Enviada',
-                'estado-documentacion': getEstadoVisual(solicitud.estado) === 'En documentación',
-                'estado-funcional': getEstadoVisual(solicitud.estado) === 'En pruebas funcionales',
-                'estado-pruebas': getEstadoVisual(solicitud.estado) === 'En Pruebas',
-                'estado-desarrollo': getEstadoVisual(solicitud.estado) === 'En desarrollo',
-                'estado-aceptacion': getEstadoVisual(solicitud.estado) === 'En pruebas de aceptación',
-                'estado-cerrada': getEstadoVisual(solicitud.estado) === 'Cerrada',
-                'estado-rechazada': getEstadoVisual(solicitud.estado) === 'Rechazada'
-              }">
-                {{ getEstadoVisual(solicitud.estado) }}
-              </span>
-            </td>
-            <td class="text-center">
-              <span class="prioridad-badge" [ngClass]="{
-                'prioridad-alta': solicitud.prioridad === 'alta',
-                'prioridad-media': solicitud.prioridad === 'media',
-                'prioridad-baja': solicitud.prioridad === 'baja'
-              }">
-                {{ solicitud.prioridad || 'Media' }}
-              </span>
-            </td>
-            <td class="text-center">
-              <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
-                📄 PDF
-              </button>
-            </td>
-            <td class="text-center">
-              <div class="acciones-btns">
-                <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
-                <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
+            <td colspan="10" class="cargando-bandeja-cell">
+              <div class="cargando-bandeja">
+                <div class="spinner-bandeja"></div>
+                <span>Cargando mis solicitudes...</span>
               </div>
             </td>
           </tr>
+          <ng-container *ngIf="!cargandoMisSolicitudes">
+            <tr *ngFor="let solicitud of misSolicitudes" class="fila-solicitud">
+              <td>{{ solicitud.fechaCreacion | date:'dd/MM/yyyy' }}</td>
+              <td><strong>{{ solicitud.numeroSolicitud }}</strong></td>
+              <td title="{{ solicitud.objetivo }}">{{ solicitud.objetivo | slice:0:25 }}{{ solicitud.objetivo.length > 25 ? '...' : '' }}</td>
+              <td>
+                <span class="badge-tipo" [class.badge-proyecto]="solicitud.tipo === 'Proyecto'" [class.badge-mejora]="solicitud.tipo === 'Mejora'">
+                  {{ solicitud.tipo || 'N/A' }}
+                </span>
+              </td>
+              <td>{{ solicitud.area }}</td>
+              <td class="text-center">{{ solicitud.totalRequerimientos || 0 }}</td>
+              <td>
+                <span class="estado-badge" [ngClass]="{
+                  'estado-pendiente': getEstadoVisual(solicitud.estado) === 'Pendiente',
+                  'estado-enviada': getEstadoVisual(solicitud.estado) === 'Enviada',
+                  'estado-documentacion': getEstadoVisual(solicitud.estado) === 'En documentación',
+                  'estado-funcional': getEstadoVisual(solicitud.estado) === 'En pruebas funcionales',
+                  'estado-pruebas': getEstadoVisual(solicitud.estado) === 'En Pruebas',
+                  'estado-desarrollo': getEstadoVisual(solicitud.estado) === 'En desarrollo',
+                  'estado-aceptacion': getEstadoVisual(solicitud.estado) === 'En pruebas de aceptación',
+                  'estado-cerrada': getEstadoVisual(solicitud.estado) === 'Cerrada',
+                  'estado-rechazada': getEstadoVisual(solicitud.estado) === 'Rechazada'
+                }">
+                  {{ getEstadoVisual(solicitud.estado) }}
+                </span>
+              </td>
+              <td class="text-center">
+                <span class="prioridad-badge" [ngClass]="{
+                  'prioridad-alta': solicitud.prioridad === 'alta',
+                  'prioridad-media': solicitud.prioridad === 'media',
+                  'prioridad-baja': solicitud.prioridad === 'baja'
+                }">
+                  {{ solicitud.prioridad || 'Media' }}
+                </span>
+              </td>
+              <td class="text-center">
+                <button class="btn-pdf-adjunto" (click)="descargarSolicitudPDF(solicitud)" title="Descargar PDF">
+                  📄 PDF
+                </button>
+              </td>
+              <td class="text-center">
+                <div class="acciones-btns">
+                  <button class="btn-accion btn-ver" (click)="verDetalle(solicitud)" title="Ver detalle">👁️</button>
+                  <button class="btn-accion btn-eliminar" (click)="eliminarSolicitud(solicitud)" title="Eliminar">🗑️</button>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
           <tr *ngIf="!cargandoMisSolicitudes && misSolicitudes.length === 0">
             <td colspan="10" class="text-center sin-datos">
               <p>📭 No tienes solicitudes registradas</p>
@@ -581,7 +586,7 @@
         <span *ngIf="guardandoCambios">⏳ Guardando...</span>
       </button>
 
-      <button *ngIf="solicitudSeleccionada?.id" class="btn-ver-pdf-modal" (click)="verPdfBackend(solicitudSeleccionada.id)" style="background: #3bafb6; color: #ffffff; border: none; border-radius: 6px; padding: 6px 14px; font-weight: bold; cursor: pointer;" title="Visualizar PDF oficial con la estructura TDI-DT-F-08">
+      <button *ngIf="solicitudSeleccionada?.id" class="btn-ver-pdf-modal" (click)="verPdfBackend(solicitudSeleccionada.id)" style="margin-left: 8px; background: #3bafb6; color: #ffffff; border: none; border-radius: 6px; padding: 6px 14px; font-weight: bold; cursor: pointer;" title="Visualizar PDF oficial con la estructura TDI-DT-F-08">
         📄 Ver PDF Oficial
       </button>
       <span *ngIf="!puedeEditarDetalle" class="modo-indicador">🔒 Solo lectura</span>
@@ -589,6 +594,12 @@
     </div>
 
     <!-- INFORMACIÓN GENERAL Y METADATOS DE CREACIÓN -->
+    <!-- Indicador de carga mientras se obtienen los requerimientos e imágenes -->
+    <div *ngIf="cargandoDetalleModal" class="detalle-cargando-banner">
+      <div class="spinner-bandeja" style="width:22px; height:22px; border-width:3px;"></div>
+      <span>Cargando detalle completo...</span>
+    </div>
+
     <div class="sec-header-modal" style="background: #3bafb6; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; margin: 15px 0 10px 0;">
       INFORMACIÓN GENERAL Y DE CREACIÓN
     </div>
@@ -736,7 +747,7 @@
             <button type="button" (click)="abrirImagenCompleta(arch.url)" style="background: none; border: none; color: #3bafb6; text-decoration: underline; font-weight: bold; cursor: pointer;">🔍 Abrir a tamaño completo</button>
           </div>
           <div (click)="abrirImagenCompleta(arch.url)" style="cursor: pointer;">
-            <img [src]="obtenerSrcImagen(arch.url)" (error)="manejarErrorImagen($event, arch.url)" alt="Imagen {{ req.id }}" style="max-width: 100%; max-height: 480px; width: auto; border: 1px solid #94a3b8; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <img [src]="arch.url" alt="Imagen {{ req.id }}" style="max-width: 100%; max-height: 480px; width: auto; border: 1px solid #94a3b8; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
           </div>
         </div>
       </div>
@@ -776,7 +787,7 @@
             <button type="button" (click)="abrirImagenCompleta(arch.url)" style="background: none; border: none; color: #3bafb6; text-decoration: underline; font-weight: bold; cursor: pointer;">🔍 Abrir a tamaño completo</button>
           </div>
           <div (click)="abrirImagenCompleta(arch.url)" style="cursor: pointer;">
-            <img [src]="obtenerSrcImagen(arch.url)" (error)="manejarErrorImagen($event, arch.url)" alt="Imagen {{ req.id }}" style="max-width: 100%; max-height: 480px; width: auto; border: 1px solid #94a3b8; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <img [src]="arch.url" alt="Imagen {{ req.id }}" style="max-width: 100%; max-height: 480px; width: auto; border: 1px solid #94a3b8; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
           </div>
         </div>
       </div>
@@ -901,36 +912,34 @@
     </div>
     
     <div class="detalle-item detalle-full-width" style="margin-top: 15px;" [class.detalle-editable]="modoEdicionReq">
-      <label>Imágenes adjuntas: <span *ngIf="modoEdicionReq" style="font-size: 11px; color: #718096; font-weight: normal;">(Máximo 4 imágenes - {{ obtenerImagenesUnicas(requerimientoSeleccionadoModal).length }}/4)</span></label>
+      <label>Imágenes adjuntas:</label>
       
-      <!-- Vista Normal (Solo lectura) -->
+      <!-- Vista Normal -->
       <div *ngIf="!modoEdicionReq">
         <div class="img-preview-grid" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length">
           <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal)" class="img-preview-tile" (click)="abrirImagenCompleta(imagen.url)" style="cursor:pointer;" title="Clic para ampliar">
-            <img [src]="obtenerSrcImagen(imagen.url)" (error)="manejarErrorImagen($event, imagen.url)" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}">
+            <img [src]="imagen.url" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}">
           </div>
         </div>
         <div *ngIf="!obtenerImagenesUnicas(requerimientoSeleccionadoModal).length" class="text-muted" style="font-size:13px; margin-top:5px;">Sin imágenes / adjuntos</div>
       </div>
 
-      <!-- Modo Edición / Administración -->
+      <!-- Modo Edición -->
       <div *ngIf="modoEdicionReq">
         <input type="file" multiple accept="image/*" (change)="seleccionarArchivoModal($event)" style="display:none" #fileInputModal>
         
-        <div class="img-preview-grid" style="margin-bottom: 8px;">
+        <div class="img-preview-grid">
           <div *ngFor="let imagen of obtenerImagenesUnicas(requerimientoSeleccionadoModal); let j = index" class="img-preview-tile">
-            <img [src]="obtenerSrcImagen(imagen.url)" (error)="manejarErrorImagen($event, imagen.url)" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}" (click)="abrirImagenCompleta(imagen.url)" style="cursor:pointer;" title="Clic para ampliar">
+            <img [src]="imagen.url" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}" (click)="abrirImagenCompleta(imagen.url)" style="cursor:pointer;" title="Clic para ampliar">
             <button type="button" class="img-preview-x" (click)="eliminarImagenModal(j); $event.stopPropagation()" title="Eliminar imagen">✕</button>
           </div>
-          <!-- Recuadro '+' idéntico al del wizard (solo si hay menos de 4) -->
-          <div class="img-preview-add" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length < MAX_IMAGENES_POR_REQ" (click)="fileInputModal.click()" title="Adjuntar imágenes">
+          <!-- Recuadro '+' igual al del wizard -->
+          <div class="img-preview-add" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length < MAX_IMAGENES_POR_REQ" (click)="fileInputModal.click()" title="Adjuntar imagen ({{ obtenerImagenesUnicas(requerimientoSeleccionadoModal).length }}/4)">
             <span>+</span>
           </div>
         </div>
 
-        <button type="button" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length < MAX_IMAGENES_POR_REQ" class="btn-guardar-req" (click)="fileInputModal.click()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 7px 16px; margin-top: 4px; box-shadow: 0 2px 6px rgba(59, 175, 182, 0.25);">
-          📷 Adjuntar imágenes
-        </button>
+        <div *ngIf="!obtenerImagenesUnicas(requerimientoSeleccionadoModal).length" class="text-muted" style="font-size:13px; margin-top:5px; margin-bottom:10px;">Sin imágenes adjuntas</div>
       </div>
     </div>
 

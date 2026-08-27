@@ -9,7 +9,6 @@ import jsPDF from 'jspdf';
 // @ts-ignore - jspdf-autotable no tiene tipos
 import autoTable from 'jspdf-autotable';
 import { Area, Proceso, Vicepresidencia, Cargo } from '../../models/solicitudes-desarrollo.models';
-import { environment } from '../../../../../environments/environment';
 
 // ============================================================
 // INTERFACES
@@ -22,7 +21,6 @@ export interface RequerimientoItem {
   archivos?: any[];
   tieneImagen?: boolean;
   imagenesUrls?: { url: string, orden: number }[];
-  imagenes?: any[];
 }
 
 export interface SolicitudDesarrollo {
@@ -95,6 +93,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   estadoEditado = '';
   prioridadEditada = 'media';
   guardandoCambios = false;
+  cargandoDetalleModal = false;
 
   // ============================================================
   // DATOS
@@ -620,76 +619,66 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   // CARGAR SOLICITUDES - VERSIÓN OPTIMIZADA Y SILENCIOSA
   // ============================================================
-  cargarSolicitudes(silencioso: boolean = false): void {
-    if (this.cargandoSolicitudes && !silencioso) {
-      return; // Ya hay una carga en progreso, no duplicar
+  cargarSolicitudes(): void {
+    if (this.cargandoSolicitudes) {
+      return;
     }
 
-    if (!silencioso && (!this.solicitudes || this.solicitudes.length === 0)) {
-      this.cargandoSolicitudes = true;
-    }
     this.errorCargandoSolicitudes = false;
 
-    console.log('GET /api/solicitudes - Solicitando listado de solicitudes...');
-
-    // 1. CARGAR DESDE CACHÉ PRIMERO (PARA RESPUESTA INMEDIATA)
-    const cargadoDesdeCache = this.cargarSolicitudesDesdeLocalStorage();
+    // 1. Mostrar caché instantáneamente SIN spinner (evita bloquear la UI)
+    //    Pero primero verificamos que la caché no sea muy vieja (> 5 min)
+    const cacheEdad = this.getCacheEdadMs();
+    const cacheValida = cacheEdad < 5 * 60 * 1000; // 5 minutos
+    const cargadoDesdeCache = cacheValida && this.cargarSolicitudesDesdeLocalStorage();
     if (cargadoDesdeCache) {
-      console.log('CACHE - Datos cargados desde localStorage mientras el backend responde.');
-      this.actualizarListasOrdenadas(); // Ordenar los datos cargados desde caché
-      this.cargandoSolicitudes = false; // Ocultar indicador de carga si ya hay datos
+      this.actualizarListasOrdenadas();
+      // Con caché válida: no mostramos spinner, el refresh es silencioso
+      this.cargandoSolicitudes = false;
+    } else {
+      if (!cacheValida) {
+        // Limpiar caché vieja para no mostrar datos desactualizados
+        localStorage.removeItem('solicitudes_desarrollo_cache');
+        localStorage.removeItem('solicitudes_desarrollo_cache_ts');
+      }
+      // Sin caché: mostrar spinner hasta que llegue el backend
+      this.cargandoSolicitudes = true;
     }
 
-    // 2. OBTENER DATOS FRESCOS DEL BACKEND (EN SEGUNDO PLANO)
+    // 2. Refrescar desde backend silenciosamente
     this.solicitudesService.obtenerTodasCompletas().subscribe({
       next: (data: any) => {
-        console.log('GET /api/solicitudes - Respuesta recibida:', (data?.content?.length || 0), 'solicitudes');
-
         if (data && data.content) {
-          // Mapear los datos
-          const nuevasSolicitudes = data.content.map((item: any) => this.mapearSolicitud(item));
-
-          // Ordenar las nuevas solicitudes por ID descendente
-          const nuevasSolicitudesOrdenadas = this.ordenarSolicitudesPorId(nuevasSolicitudes);
-
-          // Verificar si hay cambios significativos
-          const hayCambios = this.hayCambiosSignificativos(nuevasSolicitudesOrdenadas);
+          const nuevas = data.content.map((item: any) => this.mapearSolicitud(item));
+          const ordenadas = this.ordenarSolicitudesPorId(nuevas);
+          const hayCambios = this.hayCambiosSignificativos(ordenadas);
 
           if (hayCambios || !cargadoDesdeCache) {
-            // Actualizar la lista completa con datos ordenados
-            this.solicitudes = nuevasSolicitudesOrdenadas;
+            this.solicitudes = ordenadas;
             this.solicitudesFiltradas = [...this.solicitudes];
             this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
             this.solicitudesCargadas = this.solicitudes.length;
             this.todasCargadas = true;
-
-            console.log('GET /api/solicitudes - Lista actualizada:', this.solicitudes.length, 'solicitudes');
-
-            // Guardar en caché para futuras cargas
             this.guardarSolicitudesEnCache();
           } else {
-            console.log('GET /api/solicitudes - Sin cambios detectados. Manteniendo datos en caché.');
             this.totalSolicitudesBD = data.totalElements || this.solicitudes.length;
             this.todasCargadas = true;
           }
-        } else {
-          if (!cargadoDesdeCache && (!this.solicitudes || this.solicitudes.length === 0)) {
-            this.solicitudes = [];
-            this.solicitudesFiltradas = [];
-            this.totalSolicitudesBD = 0;
-          }
+        } else if (!cargadoDesdeCache) {
+          this.solicitudes = [];
+          this.solicitudesFiltradas = [];
+          this.totalSolicitudesBD = 0;
         }
         this.cargandoSolicitudes = false;
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        console.error('GET /api/solicitudes - Error al cargar:', err.message || err);
+        console.error('GET /api/solicitudes - Error:', err.message || err);
         this.cargandoSolicitudes = false;
-        if (!cargadoDesdeCache && (!this.solicitudes || this.solicitudes.length === 0)) {
+        if (!cargadoDesdeCache) {
           this.errorCargandoSolicitudes = true;
           this.solicitudes = [];
           this.solicitudesFiltradas = [];
-          this.mostrarNotificacionSnackbar('Error al cargar solicitudes', 'error');
         }
         this.cdr.detectChanges();
       }
@@ -703,11 +692,16 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     if (!this.solicitudes || this.solicitudes.length === 0) return true;
     if (nuevasSolicitudes.length !== this.solicitudes.length) return true;
 
-    // Verificar si cambió el estado o prioridad de alguna solicitud
+    // Verificar si cambió el ID, estado, prioridad o cantidad de requerimientos
     for (let i = 0; i < nuevasSolicitudes.length; i++) {
       const nueva = nuevasSolicitudes[i];
       const actual = this.solicitudes[i];
-      if (nueva.estado !== actual.estado || nueva.prioridad !== actual.prioridad) {
+      if (
+        nueva.id !== actual.id ||
+        nueva.estado !== actual.estado ||
+        nueva.prioridad !== actual.prioridad ||
+        nueva.totalRequerimientos !== actual.totalRequerimientos
+      ) {
         return true;
       }
     }
@@ -754,35 +748,29 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     return false;
   }
 
+  // ============================================================
+  // GUARDAR EN LOCAL STORAGE (CACHE)
+  // ============================================================
   private guardarSolicitudesEnCache(): void {
     try {
       if (this.solicitudes && this.solicitudes.length > 0) {
-        // Guardar versión ligera de las solicitudes más recientes (máximo 40)
-        const solicitudesLigeras = this.ordenarSolicitudesPorId([...this.solicitudes]).slice(0, 40).map(s => ({
-          id: s.id,
-          numeroSolicitud: s.numeroSolicitud,
-          fechaCreacion: s.fechaCreacion,
-          solicitante: s.solicitante,
-          objetivo: s.objetivo,
-          area: s.area,
-          proceso: s.proceso,
-          vicepresidencia: s.vicepresidencia,
-          cargo: s.cargo,
-          correo: s.correo,
-          sede: s.sede,
-          tipo: s.tipo,
-          estado: s.estado,
-          prioridad: s.prioridad,
-          totalRequerimientos: s.totalRequerimientos
-        }));
-        localStorage.setItem('solicitudes_desarrollo_cache', JSON.stringify(solicitudesLigeras));
-        console.log('CACHE - Solicitudes guardadas en localStorage:', solicitudesLigeras.length);
+        const solicitudesOrdenadas = this.ordenarSolicitudesPorId([...this.solicitudes]);
+        localStorage.setItem('solicitudes_desarrollo_cache', JSON.stringify(solicitudesOrdenadas));
+        localStorage.setItem('solicitudes_desarrollo_cache_ts', Date.now().toString());
       }
     } catch (e) {
-      console.warn('CACHE - No se pudo escribir en localStorage (cuota):', e);
-      try {
-        localStorage.removeItem('solicitudes_desarrollo_cache');
-      } catch (ignored) {}
+      console.warn('CACHE - Error al escribir en localStorage:', e);
+    }
+  }
+
+  // Retorna los milisegundos de edad de la caché (Infinity si no existe)
+  private getCacheEdadMs(): number {
+    try {
+      const ts = localStorage.getItem('solicitudes_desarrollo_cache_ts');
+      if (!ts) return Infinity;
+      return Date.now() - parseInt(ts, 10);
+    } catch {
+      return Infinity;
     }
   }
 
@@ -804,7 +792,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   // MAPEAR SOLICITUD
   // ============================================================
-  private normalizarPrioridad(valor: unknown): 'alta' | 'media' | 'baja' {
+  public normalizarPrioridad(valor: unknown): 'alta' | 'media' | 'baja' {
     const texto = String(valor ?? '').trim().toLowerCase();
     if (texto === 'alta' || texto === 'high') return 'alta';
     if (texto === 'baja' || texto === 'low') return 'baja';
@@ -923,13 +911,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       item.requerimientos.forEach((req: any) => {
         const rawImgs = req.imagenesUrls || req.imagenes || req.archivos || [];
         const mappedImgsUrls = rawImgs.map((img: any, idx: number) => {
-          let u = '';
-          if (typeof img === 'string') u = img;
-          else if (img && typeof img === 'object') u = img.url || img.base64 || img.url_imagen || '';
-          return {
-            url: this.formatearUrlImagen(u),
-            orden: img?.orden || idx + 1
-          };
+          if (typeof img === 'string') return { url: img, orden: idx + 1 };
+          return { url: img.url || img.base64 || img.url_imagen || '', orden: img.orden || idx + 1 };
         });
 
         if (mappedImgsUrls.length > 0) {
@@ -941,7 +924,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           descripcion: req.objetivo || req.detalle || 'Sin descripción',
           detalle: req.detalle || '',
           cargoImpactado: req.cargoImpactado || '',
-          archivos: mappedImgsUrls,
+          archivos: rawImgs,
           imagenesUrls: mappedImgsUrls
         };
 
@@ -1035,33 +1018,29 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.solicitudSeleccionada = { ...solicitud };
     this.puedeEditarDetalle = this.vistaActual === 'bandeja';
     this.modoEdicion = false;
-    this.estadoEditado = solicitud.estado;
-    this.prioridadEditada = this.normalizarPrioridad(solicitud.prioridad);
+    this.estadoEditado = this.solicitudSeleccionada.estado;
+    this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
     this.mostrarModalDetalle = true;
-    this.precargarImagenesSolicitud(solicitud);
+    this.cargandoDetalleModal = true;
 
     if (solicitud.id) {
       this.solicitudesService.obtenerPorId(solicitud.id).subscribe({
         next: (detalleBackend) => {
           if (detalleBackend) {
             const solicitudMapeada = this.mapearSolicitud(detalleBackend);
-            if (!this.modoEdicion) {
-              this.solicitudSeleccionada = { ...solicitudMapeada };
-              this.estadoEditado = solicitudMapeada.estado;
-              this.prioridadEditada = this.normalizarPrioridad(solicitudMapeada.prioridad);
-            } else {
-              this.solicitudSeleccionada = {
-                ...solicitudMapeada,
-                estado: this.estadoEditado,
-                prioridad: this.normalizarPrioridad(this.prioridadEditada)
-              };
-            }
-            this.precargarImagenesSolicitud(solicitudMapeada);
-            this.cdr.markForCheck();
+            this.solicitudSeleccionada = { ...solicitudMapeada };
           }
+          this.cargandoDetalleModal = false;
+          this.cdr.detectChanges();
         },
-        error: (err) => console.warn('No se pudo cargar detalle extendido:', err)
+        error: (err) => {
+          console.warn('No se pudo cargar detalle extendido:', err);
+          this.cargandoDetalleModal = false;
+          this.cdr.detectChanges();
+        }
       });
+    } else {
+      this.cargandoDetalleModal = false;
     }
   }
 
@@ -1076,10 +1055,10 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.solicitudSeleccionada = { ...solicitud };
     this.puedeEditarDetalle = true;
     this.modoEdicion = true;
-    this.estadoEditado = solicitud.estado;
-    this.prioridadEditada = this.normalizarPrioridad(solicitud.prioridad);
+    this.estadoEditado = this.solicitudSeleccionada.estado;
+    this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
     this.mostrarModalDetalle = true;
-    this.precargarImagenesSolicitud(solicitud);
+    this.cargandoDetalleModal = true;
 
     if (solicitud.id) {
       this.solicitudesService.obtenerPorId(solicitud.id).subscribe({
@@ -1091,135 +1070,21 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
               estado: this.estadoEditado,
               prioridad: this.normalizarPrioridad(this.prioridadEditada)
             };
-            this.precargarImagenesSolicitud(solicitudMapeada);
-            this.cdr.markForCheck();
           }
+          this.cargandoDetalleModal = false;
+          this.cdr.detectChanges();
         },
-        error: (err) => console.warn('No se pudo cargar detalle extendido:', err)
-      });
-    }
-  }
-
-  formatearUrlImagen(url: string): string {
-    if (!url) return '';
-    const trimmed = String(url).trim();
-    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-
-    let apiBase = (environment && environment.services) ? environment.services : 'http://localhost:8084/api';
-    apiBase = apiBase.replace(/\/+$/, '');
-
-    let cleanPath = trimmed;
-    if (!cleanPath.startsWith('/')) {
-      cleanPath = '/' + cleanPath;
-    }
-
-    if (cleanPath.startsWith('/api/')) {
-      const rootHost = apiBase.replace(/\/api$/, '');
-      return `${rootHost}${cleanPath}`;
-    }
-
-    if (cleanPath.startsWith('/imagenes/')) {
-      return `${apiBase}${cleanPath}`;
-    }
-
-    return `${apiBase}/archivos-ftp/descargar?ruta=${encodeURIComponent(cleanPath)}`;
-  }
-
-  // Mapa en memoria de ObjectURLs autenticados (evita 401 Unauthorized por falta de header JWT)
-  imagenesBlobCache = new Map<string, string>();
-  private imagenesCargando = new Set<string>();
-
-  private readonly PLACEHOLDER_CARGA = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160"><rect fill="%23f8fafc" width="320" height="160"/><text fill="%2300767c" font-family="sans-serif" font-size="13" font-weight="bold" x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">⏳ Cargando imagen...</text></svg>';
-
-  precargarImagenesSolicitud(solicitud: SolicitudDesarrollo): void {
-    if (!solicitud) return;
-    const todosReqs = [
-      ...(solicitud.requerimientosFuncionales || []),
-      ...(solicitud.requerimientosNoFuncionales || [])
-    ];
-    todosReqs.forEach(req => {
-      const imgs = this.obtenerImagenesUnicas(req);
-      imgs.forEach(img => {
-        if (img && img.url) {
-          this.cargarImagenSegura(img.url);
+        error: (err) => {
+          console.warn('No se pudo cargar detalle extendido:', err);
+          this.cargandoDetalleModal = false;
+          this.cdr.detectChanges();
         }
       });
-    });
-  }
-
-  cargarImagenSegura(rawUrl: string): void {
-    if (!rawUrl) return;
-    const trimmed = String(rawUrl).trim();
-    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || this.imagenesBlobCache.has(trimmed) || this.imagenesCargando.has(trimmed)) {
-      return;
     }
-    this.imagenesCargando.add(trimmed);
-
-    // Descargar usando el servicio autenticado DataService para no disparar HTTP Basic Auth
-    this.solicitudesService.descargarImagenBlob(trimmed).subscribe({
-      next: (blob: Blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        this.imagenesBlobCache.set(trimmed, objectUrl);
-        this.imagenesCargando.delete(trimmed);
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        this.imagenesCargando.delete(trimmed);
-        console.warn('⚠️ Error al descargar imagen con token oficial:', trimmed, err);
-      }
-    });
-  }
-
-  obtenerSrcImagen(rawUrl: string): string {
-    if (!rawUrl) return '';
-    const trimmed = String(rawUrl).trim();
-    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
-      return trimmed;
-    }
-    const cached = this.imagenesBlobCache.get(trimmed);
-    if (cached) {
-      return cached;
-    }
-    if (!this.imagenesCargando.has(trimmed)) {
-      // Iniciar la descarga autenticada con token en background solo si no está en proceso
-      this.cargarImagenSegura(trimmed);
-    }
-    // Retornar placeholder SVG para que el browser NO intente hacer una petición sin token
-    return this.PLACEHOLDER_CARGA;
-  }
-
-  manejarErrorImagen(event: any, rawUrl: string): void {
-    if (!rawUrl) return;
-    const trimmed = String(rawUrl).trim();
-    if (this.imagenesBlobCache.has(trimmed)) {
-      if (event && event.target) {
-        event.target.src = this.imagenesBlobCache.get(trimmed)!;
-      }
-      return;
-    }
-    this.solicitudesService.descargarImagenBlob(trimmed).subscribe({
-      next: (blob: Blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        this.imagenesBlobCache.set(trimmed, objectUrl);
-        if (event && event.target) {
-          event.target.src = objectUrl;
-        }
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        console.warn('⚠️ Fallback final de imagen con error:', trimmed, err);
-      }
-    });
   }
 
   obtenerImagenesUnicas(req: any): { url: string, orden: number }[] {
     if (!req) return [];
-    // Retornar del cache del objeto si ya fue calculado para evitar loops en ChangeDetection
-    if (req._imagenesUnicas) {
-      return req._imagenesUnicas;
-    }
     const imagenes: { url: string, orden: number }[] = [];
     const vistas = new Set<string>();
 
@@ -1235,7 +1100,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         if (urlVal && !vistas.has(urlVal)) {
           vistas.add(urlVal);
           imagenes.push({
-            url: this.formatearUrlImagen(urlVal),
+            url: urlVal,
             orden: item.orden || (imagenes.length + 1)
           });
         }
@@ -1246,7 +1111,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     procesarLista(req.archivos);
     procesarLista(req.imagenes);
 
-    req._imagenesUnicas = imagenes;
     return imagenes;
   }
 
@@ -1255,19 +1119,17 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   verDetalleRequerimiento(req: RequerimientoItem, tipo: 'funcional' | 'noFuncional', index: number): void {
     this.requerimientoSeleccionadoModal = JSON.parse(JSON.stringify(req));
-    delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
     this.requerimientoSeleccionadoTipo = tipo;
     this.requerimientoSeleccionadoIndex = index;
-    this.modoEdicionReq = false; // Modo sólo lectura para el botón de ver (ojo)
+    this.modoEdicionReq = false;
     this.mostrarModalRequerimiento = true;
   }
 
   editarRequerimiento(req: RequerimientoItem, tipo: 'funcional' | 'noFuncional', index: number): void {
     this.requerimientoSeleccionadoModal = JSON.parse(JSON.stringify(req));
-    delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
     this.requerimientoSeleccionadoTipo = tipo;
     this.requerimientoSeleccionadoIndex = index;
-    this.modoEdicionReq = true; // Modo edición activo para el lápiz
+    this.modoEdicionReq = true;
     this.mostrarModalRequerimiento = true;
   }
 
@@ -1283,7 +1145,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   guardarCambiosRequerimiento(): void {
     if (!this.requerimientoSeleccionadoModal) return;
-    delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
 
     const tipo = this.requerimientoSeleccionadoTipo;
     const index = this.requerimientoSeleccionadoIndex;
@@ -1299,7 +1160,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Actualizar en solicitudSeleccionada (Modal de detalle/edición de solicitud)
+    // Actualizar en solicitudSeleccionada (Modal de detalle de solicitud)
     if (this.solicitudSeleccionada) {
       const listaSeleccionada = tipo === 'funcional'
         ? (this.solicitudSeleccionada.requerimientosFuncionales || [])
@@ -1313,7 +1174,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.modoEdicionReq = false;
     this.mostrarModalRequerimiento = false;
     this.mostrarNotificacionSnackbar('Requerimiento actualizado exitosamente', 'success');
-    this.cdr.detectChanges();
   }
 
   eliminarRequerimientoDesdeModal(): void {
@@ -1325,12 +1185,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     if (!this.requerimientoSeleccionadoModal) return;
     if (!this.nuevaUrlImagenModal || this.nuevaUrlImagenModal.trim() === '') return;
     
-    const actuales = this.obtenerImagenesUnicas(this.requerimientoSeleccionadoModal).length;
-    if (actuales >= this.MAX_IMAGENES_POR_REQ) {
-      this.mostrarNotificacionSnackbar(`Máximo ${this.MAX_IMAGENES_POR_REQ} imágenes permitidas por requerimiento.`, 'info');
-      return;
-    }
-
     if (!this.requerimientoSeleccionadoModal.imagenesUrls) {
       this.requerimientoSeleccionadoModal.imagenesUrls = [];
     }
@@ -1342,7 +1196,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       url: urlAgregada,
       orden: orden
     });
-    delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
     console.log('ADJUNTOS - URL agregada al requerimiento:', urlAgregada, '| Orden:', orden);
     this.nuevaUrlImagenModal = ''; // Limpiar input
   }
@@ -1368,7 +1221,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     this.modoEdicion = !this.modoEdicion;
     if (this.modoEdicion && this.solicitudSeleccionada) {
       this.estadoEditado = this.solicitudSeleccionada.estado;
-      this.prioridadEditada = this.normalizarPrioridad(this.solicitudSeleccionada.prioridad);
+      this.prioridadEditada = this.solicitudSeleccionada.prioridad || 'media';
     }
   }
 
@@ -1384,8 +1237,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     const estadoNuevoStr = (this.estadoEditado || '').toLowerCase().trim();
     const estadoCambiado = estadoNuevoStr !== '' && estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== estadoOriginalStr;
 
-    const prioridadOriginalStr = this.normalizarPrioridad(solicitudOriginal.prioridad);
-    const prioridadNuevaStr = this.normalizarPrioridad(this.prioridadEditada);
+    const prioridadOriginalStr = (solicitudOriginal.prioridad || 'media').toLowerCase().trim();
+    const prioridadNuevaStr = (this.prioridadEditada || 'media').toLowerCase().trim();
     const prioridadCambiada = prioridadNuevaStr !== prioridadOriginalStr;
 
     return estadoCambiado || prioridadCambiada;
@@ -1406,13 +1259,12 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
                               this.misSolicitudes.find(s => s.id === targetId) ||
                               this.solicitudSeleccionada;
 
-    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase().trim();
-    const estadoOriginalStr = (solicitudOriginal.estado || '').toLowerCase().trim();
-    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase().trim();
-    const estadoCambiado = estadoNuevoStr !== '' && estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== estadoOriginalStr;
+    const estadoVisualActual = this.getEstadoVisual(solicitudOriginal.estado).toLowerCase();
+    const estadoNuevoStr = (this.estadoEditado || '').toLowerCase();
+    const estadoCambiado = estadoNuevoStr !== estadoVisualActual && estadoNuevoStr !== (solicitudOriginal.estado || '').toLowerCase();
 
-    const prioridadOriginalStr = this.normalizarPrioridad(solicitudOriginal.prioridad);
-    const prioridadNuevaStr = this.normalizarPrioridad(this.prioridadEditada);
+    const prioridadOriginalStr = (solicitudOriginal.prioridad || 'media').toLowerCase();
+    const prioridadNuevaStr = (this.prioridadEditada || 'media').toLowerCase();
     const prioridadCambiada = prioridadNuevaStr !== prioridadOriginalStr;
 
     if (!estadoCambiado && !prioridadCambiada) {
@@ -1422,37 +1274,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 1. Actualización inmediata en memoria de la UI (0ms)
-    if (this.solicitudSeleccionada) {
-      if (this.estadoEditado) this.solicitudSeleccionada.estado = this.estadoEditado;
-      if (this.prioridadEditada) this.solicitudSeleccionada.prioridad = prioridadNuevaStr;
-    }
-    const actualizarItem = (item: SolicitudDesarrollo) => {
-      if (item.id === targetId) {
-        if (this.estadoEditado) item.estado = this.estadoEditado;
-        if (this.prioridadEditada) item.prioridad = prioridadNuevaStr;
-      }
-    };
-    this.solicitudes.forEach(actualizarItem);
-    this.solicitudesFiltradas.forEach(actualizarItem);
-    this.misSolicitudes.forEach(actualizarItem);
-    this.guardarSolicitudesEnCache();
-    this.cdr.detectChanges();
-
-    // 2. Persistencia en Backend
     if (estadoCambiado) {
-      const estadoSeleccionado = this.estadosList.find(e => 
-        (e.nombre && e.nombre.toLowerCase().trim() === estadoNuevoStr) ||
-        (e.codigo && e.codigo.toLowerCase().trim() === estadoNuevoStr) ||
-        (e.id && String(e.id) === estadoNuevoStr) ||
-        (e.nombre && this.getEstadoVisual(e.nombre).toLowerCase().trim() === estadoNuevoStr)
-      );
-
+      const estadoSeleccionado = this.estadosList.find(e => e.nombre.toLowerCase() === estadoNuevoStr);
       if (estadoSeleccionado) {
         const observacion = `Cambio de estado desde edición: ${solicitudOriginal.estado} → ${this.estadoEditado}`;
         this.solicitudesService.cambiarEstado(targetId, estadoSeleccionado.id, observacion).subscribe({
           next: () => {
-            console.log('POST /api/solicitudes/{id}/estado - Estado actualizado correctamente en backend.');
+            console.log('POST /api/solicitudes/{id}/estado - Estado actualizado correctamente.');
             if (prioridadCambiada) {
               this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
             } else {
@@ -1465,12 +1293,11 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
               this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
             } else {
               this.guardandoCambios = false;
-              this.mostrarNotificacionSnackbar('Error al actualizar el estado en el servidor', 'error');
+              this.mostrarNotificacionSnackbar('Error al actualizar el estado', 'error');
             }
           }
         });
       } else {
-        console.warn('Estado no encontrado en lista por nombre/código:', estadoNuevoStr);
         if (prioridadCambiada) {
           this.actualizarPrioridadEnServicio(targetId, prioridadNuevaStr);
         } else {
@@ -1501,32 +1328,28 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   private finalizarGuardado(): void {
     this.guardandoCambios = false;
     this.modoEdicion = false;
-
-    const targetId = this.solicitudSeleccionada?.id;
-    if (targetId) {
-      if (this.solicitudSeleccionada) {
-        this.solicitudSeleccionada.estado = this.estadoEditado;
-        this.solicitudSeleccionada.prioridad = this.normalizarPrioridad(this.prioridadEditada);
-      }
-
-      // Actualizar inmediatamente en las listas en memoria (0ms)
-      const actualizarItem = (item: SolicitudDesarrollo) => {
-        if (item.id === targetId) {
-          if (this.estadoEditado) item.estado = this.estadoEditado;
-          if (this.prioridadEditada) item.prioridad = this.normalizarPrioridad(this.prioridadEditada);
-        }
-      };
-      this.solicitudes.forEach(actualizarItem);
-      this.solicitudesFiltradas.forEach(actualizarItem);
-      this.misSolicitudes.forEach(actualizarItem);
-      this.guardarSolicitudesEnCache();
-    }
-
-    // Sincronización silenciosa en segundo plano
-    this.cargarSolicitudes(true);
-    this.cargarMisSolicitudes(true);
     this.mostrarNotificacionSnackbar('Cambios guardados exitosamente', 'success');
-    this.cdr.detectChanges();
+
+    // Actualizar localmente sin recargar del backend
+    if (this.solicitudSeleccionada) {
+      const nuevoEstado = this.estadoEditado;
+      const nuevaPrioridad = this.normalizarPrioridad(this.prioridadEditada);
+      this.solicitudSeleccionada.estado = nuevoEstado;
+      this.solicitudSeleccionada.prioridad = nuevaPrioridad;
+
+      // Actualizar en las listas en memoria
+      const id = this.solicitudSeleccionada.id;
+      [this.solicitudes, this.solicitudesFiltradas, this.misSolicitudes].forEach(lista => {
+        const idx = lista.findIndex(s => s.id === id);
+        if (idx >= 0) {
+          lista[idx] = { ...lista[idx], estado: nuevoEstado, prioridad: nuevaPrioridad };
+        }
+      });
+
+      // Actualizar caché local
+      this.guardarSolicitudesEnCache();
+      this.cdr.detectChanges();
+    }
   }
 
   // ============================================================
@@ -1544,29 +1367,23 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   confirmarEliminarSolicitud(): void {
     if (!this.solicitudAEliminar || !this.solicitudAEliminar.id) return;
-    const idAEliminar = this.solicitudAEliminar.id;
     
-    // 1. Eliminación instantánea en la UI (0ms)
-    this.solicitudes = this.solicitudes.filter(s => s.id !== idAEliminar);
-    this.solicitudesFiltradas = this.solicitudesFiltradas.filter(s => s.id !== idAEliminar);
-    this.misSolicitudes = this.misSolicitudes.filter(s => s.id !== idAEliminar);
-    this.totalSolicitudesBD = Math.max(0, this.totalSolicitudesBD - 1);
-    this.totalMisSolicitudesBD = Math.max(0, this.totalMisSolicitudesBD - 1);
-    this.guardarSolicitudesEnCache();
-    this.mostrarModalEliminarSolicitud = false;
-    this.solicitudAEliminar = null;
-    this.mostrarNotificacionSnackbar('Solicitud eliminada exitosamente', 'success');
-    this.cdr.detectChanges();
-
-    // 2. Ejecución en backend en segundo plano
-    this.solicitudesService.eliminar(idAEliminar).subscribe({
+    this.solicitudesService.eliminar(this.solicitudAEliminar.id).subscribe({
       next: () => {
-        console.log('DELETE /api/solicitudes/{id} - Eliminada en backend correctamente.');
+        console.log('DELETE /api/solicitudes/{id} - Solicitud eliminada correctamente.');
+        this.cargarSolicitudes();
+        if (this.vistaActual === 'historial') {
+          this.cargarMisSolicitudes();
+        }
+        this.mostrarModalEliminarSolicitud = false;
+        this.solicitudAEliminar = null;
+        this.mostrarNotificacionSnackbar('Solicitud eliminada exitosamente', 'success');
       },
       error: (err) => {
-        console.error('DELETE /api/solicitudes/{id} - Error al eliminar en servidor:', err.message || err);
-        this.mostrarNotificacionSnackbar('Error al sincronizar eliminación con el servidor', 'error');
-        this.cargarSolicitudes(true);
+        console.error('DELETE /api/solicitudes/{id} - Error al eliminar:', err.message || err);
+        this.mostrarNotificacionSnackbar('Error al eliminar la solicitud', 'error');
+        this.mostrarModalEliminarSolicitud = false;
+        this.solicitudAEliminar = null;
       }
     });
   }
@@ -1634,39 +1451,24 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     const id = this.solicitudSeleccionada.id;
     const nuevoEstadoId = Number(this.nuevoEstadoSeleccionadoId);
     const observacion = this.observacionCambioEstado.trim();
-    const estadoObj = this.estadosList.find(e => e.id === nuevoEstadoId);
-    const nuevoEstadoNombre = estadoObj ? estadoObj.nombre : '';
 
     console.log(`POST /api/solicitudes/${id}/estado - Cambiando a estadoId=${nuevoEstadoId}...`);
 
-    // Actualización inmediata en memoria (0ms)
-    if (nuevoEstadoNombre) {
-      this.solicitudSeleccionada.estado = nuevoEstadoNombre;
-      const actualizarItem = (item: SolicitudDesarrollo) => {
-        if (item.id === id) {
-          item.estado = nuevoEstadoNombre;
-        }
-      };
-      this.solicitudes.forEach(actualizarItem);
-      this.solicitudesFiltradas.forEach(actualizarItem);
-      this.misSolicitudes.forEach(actualizarItem);
-      this.guardarSolicitudesEnCache();
-    }
-
-    this.cerrarModalCambioEstado();
-    this.cerrarModalDetalle();
-    this.mostrarNotificacionSnackbar('El estado de la solicitud ha sido actualizado correctamente', 'success');
-    this.cdr.detectChanges();
-
     this.solicitudesService.cambiarEstado(id, nuevoEstadoId, observacion).subscribe({
       next: (response) => {
-        console.log('POST /api/solicitudes/{id}/estado - Cambio exitoso en backend:', response);
-        this.cargarSolicitudes(true);
+        console.log('POST /api/solicitudes/{id}/estado - Cambio exitoso:', response);
+        this.cerrarModalCambioEstado();
+        this.cerrarModalDetalle();
+        this.cargarSolicitudes();
+        this.mostrarNotificacionSnackbar('El estado de la solicitud ha sido actualizado correctamente', 'success');
       },
       error: (err) => {
         console.error('POST /api/solicitudes/{id}/estado - Error:', err.message || err);
-        this.mostrarNotificacionSnackbar('Error al sincronizar cambio de estado', 'error');
-        this.cargarSolicitudes(true);
+        let mensajeError = 'Hubo un error al intentar cambiar el estado de la solicitud.';
+        if (err.error && err.error.message) {
+          mensajeError += '\n' + err.error.message;
+        }
+        this.mostrarNotificacionSnackbar(mensajeError, 'error');
       }
     });
   }
@@ -1712,10 +1514,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     if (this.solicitudes.length > 0) {
       this.solicitudes = this.ordenarSolicitudesPorId([...this.solicitudes]);
       this.solicitudesFiltradas = this.ordenarSolicitudesPorId([...this.solicitudesFiltradas]);
-      this.cargarSolicitudes(true);
-    } else {
-      this.cargarSolicitudes(false);
     }
+    this.cargarSolicitudes();
     if (typeof window !== 'undefined') {
       window.history.pushState({ vista: this.vistaActual }, '', window.location.href);
     }
@@ -1735,7 +1535,6 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
   irAtras(): void {
     if (this.vistaActual === 'principal') {
-      // Navegar primero y luego abrir el menú lateral una vez la navegación esté completa
       this.router.navigate(['/hyl/inicio']).then(() => {
         setTimeout(() => this.nexusMenuService.openMenu(), 50);
       });
@@ -1751,18 +1550,14 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   mostrarMisSolicitudes(): void {
     this.vistaActual = 'historial';
     this.puedeEditarDetalle = false;
-    if (this.misSolicitudes.length > 0) {
-      this.cargarMisSolicitudes(true);
-    } else {
-      this.cargarMisSolicitudes(false);
-    }
+    this.cargarMisSolicitudes();
     if (typeof window !== 'undefined') {
       window.history.pushState({ vista: this.vistaActual }, '', window.location.href);
     }
   }
 
-  cargarMisSolicitudes(silencioso: boolean = false): void {
-    if (!silencioso && (!this.misSolicitudes || this.misSolicitudes.length === 0)) {
+  cargarMisSolicitudes(): void {
+    if (!this.misSolicitudes || this.misSolicitudes.length === 0) {
       this.cargandoMisSolicitudes = true;
     }
     const doc = this.datosColaborador.documento || '';
@@ -1770,6 +1565,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
 
     // Si no tenemos documento, usamos el correo como identificador
     if (!doc && correo) {
+      console.log('GET /api/solicitudes/mis-solicitudes/correo/{correo} - Buscando por correo:', correo);
       this.solicitudesService.obtenerMisSolicitudesPorCorreo(correo, 0, 100).subscribe({
         next: (data: any) => {
           if (data && data.content) {
@@ -1778,22 +1574,24 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
             );
             this.totalMisSolicitudesBD = data.totalElements;
           } else {
-            if (!silencioso && (!this.misSolicitudes || this.misSolicitudes.length === 0)) {
-              this.misSolicitudes = [];
-              this.totalMisSolicitudesBD = 0;
-            }
+            this.misSolicitudes = [];
+            this.totalMisSolicitudesBD = 0;
           }
           this.cargandoMisSolicitudes = false;
           this.cdr.detectChanges();
         },
         error: (err: any) => {
+          console.error('GET /api/solicitudes/mis-solicitudes/correo - Error:', err.message || err);
           this.cargandoMisSolicitudes = false;
+          this.misSolicitudes = [];
+          this.mostrarNotificacionSnackbar('Error al cargar mis solicitudes', 'error');
           this.cdr.detectChanges();
         }
       });
       return;
     }
 
+    console.log('GET /api/solicitudes/mis-solicitudes/{doc} - Buscando por documento:', doc);
     this.solicitudesService.obtenerMisSolicitudes(doc, 0, 100).subscribe({
       next: (data: any) => {
         if (data && data.content) {
@@ -1802,16 +1600,17 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
           );
           this.totalMisSolicitudesBD = data.totalElements;
         } else {
-          if (!silencioso && (!this.misSolicitudes || this.misSolicitudes.length === 0)) {
-            this.misSolicitudes = [];
-            this.totalMisSolicitudesBD = 0;
-          }
+          this.misSolicitudes = [];
+          this.totalMisSolicitudesBD = 0;
         }
         this.cargandoMisSolicitudes = false;
         this.cdr.detectChanges();
       },
       error: (err: any) => {
+          console.error('GET /api/solicitudes/mis-solicitudes - Error:', err.message || err);
         this.cargandoMisSolicitudes = false;
+        this.misSolicitudes = [];
+        this.mostrarNotificacionSnackbar('Error al cargar mis solicitudes', 'error');
         this.cdr.detectChanges();
       }
     });
@@ -1974,8 +1773,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   // ============================================================
   abrirImagenCompleta(url: string): void {
     if (!url) return;
-    const finalUrl = this.imagenesBlobCache.get(String(url).trim()) || this.formatearUrlImagen(url);
-    if (finalUrl.startsWith('data:') || finalUrl.startsWith('blob:')) {
+    if (url.startsWith('data:')) {
       try {
         const win = window.open();
         if (win) {
@@ -1990,45 +1788,17 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
                 </style>
               </head>
               <body>
-                <img src="${finalUrl}" alt="Imagen Completa" />
+                <img src="${url}" alt="Imagen Completa" />
               </body>
             </html>
           `);
           win.document.close();
         }
       } catch (e) {
-        console.error('Error al abrir la imagen base64/blob:', e);
+        console.error('Error al abrir la imagen base64:', e);
       }
     } else {
-      // Descargar con token de sesión vía DataService para evitar 401 y popup Basic Auth
-      this.solicitudesService.descargarImagenBlob(url).subscribe({
-        next: (blob: Blob) => {
-          const blobUrl = URL.createObjectURL(blob);
-          this.imagenesBlobCache.set(String(url).trim(), blobUrl);
-          const win = window.open();
-          if (win) {
-            win.document.write(`
-              <!DOCTYPE html>
-              <html>
-                <head>
-                  <title>Vista Previa de Imagen</title>
-                  <style>
-                    body { margin: 0; background: #0e171e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; }
-                    img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-                  </style>
-                </head>
-                <body>
-                  <img src="${blobUrl}" alt="Imagen Completa" />
-                </body>
-              </html>
-            `);
-            win.document.close();
-          }
-        },
-        error: (err) => {
-          console.error('Error al abrir imagen con token:', err);
-        }
-      });
+      window.open(url, '_blank');
     }
   }
 
@@ -2108,7 +1878,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
         event.target.value = '';
         return;
       }
-      
+
       const cantidadCargar = Math.min(files.length, disponibles);
       if (files.length > disponibles) {
         this.mostrarNotificacionSnackbar(`Solo se agregaron ${cantidadCargar} imágenes para no superar el límite de ${this.MAX_IMAGENES_POR_REQ}.`, 'info');
@@ -2170,8 +1940,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
               archivo: file,
               base64: reader.result
             });
-            delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
-            this.cdr.markForCheck();
+            this.cdr.detectChanges();
           };
           reader.readAsDataURL(file);
         }
@@ -2181,27 +1950,8 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   eliminarImagenModal(index: number): void {
-    if (!this.requerimientoSeleccionadoModal) return;
-    const imagenes = this.obtenerImagenesUnicas(this.requerimientoSeleccionadoModal);
-    if (index >= 0 && index < imagenes.length) {
-      const imgAEliminar = imagenes[index];
-      if (this.requerimientoSeleccionadoModal.archivos) {
-        this.requerimientoSeleccionadoModal.archivos = this.requerimientoSeleccionadoModal.archivos.filter(
-          (a: any) => (a.base64 || a.url || this.formatearUrlImagen(a.url || a.base64 || '')) !== imgAEliminar.url
-        );
-      }
-      if (this.requerimientoSeleccionadoModal.imagenesUrls) {
-        this.requerimientoSeleccionadoModal.imagenesUrls = this.requerimientoSeleccionadoModal.imagenesUrls.filter(
-          (img: any) => (img.url || this.formatearUrlImagen(img.url || '')) !== imgAEliminar.url
-        );
-      }
-      if (this.requerimientoSeleccionadoModal.imagenes) {
-        this.requerimientoSeleccionadoModal.imagenes = this.requerimientoSeleccionadoModal.imagenes.filter(
-          (img: any) => (img.url || img.url_imagen || this.formatearUrlImagen(img.url || img.url_imagen || '')) !== imgAEliminar.url
-        );
-      }
-      delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
-      this.cdr.markForCheck();
+    if (this.requerimientoSeleccionadoModal && this.requerimientoSeleccionadoModal.archivos) {
+      this.requerimientoSeleccionadoModal.archivos.splice(index, 1);
     }
   }
 
@@ -2477,24 +2227,15 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.guardando = false;
         console.log('POST /api/solicitudes - Solicitud creada. Código:', response?.codigo, '| ID:', response?.id);
-        this.numeroSolicitudExito = response?.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
+        this.numeroSolicitudExito = response.codigo || `SD_${String(this.solicitudes.length + 1).padStart(3, '0')}`;
 
-        // Insertar de inmediato la nueva solicitud al inicio de la bandeja (0ms delay)
-        if (response) {
-          const nuevaMapeada = this.mapearSolicitud(response);
-          this.solicitudes = [nuevaMapeada, ...this.solicitudes.filter(s => s.id !== response.id)];
-          this.solicitudesFiltradas = [...this.solicitudes];
-          this.totalSolicitudesBD = this.solicitudes.length;
-          this.guardarSolicitudesEnCache();
-        }
-
-        // Enviar correo con PDF adjunto en segundo plano
+        // Enviar correo con PDF adjunto usando la ruta #265 /api/solicitudes/{id}/enviar-notificacion
         if (response && response.id) {
           this.enviarNotificacionConPdf(response);
         }
 
         this.mostrarModalExito = true;
-        this.cdr.detectChanges();
+        this.cargarSolicitudes();
       },
       error: (err: any) => {
         this.guardando = false;

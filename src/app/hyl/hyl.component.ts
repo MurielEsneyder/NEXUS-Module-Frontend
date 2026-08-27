@@ -1,7 +1,6 @@
 import { Component, OnInit, ViewChild, OnDestroy, ChangeDetectorRef } from "@angular/core";
 import { CommonService } from '../commons/services/common.service';
 import { SecurityService, usrSession } from '../commons/services/security.service';
-import { NexusMenuService } from './shared/services/nexus-menu.service';
 import { BnNgIdleService } from 'bn-ng-idle';
 import { MatDrawer } from '@angular/material/sidenav';
 import { Router, NavigationEnd } from "@angular/router";
@@ -12,6 +11,8 @@ import { EMPTY, iif, Observable, of, ReplaySubject, Subscription, timer } from '
 import { switchMap, takeUntil } from "rxjs/operators";
 import { MatMenuTrigger } from "@angular/material/menu";
 import hotkeys from 'hotkeys-js';
+
+import { NexusMenuService } from './shared/services/nexus-menu.service';
 
 @Component({
   templateUrl: "./hyl.component.html",
@@ -41,17 +42,25 @@ export class HealthLifeComponent implements OnInit, OnDestroy {
   constructor(
     private commonService: CommonService,
     private security: SecurityService,
-    private nexusMenuService: NexusMenuService,
     private bnIdle: BnNgIdleService,
     private cdRef: ChangeDetectorRef,
     private router: Router,
-
+    private nexusMenuService: NexusMenuService
   ) {
     this.updateRoute(router);
   }
 
 
   ngOnInit() {
+    this.nexusMenuService.menuCommand$.pipe(takeUntil(this.subs)).subscribe(cmd => {
+      if (cmd === 'open' && this.drawer && !this.drawer.opened) {
+        this.drawer.open();
+      } else if (cmd === 'close' && this.drawer && this.drawer.opened) {
+        this.drawer.close();
+      } else if (cmd === 'toggle' && this.drawer) {
+        this.drawer.toggle();
+      }
+    });
 
 
     this.security.userSession.pipe(
@@ -110,18 +119,6 @@ export class HealthLifeComponent implements OnInit, OnDestroy {
         this.activeRoute = val;
         this.cdRef.detectChanges();
       });
-
-      this.nexusMenuService.drawerAction$.subscribe(state => {
-        if (!this.drawer || !state) return;
-        if (state === 'open') {
-          this.drawer.open();
-        } else if (state === 'close') {
-          this.drawer.close();
-        } else if (state === 'toggle') {
-          this.drawer.toggle();
-        }
-        this.cdRef.detectChanges();
-      });
     });
 
 
@@ -174,7 +171,7 @@ export class HealthLifeComponent implements OnInit, OnDestroy {
           this.fullActiveRoute = e.url.toUpperCase().replace("/HYL/", "").replace(/\//g, "\t‣\t").replace(/-/g, " ");
 
           const url = e.urlAfterRedirects || e.url;
-          const shouldCloseMenu = /\/hyl\/(nexus|solicitudes-desarrollo)(\/|$)/i.test(url);
+          const shouldCloseMenu = /\/hyl\/solicitudes-desarrollo(\/|$)/.test(url) || /\/hyl\/solicitudes-desarrollo\/.*(nueva|crear|bandeja)/i.test(url);
 
           if (shouldCloseMenu && this.drawer?.opened) {
             this.drawer.close();

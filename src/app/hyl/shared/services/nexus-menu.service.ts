@@ -1,22 +1,22 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class NexusMenuService {
-  private drawerActionSubject = new BehaviorSubject<'open' | 'close' | 'toggle' | null>(null);
-  public drawerAction$ = this.drawerActionSubject.asObservable();
+  private menuCommandSubject = new Subject<'open' | 'close' | 'toggle'>();
+  public menuCommand$ = this.menuCommandSubject.asObservable();
 
-  public openMenu(): void {
-    this.drawerActionSubject.next('open');
+  openMenu(): void {
+    this.menuCommandSubject.next('open');
   }
 
-  public closeMenu(): void {
-    this.drawerActionSubject.next('close');
+  closeMenu(): void {
+    this.menuCommandSubject.next('close');
   }
 
-  public toggleMenu(): void {
-    this.drawerActionSubject.next('toggle');
+  toggleMenu(): void {
+    this.menuCommandSubject.next('toggle');
   }
 }

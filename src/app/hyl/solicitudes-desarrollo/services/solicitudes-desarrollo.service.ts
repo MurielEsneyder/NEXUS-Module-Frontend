@@ -105,79 +105,13 @@ export class SolicitudesDesarrolloService {
     return this.dataService.requestGetBlob({}, `solicitudes/${id}/pdf/ver`, 'v1') as Observable<Blob>;
   }
 
-  descargarImagenBlob(ruta: string): Observable<Blob> {
-    let rutaLimpia = String(ruta || '').trim();
-    if (rutaLimpia.startsWith('http://') || rutaLimpia.startsWith('https://')) {
-      const idx = rutaLimpia.indexOf('/api/');
-      if (idx !== -1) {
-        rutaLimpia = rutaLimpia.substring(idx + 5);
-      }
-    }
-    if (rutaLimpia.startsWith('/api/')) {
-      rutaLimpia = rutaLimpia.substring(5);
-    } else if (rutaLimpia.startsWith('/')) {
-      rutaLimpia = rutaLimpia.substring(1);
-    }
-    return this.dataService.requestGetBlob({}, rutaLimpia, 'v1') as unknown as Observable<Blob>;
-  }
-
   // ============================================================
   // NUEVOS MÉTODOS PARA CARGAR TODAS LAS SOLICITUDES
   // ============================================================
 
   obtenerTodasCompletas(): Observable<any> {
-    return new Observable(observer => {
-      let todasLasSolicitudes: any[] = [];
-      let paginaActual = 0;
-      const tamanioPagina = 100;
-      let totalPages = 1;
-      
-      console.log('GET /api/solicitudes (paginado) - Iniciando carga de todas las páginas...');
-      
-      const cargarPagina = () => {
-        const ruta = `solicitudes?page=${paginaActual}&size=${tamanioPagina}`;
-        
-        this.dataService.requestGet({}, ruta, 'v1').subscribe({
-          next: (data: any) => {
-            console.log(`GET /api/solicitudes?page=${paginaActual} - ${data?.content?.length || 0} registros recibidos`);
-            
-            if (data && data.content && data.content.length > 0) {
-              todasLasSolicitudes = [...todasLasSolicitudes, ...data.content];
-              paginaActual++;
-              totalPages = data.totalPages || 1;
-              
-              if (paginaActual < totalPages) {
-                setTimeout(() => cargarPagina(), 150);
-              } else {
-                console.log(`GET /api/solicitudes (paginado) - Carga completa: ${todasLasSolicitudes.length} solicitudes`);
-                observer.next({ 
-                  content: todasLasSolicitudes, 
-                  totalElements: todasLasSolicitudes.length,
-                  totalPages: paginaActual,
-                  last: true
-                });
-                observer.complete();
-              }
-            } else {
-              console.log(`GET /api/solicitudes (paginado) - Sin más paginas. Total: ${todasLasSolicitudes.length}`);
-              observer.next({ 
-                content: todasLasSolicitudes, 
-                totalElements: todasLasSolicitudes.length,
-                totalPages: paginaActual,
-                last: true
-              });
-              observer.complete();
-            }
-          },
-          error: (err) => {
-            console.error('GET /api/solicitudes (paginado) - Error al cargar página:', err);
-            observer.error(err);
-          }
-        });
-      };
-      
-      cargarPagina();
-    });
+    // Tamaño reducido: carga más rápida al hacer menos joins en el backend
+    return this.dataService.requestGet({}, 'solicitudes?page=0&size=100', 'v1');
   }
 
   obtenerTodasSinPaginacion(): Observable<any> {
