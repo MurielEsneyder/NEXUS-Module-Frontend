@@ -87,6 +87,9 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   estadosList: any[] = [];
   prioridadesList: any[] = [];
 
+  // Límite máximo de imágenes por requerimiento
+  public readonly MAX_IMAGENES_POR_REQ = 4;
+
   // VARIABLES PARA EDICIÓN EN MODAL
   modoEdicion = false;
   estadoEditado = '';
@@ -1322,6 +1325,12 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     if (!this.requerimientoSeleccionadoModal) return;
     if (!this.nuevaUrlImagenModal || this.nuevaUrlImagenModal.trim() === '') return;
     
+    const actuales = this.obtenerImagenesUnicas(this.requerimientoSeleccionadoModal).length;
+    if (actuales >= this.MAX_IMAGENES_POR_REQ) {
+      this.mostrarNotificacionSnackbar(`Máximo ${this.MAX_IMAGENES_POR_REQ} imágenes permitidas por requerimiento.`, 'info');
+      return;
+    }
+
     if (!this.requerimientoSeleccionadoModal.imagenesUrls) {
       this.requerimientoSeleccionadoModal.imagenesUrls = [];
     }
@@ -1333,6 +1342,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       url: urlAgregada,
       orden: orden
     });
+    delete (this.requerimientoSeleccionadoModal as any)._imagenesUnicas;
     console.log('ADJUNTOS - URL agregada al requerimiento:', urlAgregada, '| Orden:', orden);
     this.nuevaUrlImagenModal = ''; // Limpiar input
   }
@@ -2090,9 +2100,21 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   seleccionarArchivo(event: any): void {
-    const files = event.target.files;
+    const files: FileList = event.target.files;
     if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
+      const disponibles = this.MAX_IMAGENES_POR_REQ - this.archivosAdjuntosTemporales.length;
+      if (disponibles <= 0) {
+        this.mostrarNotificacionSnackbar(`Máximo ${this.MAX_IMAGENES_POR_REQ} imágenes permitidas por requerimiento.`, 'info');
+        event.target.value = '';
+        return;
+      }
+      
+      const cantidadCargar = Math.min(files.length, disponibles);
+      if (files.length > disponibles) {
+        this.mostrarNotificacionSnackbar(`Solo se agregaron ${cantidadCargar} imágenes para no superar el límite de ${this.MAX_IMAGENES_POR_REQ}.`, 'info');
+      }
+
+      for (let i = 0; i < cantidadCargar; i++) {
         const file = files[i];
         const reader = new FileReader();
         reader.onload = () => {
@@ -2117,13 +2139,27 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
   }
 
   seleccionarArchivoModal(event: any): void {
-    const files = event.target.files;
+    const files: FileList = event.target.files;
     if (files && files.length > 0) {
       if (this.requerimientoSeleccionadoModal) {
         if (!this.requerimientoSeleccionadoModal.archivos) {
           this.requerimientoSeleccionadoModal.archivos = [];
         }
-        for (let i = 0; i < files.length; i++) {
+
+        const actuales = this.obtenerImagenesUnicas(this.requerimientoSeleccionadoModal).length;
+        const disponibles = this.MAX_IMAGENES_POR_REQ - actuales;
+        if (disponibles <= 0) {
+          this.mostrarNotificacionSnackbar(`Máximo ${this.MAX_IMAGENES_POR_REQ} imágenes permitidas por requerimiento.`, 'info');
+          event.target.value = '';
+          return;
+        }
+
+        const cantidadCargar = Math.min(files.length, disponibles);
+        if (files.length > disponibles) {
+          this.mostrarNotificacionSnackbar(`Solo se agregaron ${cantidadCargar} imágenes para no superar el límite de ${this.MAX_IMAGENES_POR_REQ}.`, 'info');
+        }
+
+        for (let i = 0; i < cantidadCargar; i++) {
           const file = files[i];
           const reader = new FileReader();
           reader.onload = () => {
@@ -2189,7 +2225,13 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
     const numero = lista.length + 1;
     const id = `${prefijo}_${this.padNumber(numero)}`;
 
-    const imagenesUrlsMapped = this.archivosAdjuntosTemporales.map((a: any, idx: number) => ({
+    // Garantizar el límite máximo de imágenes en el momento de crear el requerimiento
+    const archivosParaAgregar = this.archivosAdjuntosTemporales.slice(0, this.MAX_IMAGENES_POR_REQ);
+    if (this.archivosAdjuntosTemporales.length > this.MAX_IMAGENES_POR_REQ) {
+      console.warn(`REQUERIMIENTO - Se superó el límite de ${this.MAX_IMAGENES_POR_REQ} imágenes. Solo se tomarán las primeras ${this.MAX_IMAGENES_POR_REQ}.`);
+    }
+
+    const imagenesUrlsMapped = archivosParaAgregar.map((a: any, idx: number) => ({
       url: typeof a === 'string' ? a : (a.base64 || a.url || ''),
       orden: idx + 1
     }));
@@ -2199,7 +2241,7 @@ export class SolicitudesDesarrolloComponent implements OnInit, OnDestroy {
       descripcion: descripcion.trim(),
       detalle: detalle?.trim() || '',
       cargoImpactado: cargo?.trim() || '',
-      archivos: [...this.archivosAdjuntosTemporales],
+      archivos: [...archivosParaAgregar],
       imagenesUrls: imagenesUrlsMapped,
       tieneImagen: imagenesUrlsMapped.length > 0
     };

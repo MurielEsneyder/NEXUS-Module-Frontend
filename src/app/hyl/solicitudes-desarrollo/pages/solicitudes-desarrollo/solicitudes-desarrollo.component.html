@@ -310,14 +310,14 @@
                 <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rfDetalle maxlength="2000" required></textarea>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Adjuntar Imágenes</label>
+                <label class="campo-label">Adjuntar Imágenes <span style="font-size: 11px; color: #718096; font-weight: normal;">(Máximo 4 imágenes - {{ archivosAdjuntosTemporales.length }}/4)</span></label>
                 <input type="file" multiple accept="image/*" (change)="seleccionarArchivo($event)" style="display:none" #fileInputRF>
                 <div class="img-preview-grid">
                   <div *ngFor="let arch of archivosAdjuntosTemporales; let k = index" class="img-preview-tile">
                     <img [src]="arch.base64" [alt]="arch.nombre" class="img-preview-thumb">
                     <button class="img-preview-x" (click)="eliminarArchivoTemporal(k)" title="Eliminar imagen">✕</button>
                   </div>
-                  <div class="img-preview-add" (click)="fileInputRF.click()" title="Agregar imágenes">
+                  <div class="img-preview-add" *ngIf="archivosAdjuntosTemporales.length < MAX_IMAGENES_POR_REQ" (click)="fileInputRF.click()" title="Agregar imágenes">
                     <span>+</span>
                   </div>
                 </div>
@@ -380,14 +380,14 @@
                 <textarea class="textarea-wizard" rows="4" placeholder="Espacio de 2000 caracteres..." #rnfDetalle maxlength="2000" required></textarea>
               </div>
               <div class="form-grupo">
-                <label class="campo-label">Adjuntar Imágenes</label>
+                <label class="campo-label">Adjuntar Imágenes <span style="font-size: 11px; color: #718096; font-weight: normal;">(Máximo 4 imágenes - {{ archivosAdjuntosTemporales.length }}/4)</span></label>
                 <input type="file" multiple accept="image/*" (change)="seleccionarArchivo($event)" style="display:none" #fileInputRNF>
                 <div class="img-preview-grid">
                   <div *ngFor="let arch of archivosAdjuntosTemporales; let k = index" class="img-preview-tile">
                     <img [src]="arch.base64" [alt]="arch.nombre" class="img-preview-thumb">
                     <button class="img-preview-x" (click)="eliminarArchivoTemporal(k)" title="Eliminar imagen">✕</button>
                   </div>
-                  <div class="img-preview-add" (click)="fileInputRNF.click()" title="Agregar imágenes">
+                  <div class="img-preview-add" *ngIf="archivosAdjuntosTemporales.length < MAX_IMAGENES_POR_REQ" (click)="fileInputRNF.click()" title="Agregar imágenes">
                     <span>+</span>
                   </div>
                 </div>
@@ -901,7 +901,7 @@
     </div>
     
     <div class="detalle-item detalle-full-width" style="margin-top: 15px;" [class.detalle-editable]="modoEdicionReq">
-      <label>Imágenes adjuntas:</label>
+      <label>Imágenes adjuntas: <span *ngIf="modoEdicionReq" style="font-size: 11px; color: #718096; font-weight: normal;">(Máximo 4 imágenes - {{ obtenerImagenesUnicas(requerimientoSeleccionadoModal).length }}/4)</span></label>
       
       <!-- Vista Normal (Solo lectura) -->
       <div *ngIf="!modoEdicionReq">
@@ -922,13 +922,13 @@
             <img [src]="obtenerSrcImagen(imagen.url)" (error)="manejarErrorImagen($event, imagen.url)" class="img-preview-thumb" alt="Imagen {{ imagen.orden }}" (click)="abrirImagenCompleta(imagen.url)" style="cursor:pointer;" title="Clic para ampliar">
             <button type="button" class="img-preview-x" (click)="eliminarImagenModal(j); $event.stopPropagation()" title="Eliminar imagen">✕</button>
           </div>
-          <!-- Recuadro '+' idéntico al del wizard -->
-          <div class="img-preview-add" (click)="fileInputModal.click()" title="Adjuntar imágenes">
+          <!-- Recuadro '+' idéntico al del wizard (solo si hay menos de 4) -->
+          <div class="img-preview-add" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length < MAX_IMAGENES_POR_REQ" (click)="fileInputModal.click()" title="Adjuntar imágenes">
             <span>+</span>
           </div>
         </div>
 
-        <button type="button" class="btn-guardar-req" (click)="fileInputModal.click()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 7px 16px; margin-top: 4px; box-shadow: 0 2px 6px rgba(59, 175, 182, 0.25);">
+        <button type="button" *ngIf="obtenerImagenesUnicas(requerimientoSeleccionadoModal).length < MAX_IMAGENES_POR_REQ" class="btn-guardar-req" (click)="fileInputModal.click()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 7px 16px; margin-top: 4px; box-shadow: 0 2px 6px rgba(59, 175, 182, 0.25);">
           📷 Adjuntar imágenes
         </button>
       </div>
